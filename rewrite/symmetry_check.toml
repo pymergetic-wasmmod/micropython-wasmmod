@@ -1,0 +1,32 @@
+# MetalPython rewrite — only scope + rare exceptions.
+# Mirrors, source stems, and pm_mpy_* module/symbol lists are discovered.
+
+[general]
+ports = ["unix", "qemu"]
+# Under ports/qemu/mcu/, only these arch dirs (empty = all).
+qemu_mcu = ["rv32"]
+# Also expect .py → .rs in these reference trees.
+python_to_rs = ["extmod"]
+# Enable when mpy-cross rewrite starts.
+mpy_cross = false
+baseline_path = "rewrite/symmetry_baseline.json"
+# SHA checkpoint of tracked ref + shadow files (updated with --checkpoint).
+sha_path = "rewrite/symmetry_shas.json"
+# Append-only conversion progress log.
+history_path = "rewrite/symmetry_history.jsonl"
+
+# Extra path globs to ignore (on top of built-in discovery rules).
+# Paths are relative to each mirror's ref root, or repo-relative with a tree prefix.
+[ignore]
+dirs = [
+    "extmod/mbedtls",
+    "ports/unix/mbedtls",
+    "ports/unix/variants",
+    "ports/qemu/boards",
+    "ports/qemu/test-frzmpy",
+]
+files = [
+    "extmod/asyncio/manifest.py",
+    "ports/unix/coveragecpp.cpp",
+    "ports/unix/coverage_backup.c",
+]

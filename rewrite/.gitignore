@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+.symmetry_report.json
+*.jsonl.bak
+symmetry_status.md

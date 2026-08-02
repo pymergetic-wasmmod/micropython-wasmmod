@@ -1,0 +1,3142 @@
+{
+  "updated_at": "2026-08-02T17:47:25.501706+00:00",
+  "refs": {
+    "extmod/asyncio/__init__.py": "9e4bf4461fa754d77a16a2b3dd04e62d814a4db7a1f079d4e0edd835d9bc35ef",
+    "extmod/asyncio/core.py": "7e20b32417b47c16b149467cbd047dc77184380ca7f5efad75e65e50ed7121a2",
+    "extmod/asyncio/event.py": "5a5f1737ebfd2bd5f8342c21adcc8565cc8316bbcc95d8dbe45bdbb4c90550bc",
+    "extmod/asyncio/funcs.py": "d6cb8867c71875f44356fd1faf628fc9bf3621bebe1c349cf3fa9595fabdfb5f",
+    "extmod/asyncio/lock.py": "9afba3021a5c586b9b1605b8d4c51a31ba31148da870a2b9431e1c7acc39a3cd",
+    "extmod/asyncio/stream.py": "8d506b5ca027e1196b47b4bfd209e16644241f553ab04b4ea7119dac400d4ee4",
+    "extmod/asyncio/task.py": "46999c6993ea84ab0e813bd9fb417b0bafc8fd00b52daf4062d79fff1576fdde",
+    "extmod/asyncio/uasyncio.py": "01f002e26c3f570725f572451425472cced79bc3b36b4165de36430bcfa7ddfd",
+    "extmod/cyw43_config_common.h": "aa660fcfb5d6ff1bcc59abc539f8d16f62dfb39e44a470c9c2b2f69daf6d9f72",
+    "extmod/font_petme128_8x8.h": "ed285e6c1a65b6d419f0a2eadd28a58d4d3a464316759860536b3f6429514618",
+    "extmod/machine_adc.c": "28bdc63b3d5cc99abc9c4ad3caf4b7770e58e9697bdbf6ded55c5f58f97a97db",
+    "extmod/machine_adc_block.c": "7b1c6756083063adfc8433eb5a0378eb4b07a757d3812f0ecd9a03ad95f14e96",
+    "extmod/machine_bitstream.c": "d47a6339ff79b715b1047339cd6a2c12ee98643509a1fd95db3ae61b60a9abcd",
+    "extmod/machine_can.c": "8f2014cb6040a647585a8330a08d7bf4b44c773a2f7ec1e1d5ca938da1fec844",
+    "extmod/machine_can.h": "6128deed0c9b98e721827246c1dd8f24738aa787fdaaa8c4ec6fcee1013f79c5",
+    "extmod/machine_can_port.h": "ecaeb34d89bce89e9272bf99959f79ce089d6c8506ebddca18d6a0101b29fb43",
+    "extmod/machine_i2c.c": "76b1159056ef68059686044635d23a1d323a58ae0eacc1fefc596cfb319d46c1",
+    "extmod/machine_i2c_target.c": "2e9f9614440eb3de3f48fc504f389fd3d04778f1241bfe9216245e4d54ce2580",
+    "extmod/machine_i2s.c": "e2ef52503cda2a91edb73e67b88fb3f7e010b7482ed8f858b2997e56e88f08f6",
+    "extmod/machine_mem.c": "5491a94e5baad6b57fc20b199e72cfd3661c3484ba4529ce04e49f82fc5f0273",
+    "extmod/machine_pinbase.c": "436f5985e743bf6aa9906f5e64a43793dfeede3ec34e70ab98a321cf2921cabd",
+    "extmod/machine_pulse.c": "18a6e98439348997459670751706bda697de9c54652ac89aff1b1aa03abbd8e3",
+    "extmod/machine_pwm.c": "104fcef69d28e07a5fedc7b1e9e2d5b9d1c722cdb241c062814d62a5831be498",
+    "extmod/machine_signal.c": "e5f2dd9e443a3545db6003039d91e0b51b169d7857f9c05aafb71ef7c9739ab6",
+    "extmod/machine_spi.c": "d6fba90baf3605f23f07e425db269e2d26b287e12ea7e48d4030fa67402a3d2a",
+    "extmod/machine_timer.c": "3d95a4a1498f325a09545f170c474cdce5ae688723b64c9c9c99ad9e801e6955",
+    "extmod/machine_uart.c": "ea18b5142a4f19183dcb7583781f78e5f41ccb44938fcd32c849c61fe43a85a3",
+    "extmod/machine_usb_device.c": "aab248201bbcd52610071f955427fd6d3c96cdff501e18e537320df669a2f4eb",
+    "extmod/machine_wdt.c": "c8ed23f32a2c29c38d76d8fe7a68385f12561189b6671e5c10875f2372f14995",
+    "extmod/misc.h": "519e75ef4699c2e372ef0cd438c2b81877baf029c9f429931af48e46720ec66c",
+    "extmod/modasyncio.c": "fe33832e6586f6f197fe804ae830fa723d2bfae8e1a24c7385df9581015b6733",
+    "extmod/modbinascii.c": "340f3044c019fdb3de517849e7b8b823bf46093d63c2e69170341439eaa92376",
+    "extmod/modbluetooth.c": "ce518a8a1b66a93dbcc027da524faffe1a5ccf7a5cd354cbce9693507013e3e8",
+    "extmod/modbluetooth.h": "a7a63b3df7bf2fc701eabcc57296f6a4c54329117312cfbee55c0a2d52e7a146",
+    "extmod/modbtree.c": "976cddcf5cf682267678b1be6aaa68d8c349f40c641beba3154f11620300f5de",
+    "extmod/modcryptolib.c": "7f8bc58f131f7aa071643b46c9848d9024f443d8d7f0e50d84c7584242a91d8d",
+    "extmod/moddeflate.c": "a06c5b834c50494dab1577b9edf6e76ecb249ebb7bc220171b22b8614aa5444c",
+    "extmod/modframebuf.c": "bd45c1047622145339ee7e8de157ebcf0f189f172579da2c030955e4def90a57",
+    "extmod/modhashlib.c": "5ac31e2a2f0cb32c9d6113baa9ede1b5ad76c76298c97eeb499dd8bf2f00578c",
+    "extmod/modheapq.c": "768c4d1469133414ee3409a9f50664737f587d5dd83c88f04afe24cc9c87fda4",
+    "extmod/modjson.c": "333d74eae94a980f0262ffa6cf83f1892a4fbccc9efc65ddf0ca9ed792cbdb43",
+    "extmod/modlwip.c": "6bc29d1e70f4f0536324b502212d3de6cfe8c5f28b1c73a6127f742c3be151bc",
+    "extmod/modmachine.c": "cba768a809204a7390b835c2af6313317adcf5fe5847c3481e2a5a57e43a0c08",
+    "extmod/modmachine.h": "6f31bfda4321e16f83733a075f2c0ede4f84b021af0537799250b0628187e1a6",
+    "extmod/modmarshal.c": "d30695f91bea124bf3ea4496e7062bc2a76065112b6b6846a30a9e88c13ff7bb",
+    "extmod/modnetwork.c": "5c7dff840a0503bdd0780281e3089e1d348858d73d3384bafec1be7521d58cd6",
+    "extmod/modnetwork.h": "25898d4680ac7a552e2a1308aee122e27aea42f71c489a68e1c5392636f8a9ef",
+    "extmod/modonewire.c": "845737a8f7b0edbd09e152f02aaafda8b87f2af3312b1dbb3f8f9af69e561f54",
+    "extmod/modopenamp.c": "26d43914044871abf256eba33adb94624311a86b208efa0467e440d66ebf8bbf",
+    "extmod/modopenamp.h": "e82038f346f8decc3b4893edd8cd2bc4ce8d69aaf75d60e51be9e49098d6c1c1",
+    "extmod/modopenamp_remoteproc.c": "e456d59ed920b925c45045c1f8666a5c1032e18644f0d64c0de2778d23de1a6c",
+    "extmod/modopenamp_remoteproc.h": "1cbfc76ee9f8a22b62b685ef9c61a0f52bed7b761b68edfe7a473c4af769c3b1",
+    "extmod/modopenamp_remoteproc_store.c": "3edace138009e75acae14e6802840a4a5be39bc45ddbbd9fb0a94626925feb8d",
+    "extmod/modos.c": "16c63656af2700afb148a51edb2f8a103c4da5586d9a4991b7719734f3679050",
+    "extmod/modplatform.c": "ad1ee51f397e75565fcf9abff57593d03a0c2836c8968374076aec03175cfdda",
+    "extmod/modplatform.h": "930c7a7d56d13aec539e5a0edfed2823458d4a48d76d418b6c4eeeb844e88443",
+    "extmod/modrandom.c": "11d851f6755e565494ec52559c84047b5ac39552e9b5e8c4cb8207bbc8eb8b1e",
+    "extmod/modre.c": "ec20cb158263576c3c1daf0a8dacc2cfc32712c471887ffed8e15487e2a0e324",
+    "extmod/modselect.c": "dd0476dae2fe6d1f906b4a084ac57ab472b5e2d1f35ce4fd366743084ae1be7d",
+    "extmod/modsocket.c": "9ddad027899390b158849b4fb2f47ff9e7261d5e93621f05b4004a6c24f071ab",
+    "extmod/modtime.c": "685d2becafd1efd6fbfab5fc08c370bada4632961d680ba0c0976bb696da2bc5",
+    "extmod/modtime.h": "c1863f03dc578c00b41cc88a651a6f8d5c1284fec1e4bc935e7b9244729d98ce",
+    "extmod/modtls_axtls.c": "0b26747d37e0a4a0b7bed7a2ee10713c3d4e405b7972bb10dcccf62bd9c22b6b",
+    "extmod/modtls_mbedtls.c": "681c6bb8246bc6a674762513b63c087142cdd72d4bc514e138420d67644b5326",
+    "extmod/moductypes.c": "d129d3fb1697cd9cab89b4c05bbb387dbfa6b4cc521be9b3c68ee800a6fc29ca",
+    "extmod/modvfs.c": "0cdc8cd0e3861dd0c09599aa71bdf4db9d0e02b7c0eba3e9325042d6c569ffa5",
+    "extmod/modwebrepl.c": "5992c1008220fd698d8a27ae8b7bb03f68af6b14329f06084486d05c198c2a14",
+    "extmod/modwebsocket.c": "a129feb531ee4f1204195cced3c7e28e5a444328dcd82681e99d5392668defa6",
+    "extmod/modwebsocket.h": "6672baef3ea093e70ee29adeb38f5acde9fdbfb51e1b9617c32c09cab6799ae8",
+    "extmod/mpbthci.c": "5bcbcc1a89919b6a84e1bf59985b3d560c7d25afeefdcf1ab259b6f216ff77f0",
+    "extmod/mpbthci.h": "317c48cb46fa8994e687c7fd4c76e62055480e585262de259d0c8f293597378e",
+    "extmod/network_cyw43.c": "67ab36b2eac12de32ecc0eb9740cf09a7e051f6aff92406ced53b99e55f0165c",
+    "extmod/network_cyw43.h": "fef510a6772fe923ede4387351f0bc793f6b583056e35bab5dcbb7b75ed79873",
+    "extmod/network_esp_hosted.c": "1c2591e8a78ca3c24f5f118c2bb056446bf36cfbf9c984a92382ef54c13c3b4f",
+    "extmod/network_lwip.c": "9ef52c2447224b6924efec1360f1205dedf42869080b64ae82b7e26857abec20",
+    "extmod/network_ninaw10.c": "ec98918674d2d6bdecee8b237e59e07bdceedab7981ee56877b6ec69630a882c",
+    "extmod/network_ppp_lwip.c": "a9cb16b8680949e0b835a3a4011bd3d893810947ce13399a950793c07748a792",
+    "extmod/network_wiznet5k.c": "79b8e103f2a04b6fca930e185b4199237132fc3eb44dc2212ec89a7d2b4b5178",
+    "extmod/os_dupterm.c": "8105682c1652ff3fdba637442bf964fa8a3ad035a72b43e1701f2c54d9885d67",
+    "extmod/vfs.c": "2b29417040aa2fd3f63a5e28f1d20ead857606aa36cb0f01b5a2eb105db0acf2",
+    "extmod/vfs.h": "b26088387f32bac4dac6e265556bfc6869048faffd732f3145206c3332e61697",
+    "extmod/vfs_blockdev.c": "ea3a05f940d7641e25a12d0fecdf86e9bccec5e2b538a0769851977117d792fc",
+    "extmod/vfs_fat.c": "57e6a189f45894e1604e10c1a4087a41f2f77e8dd1d389b4d46c4603dd67d0fc",
+    "extmod/vfs_fat.h": "7234e3172a8d331759756d689d1e4a1cbdca28b2c45f948377707dec9565c58f",
+    "extmod/vfs_fat_diskio.c": "345f51b7a9ed0bc0ef29902d732e562aa8c596b12406e1ebd50c1c2a3102a302",
+    "extmod/vfs_fat_file.c": "3a2a36a063c993b295fe7c97762afeb7a9dfb87bee2448bb1928f53d26a577b0",
+    "extmod/vfs_lfs.c": "1c3ad5de9b103eee75ae16b1ab356d5f74f826018da76c73ac13693d3ba70088",
+    "extmod/vfs_lfs.h": "255dfdcbb7592e9e2c00ac9ec6fd9e22b3d4144e1725bb488b20cc55b651984a",
+    "extmod/vfs_lfsx.c": "c8fbe8809025f89c25f5c17a8b5931a1631ca981711fd2344da1f90340ed5cac",
+    "extmod/vfs_lfsx_file.c": "b68b0da00eba5b1d85bb85e7912dd5bdca6dd4693223d14d3798c7e89db1b059",
+    "extmod/vfs_posix.c": "95ed1a6257de627d648156a011b1b91ae0f29dc0f0e17cf99777f5a1d4fe1303",
+    "extmod/vfs_posix.h": "bbdd3c8f54d925f77a68b694f13f5a77d3b8373c42b98730ee35ffaaeb64592f",
+    "extmod/vfs_posix_file.c": "e129e33e4f0134c836fe5b496ccc68c4fddbb1b51bd4f78e945c3c1e33334a46",
+    "extmod/vfs_reader.c": "c2995a2ec2df779183d68b0890977b7d1ac8462aede4367c22070004d41cce74",
+    "extmod/vfs_rom.c": "8a2c25a468518242b6b9355ff9c090582f58209e9e0e2c195b02db5d8a7da1d3",
+    "extmod/vfs_rom.h": "28fc23bd9048080984fd9475ca62ce951b45946d77591a24b87c958e271d46a1",
+    "extmod/vfs_rom_file.c": "b4b11bd909ee8182bb44ab41087909c0232e400a30784fae714c989e84a26ebc",
+    "extmod/virtpin.c": "d9da162dfa4fcded8a2c39032d546cc1edcacc11bdc1db5ced979e51253e6b37",
+    "extmod/virtpin.h": "01ca10ba6550e770934e98cada00c0661a684deabab0743f877be9a51ccb6c06",
+    "ports/qemu/main.c": "b6aa81215e0ab8ad3deae3396aa88a7835342ccc17752720ff3d86434ccc6f3e",
+    "ports/qemu/mcu/rv32/interrupts.c": "ec1d1900ea20eba816aae4125f05679c024a8d8c16e5639d19e9f7ae1704a0d8",
+    "ports/qemu/mcu/rv32/startup.c": "faa7eb07986bdc887929737abd9610157166d753ab6f0e381cf335c6cbf271a0",
+    "ports/qemu/modmachine.c": "fc8fb79f77c5363703224f5c94fe18bfee4bbbe913c6f4b727e913c2e77bc160",
+    "ports/qemu/mpconfigport.h": "8673bb11cdc4609fb838cce0144b6e33411d994f7a2e0a965e7a81fff37c9bd3",
+    "ports/qemu/mphalport.c": "4352ecf7e20188893689f532055ed804e50eafc4b195962fd403555a4f117872",
+    "ports/qemu/mphalport.h": "f2a527c9b4509a55ef76ffb75b685c4af45ecbc8780112d26cd38b3d249422e4",
+    "ports/qemu/qstrdefsport.h": "cecec514961b894b13debc53fffb79f366df2788a441209d85f9037f4d6cb1e5",
+    "ports/qemu/uart.c": "32c21472c3a63b476f074697159c62c42863f7bc0225e9d2ef66d6bbd0f6f8e6",
+    "ports/qemu/uart.h": "137f3e507003f490166e74cae392e474ce77e3659bb81017dbe954bc676f9b69",
+    "ports/qemu/vfs_rom_ioctl.c": "8425959552c37da173c7ba4f9d41272ffdd4f3a4fe41d4992aae13d9c7d63208",
+    "ports/unix/alloc.c": "81cf5e83a7bfc5cea84322d3d6d9e4eddbc64cb5a54e0655ec223afa2538d5d4",
+    "ports/unix/coverage.c": "074a4c2f8e983f7f16b5dc35a87a9568ede4070530eec236c1f6bca39ad6a29b",
+    "ports/unix/fatfs_port.c": "5245ba512c10bc174f392f69efa3deb8b66551df37a2c52876a621eb55753bf3",
+    "ports/unix/gccollect.c": "ab147ce9e648809ed36fdbae86d2037833fc21d914e8091b8e7d3ff765099476",
+    "ports/unix/input.c": "5664b7ca9aba5f16972ac4c2e4ba77f2ba13d601e78128a40ca9ffb752251639",
+    "ports/unix/input.h": "17f94549a0bfd3932c7d6d127325808bb1f6f24c242cc527d66557951c6a9ed4",
+    "ports/unix/main.c": "81ec43f8b474609b2cb7d8326b2dbcd697e66d77557a82315125c204accc315c",
+    "ports/unix/modffi.c": "e19590b21b959a3751710a1f662c8bf910d14ede24fd013780eec60149a63f9c",
+    "ports/unix/modjni.c": "06e79604c12f14c567914be232187f35ce741257a466c9a955a9c3803e4339e1",
+    "ports/unix/modmachine.c": "b18d0459f30918048ad7faa66f80cef533170843c1f2ac8f94ce0c0cdbae608d",
+    "ports/unix/modos.c": "c7daf7be992e888de276c596295212cf91eac6ebe048e13849ef43d786b8e428",
+    "ports/unix/modsocket.c": "d908124d3f956c99e7bee67860e141916161ed6e52bbbde0647e19b4b48d265f",
+    "ports/unix/modtermios.c": "7df01d4e3550d7ca15ee6b57cb39eca5646ca69fc1f4aa254e0983f1c067f0f5",
+    "ports/unix/modtime.c": "90341a1593b098923212321d24186958b3662fd9e705ed1e94c7f34e3050e23e",
+    "ports/unix/mpbthciport.c": "7558c5a98c27151f617a1137506603c6f81f9a529bd4434d89b1642324e67c4a",
+    "ports/unix/mpbtstackport.h": "e64b983679b95500fbe04e6b6ae3c980a1f77f35cbf7e8a2775fe9acf32ac683",
+    "ports/unix/mpbtstackport_common.c": "c5064a645f8f4ed0bb5ba9e6a405077903d40277585143a7f18fa55b13cc4044",
+    "ports/unix/mpbtstackport_h4.c": "2dee179b9392d26dce97c5811487513174b4e4c3c207a2ec27b70b0a09679a63",
+    "ports/unix/mpbtstackport_usb.c": "52131bac877b3ca8d3969103ba433114a01a80eca4f11f27c3b6b20b6a51f534",
+    "ports/unix/mpconfigport.h": "36da31836673202fbcef8615ef90d9e40265adcca560ac15ab2a313f79504735",
+    "ports/unix/mphalport.h": "5e0562d68c2b25b4ab29763db737fdd983fea66b1aeaa7d793f9bb31c3ca7cab",
+    "ports/unix/mpnimbleport.c": "843624c4dadf178ac91647b7e4d84b561e323a630ec65fccc85ff579b67e6909",
+    "ports/unix/mpnimbleport.h": "2df6965dae4d64194e6b484e10e6914d9674a39ebbc955309f1a9d1c2b726aea",
+    "ports/unix/mpthreadport.c": "001c91dcb340b03e754f003bfe7bb792951e3b0665eec05d0a26ea9ff50ee3f0",
+    "ports/unix/mpthreadport.h": "e227f69d13e4baa34a17096d5acbc96f340a4160440ebd5d58c4fb6b90485fdc",
+    "ports/unix/qstrdefsport.h": "c51d54817422182d21f7beeb2899f9c1248547a99756e4cc60f24478cf02ecd5",
+    "ports/unix/stack_size.h": "35fccaec5e99ec1861475fd9d1ac97ee392dcd9d2f89457a6bf1b4c8e1520f48",
+    "ports/unix/unix_mphal.c": "03f4e124bb39a03f6f04b16bd5fd555689a1a0bbf779b3a212684157ea22cbc7",
+    "py/argcheck.c": "33824a7fa0b698211c0b66f169595f1d2ca82713f2d5e11ea3414d60adb0a12a",
+    "py/asmarm.c": "a4e858e1e0f46e0aaca9f614f91ab19f1979905aa67b23f4da78e5ca3723c3ee",
+    "py/asmarm.h": "70c74b0e5a33859570f7c8bba924e77d3ab0df3b0d3fa470b1908f95272db979",
+    "py/asmbase.c": "e228a9e93366ee2b0f8eda426a0fb2325558b4a9954c8e6d6c590b465a5f8ab7",
+    "py/asmbase.h": "d8027e88d402223a51b3d7c9bd6e11bfd2be8e5e5a6cc01ad32d0af625cb44d5",
+    "py/asmrv32.c": "7e30d4f1d19a45b6005df8c959b7a89c3ec1a94d39ff9ad9320210553bb04d15",
+    "py/asmrv32.h": "43db61bb3d913bed1db9612c2ca15377a14ef863db6e80a850535d432a2b7bff",
+    "py/asmthumb.c": "151faab87b96f5977f602bccb73b41fbe36ce40b55f822cb3462e6abec74a9d0",
+    "py/asmthumb.h": "243698348f276a0879dc03b031881d318e33c8076c905331584632319a053220",
+    "py/asmx64.c": "362034c70d8186eae2824fc9a0b41127dc5531f29039071d1f06c87f378913bd",
+    "py/asmx64.h": "21dc58a67e6810a83748594b4feae017a71b8263a7850e7911d159a7c11d414e",
+    "py/asmx86.c": "1f8f5c7e8f3b15ad33e0016816767b849951dd5bc5b752f3e2732ac06b586b82",
+    "py/asmx86.h": "aa2fc3a58901dd04b8b0592c93e5f10349cb2a47eb1903fbd8d0afd1afb606cf",
+    "py/asmxtensa.c": "b4b9e5381c2f11cd3676d96e559852b0065498493ef73b0f9b0b291654d62c46",
+    "py/asmxtensa.h": "adebafdf3734576a938e8e8a77ff345159e7e86262de9d5c23a30d98b3078540",
+    "py/bc.c": "238b505267f48942d7661565070293a1cbe774508c5caed4061bdec955a0f23d",
+    "py/bc.h": "96eb32bf02df53c925c9f315405d4e82e3c1dfced197c257ede680bc95f09cd2",
+    "py/bc0.h": "2bef1611b0ff1f1dd5330d32b6bdfae7725b41b4e334743086f88032f3fad62f",
+    "py/binary.c": "08728c73e627a590c7d7b3fed3da2065ab804a332df031b405ca1c2c84ea8af1",
+    "py/binary.h": "75d2849a6778c64e6c7c21e5939e9b0f58f9d821db0fdd875c736c140a377fee",
+    "py/builtin.h": "3393249fa50d6947513574daf68ed0ac22593b2cfbcb4bd5028b8891f808b121",
+    "py/builtinevex.c": "8498d93520b9622514d37a8f6dfabc34a7e333798f9723c6ca8b4ad915354458",
+    "py/builtinhelp.c": "8ab97521ccbc75c62730df6bc0fba6e7aa6b3e10b5bfd969af0ec55f2c9d6143",
+    "py/builtinimport.c": "7ce1058a2d91d7e4ae663abbbc4a7acda218df2d1ce4135d5f31136888c5a76c",
+    "py/compile.c": "8e7500aedba4506bc302fd3aefe85d0fdff0b5a5c932345b3e0b2cd6004c98c9",
+    "py/compile.h": "1fa8a2b012103884fe152131ca8713670cb79475cb3e42220bff6bab9f3b2cf5",
+    "py/cstack.c": "28cc109277df56d500cd2f3a7848c85562fd77d555aae3cca5427f6e3ad90382",
+    "py/cstack.h": "6117ac56d033b5b1bdd5de26b99f4d76ee691d9292e0cd840ece5c6a4649e9a1",
+    "py/dynruntime.h": "3b2c1ecc6bc45c91ba9d46d362fcae82649896ef6c83340b6ca171672f1f04c4",
+    "py/emit.h": "19599f62f3338f72d066ffb818289827c088cba2bf9a64e388b00e23952006b9",
+    "py/emitbc.c": "d4ec2e6e9f0a4b0525ecad4e5914ea42f9d8b320f22c0fa0e3ee9d0a5e53f505",
+    "py/emitcommon.c": "c391ffa5a4109c645ddf54dc2f2281ebf130a307c702ad675938d5fd31b28666",
+    "py/emitglue.c": "12c244a964ca950394195e6fc1faebcbfa236aff04602c81a9814be84e2dce6e",
+    "py/emitglue.h": "9c80dcc6e5cb1110ec22556b9002f6009889ae88c07c0b817935c583e3728b32",
+    "py/emitinlinerv32.c": "af270c9573e5b4ba646250ab2100952c2ccfbdf1aba446df4d0f9fe1e6fb1ee2",
+    "py/emitinlinethumb.c": "e249c183c0a18078505a7c6fa61377c50bcf99fe5b103122face133190dba7aa",
+    "py/emitinlinextensa.c": "6312c1f501d6f880f90666cc98b65e521c8d1085b8f35e29a8316012be11b068",
+    "py/emitnarm.c": "165f425a0adc43824f8293ea8ec4400bd4ead18c0ed1ae32a3b8357e8b6835b3",
+    "py/emitnative.c": "d64d8ea8d86b96d9867118a239f55db2a696d226411751a132870fb0b25434ff",
+    "py/emitndebug.c": "ccb08b2177d5e75c7d2cbd17dbbaa067f45f3e3fbeede2bf44b8ce4e671cdd72",
+    "py/emitnrv32.c": "172262fe089cb217f6b9e4124395dcbc0193aed9767cef5f5752fc319ad75422",
+    "py/emitnthumb.c": "d1f324fafff92cd66d8c4c967ba5d2c71fad11fa59855a7b50f6664f1c376364",
+    "py/emitnx64.c": "b0ab5a4c2ba9839fcc7d1733123167b9b9edfd612888903c23e2aab098f7dace",
+    "py/emitnx86.c": "89d2b1192af8cccf65ac3abb75f17818b853f03973394a901d0ba550c45337b5",
+    "py/emitnxtensa.c": "af57114260a8cb15143ccb3e5f3d38a01252e0c2f336674773259f666ccbe189",
+    "py/emitnxtensawin.c": "756929c4b882730e25f6fe1ed56ed62fae385007c982cd46c00fd871174e6757",
+    "py/formatfloat.c": "29e11dc773646f798037ba417555aea97330548933bb62c1c86b551e8f0f187e",
+    "py/formatfloat.h": "567b09223060b2388af48dbf22a83072eff6ffdd03dc9c079447b6ebe298f569",
+    "py/frozenmod.c": "8989cc73a8040ed5b420e789f8979f047c0df207c530f9a6634b13f918691543",
+    "py/frozenmod.h": "f0a3fca1f721811c1877d746d425cc2f42d79020476a58862ba3f63505601f8c",
+    "py/gc.c": "4cb307b23f5aacb7395dd5f5fec1238c4e1360b40b6b30a8e41865597a91ed6e",
+    "py/gc.h": "55f4629ae237d8f47ccea6dbbe64f6038966b8bcae17671284a4105b7d850047",
+    "py/grammar.h": "2bca240287eb0489481fb153dfbd804084af45dfa366ea0a5a6d164927e218e3",
+    "py/lexer.c": "3db04ac27cd4559df8fc20ebce6b93f6831ae29f3112a40a352a9dfcd3361a13",
+    "py/lexer.h": "e75f5540929c8c309d4baf6c51736b01c50922ddcfa775dce2cf923389d3a094",
+    "py/malloc.c": "fc41035e462354fbd7b7ca9037c513a2a7d852a3c52bfe902640ce4d182ecd8e",
+    "py/map.c": "06c6fc5e49dd778b1abb4cd989b3705d21e6f338a8eef0474815b717ee7e33a0",
+    "py/misc.h": "08989495b5146ae33e2ea911a766dd743e8a988a197d73898645bcc618635c5d",
+    "py/modarray.c": "edfe6431c34d6530810f646c0bc308b12f3c591f1e2a864276e11639184582e5",
+    "py/modbuiltins.c": "b52a6b7069993cb88d425cab75d588508187f580b7a829e174ec4a502c16180d",
+    "py/modcmath.c": "83037ff0caec95c9ddaeabeb38f5362ef1632c0e4e7884fbe19796ebc727d5ae",
+    "py/modcollections.c": "a289ee3bfcd0d5a681376c59fbac81c8d49c23476b2408110b6d642e648c8fd3",
+    "py/moderrno.c": "217ebe3106df1611576bb1c1cb65f08d3f37785fd4b6a31c04b8e663ddf259ae",
+    "py/modgc.c": "0288a1d2ebdf1208fb62311f1bf7cdde01710719b4584fcf4cbe14dcae7fec20",
+    "py/modio.c": "44dddf43a1aa3a3b93e9d41ada9b807b591f9b503fdb71a727acc9c2de29ec4f",
+    "py/modmath.c": "fdb1578fc7fc282af7e4b8ae877b8acb1db4f9d3e240efebe8b8ff6ed023924a",
+    "py/modmicropython.c": "e9301839c49ffc44c535082e436281d3f1e064ed8da374c971e9ccbe14b63211",
+    "py/modstring.c": "d077699ad51c0c00368041564cc611216bdc9620bd8678e830ccef11806a31cf",
+    "py/modstruct.c": "8a9e56a4cc352486044e55e0d328f923c6ab57e11be9b40266b81cb85c9714c0",
+    "py/modsys.c": "3a53241cceafc4a5aa48452dda6adafb2fc165a80d69f6322f6789018a0a1515",
+    "py/modthread.c": "8c078eaaa916a8c81295e962c845dc9278ecdf0d36fa26684cec80697f1559b5",
+    "py/modweakref.c": "5ad6f04ace085bfccb50e7c8111490fe4340d08b6bf8b9877921dc2cde6d116d",
+    "py/mpconfig.h": "3b73b98bff5fdd8a3cfe0941db68e307ec72f612dafb11a91f7d3caf18cffec7",
+    "py/mperrno.h": "2a274231f63f918e142605572a7d0c4eac473c34ed0c3560ea07ec8850c225f0",
+    "py/mphal.h": "01f096a8f88b12091f0c233e90ec07bb0dbb8dc6c5ab379117622f8285fe2938",
+    "py/mpprint.c": "ae9f002d8ff5db298135fc72e796854e954530579cb3490f70a2f4301e3b7aa9",
+    "py/mpprint.h": "ce725ec1a357c5c4402214ff78f6ce74f6622d621391322b9527ee70165e91c7",
+    "py/mpstate.c": "7418dec6f7c87e939383f01f0dd7e5fae6bd4eebc75fd7b52039c6915af39bce",
+    "py/mpstate.h": "0194097d92b34464b471c9b3098f6a62ab64f89ff38589e407356d942396dddd",
+    "py/mpthread.h": "2b270b8ab54ff5f855fcc7e6a0bef7493052cd24c6500330884abf894e3a3b53",
+    "py/mpz.c": "7c373b9464352ac0621b512bced81d4faedca0dc5bb4b57f4c8b8f2acbafb1bb",
+    "py/mpz.h": "aac215e4f5fa4da138bee75856d2443198147fe502dc69fe954b80bfab010136",
+    "py/nativeglue.c": "4e888b98d7ec510cb82355c52388d2a809349f74faf5aa0c9a9072fb05cb8c1d",
+    "py/nativeglue.h": "6ac3f1aa9ce2c647d1e1a79fd9d3c6fa43a9faa5f7b4de0bcef99b0f738afb6f",
+    "py/nlr.c": "af5f005a26de56434e39f545e6579f4225d4ae288c49853c90cc15d085eda55c",
+    "py/nlr.h": "e7a65a95770a0599dce9aea2b35e270bd21527f3aeb3a2a1f566bc789d376d9b",
+    "py/nlraarch64.c": "31a29fcc29d98a1e458c32a144f758071f54d670797bf6a738394b2175a641f4",
+    "py/nlrloong64.c": "127057c27625a441675758238351dbe8c3cdff9c07a126aa22429f9c451ddfc5",
+    "py/nlrmips.c": "359c0bf83589a1f709f8e72f28b6e1a5b3ef1823db899971b61a4707d56f255f",
+    "py/nlrpowerpc.c": "17a83564455c79efca7a354c9cf61c923c74caee1db1da55c8f61f2f07c14a75",
+    "py/nlrrv32.c": "b69891d8c511f94b06bfa56555faa7b66bf12c5a5f0c9ecc4ff6cdfbbe9bfdb0",
+    "py/nlrrv64.c": "43443eaf2fa1495b08341a790d7d7153746e487efaefa458cde05b577f5af5da",
+    "py/nlrsetjmp.c": "bb8dadb5865f43fc5d005a8daa65b9c8065777bdc4e912a6a5eecf98b442659e",
+    "py/nlrthumb.c": "a1f4f90e3466afac9edae05d15941ef8b96cb92d72f44541902ad8c8f20363e9",
+    "py/nlrx64.c": "8dcfeba50e4a359dd3c0a3e2899cb90e5d9e65739dab92aba6890843955e179a",
+    "py/nlrx86.c": "5dc7dd884cf0d617dc52df62a6f773e4787338661ae97b80f105e0279c57b965",
+    "py/nlrxtensa.c": "704d1f1b35472f4e7a7e4b95ed560d0632361c7f77d8cb4277f8c41bc7882c80",
+    "py/obj.c": "341cc2ea87b17c819024333014148ac4f1d6978173ae235d3d23a3c456d6574f",
+    "py/obj.h": "fee4401107a8cc3cb6779e006052a675e7df6df27ba99c020ea728e11f64b3c7",
+    "py/objarray.c": "c277e0758054cbce2e5b436422108a102d0e98ccbda87571540ecf8f2725c6cd",
+    "py/objarray.h": "da66025326b0793f19baed461c8cdbf4f62550d7b59980ddbce67c9381636400",
+    "py/objattrtuple.c": "760b00d8f946ebd2060284b3a3b40f42d155477c930d0fa27bdd823269ff0e3d",
+    "py/objbool.c": "a72061d84f78c25ecf7ba940301034233daaf0d0bb01bf1c51decf6f53f6c29b",
+    "py/objboundmeth.c": "fe3a31eac687f735100fc8d3841a8a13da92bf446194f827a26a91b9f4d3bcc4",
+    "py/objcell.c": "7670a12c67557635910928f8240054e6b61db63b823168c0aca1e112acf38d7b",
+    "py/objclosure.c": "d2591f22a569173dbc3430a62063533fdee054bdb8d2445977da049beff7ae97",
+    "py/objcode.c": "bf292604b85e44d27312398a8cd8a6d38c11f3bc4da41d3760ed18479d2cca8b",
+    "py/objcode.h": "aff65d332172b93d2fdd59915bb58b748582edb562819506fce29e76a5ca3f4e",
+    "py/objcomplex.c": "02e16e08f65220261138ba53e948647e0f9827f973ab921648990e05c2a1a06f",
+    "py/objdeque.c": "e3f64733528ab3361b7c9825e200d961e0c8d2874eeb7a0a6c2c6e9cbd3852b5",
+    "py/objdict.c": "d7951ae5bbd086161ccdc45b05aa5082bd59262beeb391f3f66af9f4d0209b5a",
+    "py/objenumerate.c": "39a4b3fbfa42714550b69029872c5ca76d6953a00b84e497c2f4142b80fef513",
+    "py/objexcept.c": "16822956084ad78f3a063a4e5d48cbef843432d77fdd1693780287dc8d5e0c4d",
+    "py/objexcept.h": "6886352bdd27ad71ea4330d50e38ba48b45f0dff4ee19a4f5edfcffa9dafb830",
+    "py/objfilter.c": "956e57c0d2a2fe1857b66e9a222fb6d1f97d6de3796feb575c84eb2645bff1d5",
+    "py/objfloat.c": "fa8003d61af89dc6a51f6a71376461e9ee7d2192c249dbab090b0780e0950f57",
+    "py/objfun.c": "d815fe7902e54126680e1198e0219e14d34a75752308be0f3dd5c728f568f722",
+    "py/objfun.h": "820a892cf8cbea7a22c9779695b9762b5ae308ffcaa9aed01dcac947810f7781",
+    "py/objgenerator.c": "c893d2cc8cb5bb81c6dad3cb4835889f5483f660a497ecc4a700af8ffd2511b3",
+    "py/objgenerator.h": "e91fbeaec36d841a8ea030f21b57c4b71d1bf6b872c92f1bcc48cca7314a62aa",
+    "py/objgetitemiter.c": "af9bb3530c2f28b0bf8888e93bd97d2bb1a1f46dd6cf1e743e61c2db1e7d3306",
+    "py/objint.c": "c00fbb729c5b9b6f60f1157ea930f2bc31281cea78b8b55d04866998222e3748",
+    "py/objint.h": "c4eeb63091be6230415a6399503ee3594a3cb6316477ab9dc64a22b04fe5c375",
+    "py/objint_impl.h": "16b3217428f00d102bac0924be1e51fa75c7925a015ff5899ab3ce3e6b345adf",
+    "py/objint_longlong.c": "2a521bfbd811fd9ecf79bb3462fd77a7892179c1fa4e496900a2c36984394edc",
+    "py/objint_mpz.c": "6a100842fdb1a58fe54faaf97f5b0fda0193db3240ae619ce2ff8adde2ce5164",
+    "py/objlist.c": "31de3b540c57a8a0de71b6c1f1bd035bbd7cd9f7d9ac847e00bb06ad9d6eecd5",
+    "py/objlist.h": "68c38e646a8a6c0ba52955bc3f3073cdad41d03bb9f1beb4b01503fda84d1865",
+    "py/objmap.c": "bc27aa266e89a7e5d19cfc66b117b34c960cacb630685aea13c21e73400631a9",
+    "py/objmodule.c": "3aaaf1a429ae72d646542e4506f564223e4c1cb814b6d690c26bb9311bf247b7",
+    "py/objmodule.h": "bcc6a5e9755260a59b27867bcaaaa90a1b245ca4d385ab08fd492d1b54bb2b1e",
+    "py/objnamedtuple.c": "1ad717beb0362b614a04b48108fcf74c52230eac91148543913091e7cbed83e5",
+    "py/objnamedtuple.h": "317ebb4cc77661b643e402dbedce79cc6838163333479ab20475010f7379c5b7",
+    "py/objnone.c": "6df9db9ef493db55ad199954bf9afd5303e5cf2dd0a570d15d716f0e838137f4",
+    "py/objobject.c": "6aef367bb57dfe1b72997b3a397c713fb23af911cd573d593f150bb2849bdec3",
+    "py/objpolyiter.c": "d23b2b2f4aabca5b7691ea447d34a8b68c0e7fdb4a0e4cabebd1e51654a903ac",
+    "py/objproperty.c": "213bf6e5b95df6e53f62085087bb4afca7229c7c23de061615581380a3a418c1",
+    "py/objrange.c": "37f473c01252120a7426262689695c2b416e4c76ed5448b0023b8542543311c9",
+    "py/objreversed.c": "b4b1acccabd939e5a863b7a7340293f4ac0b32a720ebf13ff281412be962675d",
+    "py/objringio.c": "bba8395f6c791e512e7690e03aa960b3a78234efc1eee224c1692d5d9fc11ddb",
+    "py/objset.c": "88515d14207fa60f075b5414a98b1060f7ea0a2dca94fa0fa9d24149313af755",
+    "py/objsingleton.c": "3fe621c937e1e03616fdeab768ec40ceb7ab72d94b5c26373a54885e9a76536f",
+    "py/objslice.c": "4adc08410982d8e3ff4f200260e31c7a1cda94b0909a5d75253f0976b21aea98",
+    "py/objstr.c": "d49974cdefd1b25a033dfbe38d8ede084d321cd7e1134d26cb22306d20bc0fea",
+    "py/objstr.h": "7bd9671f19bfd2370a0bbb25340c650576f5c8a0ebd300ce42105568dd0a0ede",
+    "py/objstringio.c": "33308e411ac58725f53a16ba69568e58875aed17d9b48eab70f553d7d3b94d8c",
+    "py/objstringio.h": "6fb67485e744d774b311ed5dc733f506cc53ad53fd638533a97def28ed12b7fe",
+    "py/objstrunicode.c": "94c6b1efabd0498c2f4f4e531aef9da9d04e1cbfe3bba2bd00b96de9e5557a22",
+    "py/objtemplate.c": "d1b978fdc7877c90162d5720264499122b13455c6be7e584ea90421a383fea4f",
+    "py/objtuple.c": "f257d13926d8a390660aab6e7a0db01bf4d679fba5f00120018925a5cd82bce8",
+    "py/objtuple.h": "44a59bba4259ece7b4b84cb3dfe1a04c5625a057a5464cd2c7bcbbf2b2ee8409",
+    "py/objtype.c": "1b2daf1945f6f75ff1d29124a2d229ea608598f555064d291e9831f4b2b358e1",
+    "py/objtype.h": "1219ea00685569cd876a75a353505a75bd944ca6b9312069fbc35e225dfce471",
+    "py/objzip.c": "1f572f89a8a9fc7eeaa463bdefe6e6f75d95b99aef6e0d8f6c19f5f1361af007",
+    "py/opmethods.c": "3981aacede8bf930add61f4d99e35903578b14534780eecd4adf9f4d8d70f2ac",
+    "py/pairheap.c": "2a054499f0e0f41065a17345e65fa20f2660e3c5760cd90583d56fe4b7145a53",
+    "py/pairheap.h": "98c0fae4fa56e95d01b2df01eac1502afc8b6c5fda4d848a914d853e73a17397",
+    "py/parse.c": "d2b3675f9a7c76938da116288ea29972374c8909db0c53cb675854a3a1d9f98c",
+    "py/parse.h": "fad62a39725af452332b000a71226268124ef568750b838dbb237b770d1c73ca",
+    "py/parsenum.c": "c3be16ad01acaf09f68f9ebeb88aa4cf7c30dd19dd0e4726408152d91e839b9e",
+    "py/parsenum.h": "394c66614d310ec30202a0a759916ea781f3d881eda5abe3217944221ac3dbf8",
+    "py/parsenumbase.c": "4b8668f124ab300a39deb94640afd8badb29b360bb5dd35c04f118a2326debd2",
+    "py/parsenumbase.h": "8421644f6e304103a1efff9d892ae64672fda4e346d1e5ac05e9b75ce562fb61",
+    "py/persistentcode.c": "d8e88063fa409d29e5b57154c7125e5f590c07287d6b0adfdb2bf2a86e3b7429",
+    "py/persistentcode.h": "4a755acf963a59931c31464c39181535cf937e414251e9855b87acb1b33f42df",
+    "py/profile.c": "e49da9956e4f7c33e13627848976b7fcaad7f1e29de61c82f43309e3f3537733",
+    "py/profile.h": "6272c70426a1f72668bc8c8d516774d3ae327fc256e6d203745056692544c7b3",
+    "py/pystack.c": "dee5cc2cd964a3b1c4037d850a285dafa52a7d12792102fd8607b838cbe6db71",
+    "py/pystack.h": "04eb5e96811815a2f88152d84fa306e8ef1317956880d45e4cc99b8d1e3b3485",
+    "py/qstr.c": "a681fcb96a04ccea58c3a049ba895d947c5d0cfcb7c0f2b44f1f531d2aabdcec",
+    "py/qstr.h": "c166395dfa30d50aab958d68e170d370b708d5f3ab8e0f4fe911647dfdbcf36b",
+    "py/qstrdefs.h": "7466218bbbd39d006efc9b90485b7249baa98cde8f18c024b96b447e87dca9c8",
+    "py/reader.c": "9ae9d72f3883fddab994d15fff5e3f0622f8088b866c3aeea68847649f95042b",
+    "py/reader.h": "da6ccb3f9651a8650a3c178841b6c12b012bde38339e19fb00d758149b55415b",
+    "py/repl.c": "57e827b54d5cddd9eccc83d018ba2846304ba10b6eb81068896b7349bc8641fc",
+    "py/repl.h": "a9a6b1877013797b5daf436247ef6232db5f4f6f03abc1817e611f2b8c6fbb84",
+    "py/ringbuf.c": "4a4922402e5e0421e739e9e543221d571ca6f624d378a2f7a2dc30fd7e3b5939",
+    "py/ringbuf.h": "548dc2ea33b53b978e1e88c8a3810f9adebb7dc84be56b59585f2dad6a2bcb2f",
+    "py/runtime.c": "c637fa45f0dca115776cdc83367000f7e91141afa35f7d506c0f8bc2e1c58724",
+    "py/runtime.h": "694f23be82d6980a857c619d12c693b3cd369f457b41aed55aa374efaa014b26",
+    "py/runtime0.h": "af5324ccb874e6e5c2bcc2c68f53a1b21a5a6b8d8b74619cc94ea1beebb7d8cb",
+    "py/runtime_utils.c": "4e22a494e513e58e326a71b5fd9661aba1e5e63bdebd9e0d3c93d95ae89eaaa2",
+    "py/scheduler.c": "dabc4146fd394a9758ecf71cbfe980a07076aab9050b6d5f09efcd94b8d17903",
+    "py/scope.c": "2b13b4cdb0b9783e5391a4b02fa1ed0849144bebc53bce2eecbdf79b729c1694",
+    "py/scope.h": "a35a9bd623cb8269d9f9eeb90205de3f466029689f8f7bc57cbece3bd9bd7918",
+    "py/sequence.c": "e909ff30ae8f773223712178b991fc8ba5620011effcf771e03db460c4edd348",
+    "py/showbc.c": "4a139936c1c43e940cd74a7f7839d089e0452ea8faadc5f8cbafacfc43de56ae",
+    "py/smallint.c": "15b4dfaa90a76c2a897ab73e46fa6edf6b1ede5e2ee475a51b6898d056a58f02",
+    "py/smallint.h": "50ff0297b9167a1d6ee19f2b273b641f0d20826c0c5ee8b4480373418e265201",
+    "py/stackctrl.c": "eb2e6de86a3584d3665f6e79d2f948eda76c86efb6d93981fa135d34ef3a7cbb",
+    "py/stackctrl.h": "4bed997c067bcafecf3e4d813297dad1f02e89efc219f4b3384f47fe522ed5f5",
+    "py/stream.c": "146d9e04efb2eac9a465af7fc4b77ef8922bb923a1137d9f56b0b375dbf2816f",
+    "py/stream.h": "cfb3b63f5db4eafa228ec8c10141289de7d9ffeafa091e4fd614482d04dcfbc8",
+    "py/unicode.c": "bfc228c0ee93a9aaf19f9a8372adb88faf52bac729cb7ef903533b6d81181501",
+    "py/unicode.h": "234477e9f16544798e31e21705ccd9c6c8e554e3fea925a4497f4d5c8cc385a5",
+    "py/vm.c": "cdc465715e07475294968f477e81a64233a6c18bb96c6db30b6e33c71d208a17",
+    "py/vmentrytable.h": "46e773fe111cb397ce396d564c931701c2e0fa2d89acd85d3401461dec676b31",
+    "py/vstr.c": "d7749baac281a2420cc2aeaefc44bb58e2b34e60fe7e4b53b66a5434e1ea39e3",
+    "py/warning.c": "aa944a9d5c3b245a3cee78a1e0aa7fa15e2f7b2a177d89c99b3dea687d87fc75",
+    "shared/libc/__errno.c": "5c9fed1cb7427b74c4234c21ee42a70a2f056b3a6cadc55233ab24adffe51dfd",
+    "shared/libc/abort_.c": "44966ae9f3268a093f512a4fb6320d0c38862b71d45b19b6d9172541cb84e8a7",
+    "shared/libc/printf.c": "3655df0ac0910b2f98eb7a7f622b89581884bc14c10460b1f3d32ed36590161d",
+    "shared/libc/string0.c": "efbf899442bcfdd6451c416a80403ce5ec4c79e078956a2681ed7e723f3470bc",
+    "shared/memzip/import.c": "f0895325e4734411d909291e017a1086c4444b4987855673946ec2502d638697",
+    "shared/memzip/lexermemzip.c": "85d6bd133fcd862a54d59304e63233507a8d0d328be1445d127bd1839bf6cfd2",
+    "shared/memzip/memzip.c": "955099a9f06fff3b30b831276e90e702692a4e944ff5025d6ff4ea9a4c6460d9",
+    "shared/memzip/memzip.h": "d739793448f3743c9391c7ff4484dc2aeca5348b01a3244b2d946993c7b835c9",
+    "shared/netutils/dhcpserver.c": "f9578350449c68d03b8e45fe12e2626c60de5e534c408c31693c8a91b008d4c3",
+    "shared/netutils/dhcpserver.h": "29ac4f320f3780f4113e5dd3368765e07834aaa943d9ce036315f73e32081c30",
+    "shared/netutils/netutils.c": "558a25622137fb139b3cb83704c001f6e7e7ca8ce114285078e400773076d5af",
+    "shared/netutils/netutils.h": "94e4e21c89d19ad4972423baf0ad2e1dcabc01b9f5df6fb5050d2763ae790141",
+    "shared/netutils/trace.c": "99a206bd5f9cbf250e9e6be37a889d95248a844ff9031c80c7a3c50b0b63d169",
+    "shared/readline/readline.c": "588f9440a0cd315ee8ca28f43a907f2ad71090031c33f6669c508273a26243c5",
+    "shared/readline/readline.h": "0d64d7f504c1a3520b68800bc45cac66ce6b932b8cacdab8a0ee0b1d14ebe723",
+    "shared/runtime/gchelper.h": "34060c1f191c80548d979c3bc8ef114befe619a9d397766aaab861ff704b12dd",
+    "shared/runtime/gchelper_generic.c": "6665722a3e12ce9bff912376ae764dc01aa7ad9d05af455e7713f59e760e7b55",
+    "shared/runtime/gchelper_loong64.s": "e3a71608649c954a60e722bd0d5f53aaf39ebf47167f4f2d930c624a0c369b3f",
+    "shared/runtime/gchelper_native.c": "d293b2fb33edb3638860a05621a1890ea0b8a4b5c4893d02c8622d3dc801a755",
+    "shared/runtime/gchelper_rv32i.s": "9de8da7e0ad7356f6bb346c7d37f49428add3fa656098cdad21e658545671981",
+    "shared/runtime/gchelper_rv64i.s": "e463fd51f6c2c7eaa6aba97f149c8f4c9bf83bbf82faead3c4e4131b6d5d5239",
+    "shared/runtime/gchelper_thumb1.s": "c1d2c0bf9a9e88c964967f4184c480ef76600cf05c50a02ff998989f2d18ab44",
+    "shared/runtime/gchelper_thumb2.s": "2ec0376a051ee16da8d305bed8d39dca17da633d56027215842282f6b6339aca",
+    "shared/runtime/interrupt_char.c": "02ff6484e5b7bd765993aad7914ca48409ab8aec24e30337884d060b2e02505a",
+    "shared/runtime/interrupt_char.h": "17bc8d7494f22bf3a8a40e69347082edec03c867a23ce93ab7810068305ef2b0",
+    "shared/runtime/mpirq.c": "90f75d1376c645ccf829902f2f10a19cbc9d00de1f6fd4e7d90e512be6157eec",
+    "shared/runtime/mpirq.h": "5e33f9ec46dcf412811604c081529715a1c40a38be54b10f87d99d15ab7ec935",
+    "shared/runtime/pyexec.c": "5baae705649cdae23c46cf874451b1a19f4c40e3c7ae002cebedaa934335709e",
+    "shared/runtime/pyexec.h": "bfe6aae8ec4e0cbe57a018f7f8db5c7ecaf343d1661af4bb0c863b1b3d7e79f7",
+    "shared/runtime/semihosting_arm.c": "29730f6d12643c24a97096e7a7354ae0b3bea0c9fd6c5ee0c5b34b4412e48316",
+    "shared/runtime/semihosting_arm.h": "34918f25b1f08e2a27eec8a19e62296068b756d2d3d43dcc331043be3f19c8c7",
+    "shared/runtime/semihosting_rv32.c": "c8afd3d47a5c34402ce5c1d572df761139c5dc15d7c55b912a5ed8dce1b3be74",
+    "shared/runtime/semihosting_rv32.h": "82a8f4190fc4bc3e858c6e8537bf5788490f5bde9900d6dd2f847ae9ce57649f",
+    "shared/runtime/softtimer.c": "29a8bb3e9dcf86b3b58407207ba09eaee96265615155a8ae9bf79e7b71a25d9d",
+    "shared/runtime/softtimer.h": "fe100178a15f4f5c5bc81ad9615ec8a3843125ca1d335f625cf3eb97cdb1317c",
+    "shared/runtime/stdout_helpers.c": "1c53bec949bc52cb3fb28f808b42e8d555c4bbb99da3ef096a37487aaf7da8fb",
+    "shared/runtime/sys_stdio_mphal.c": "03815a619f63a28a5a6cc25380b0a5df7f6e2865a8a14cf8b24305ae6dfc2828",
+    "shared/timeutils/timeutils.c": "bf06eab879ff433d333eb558a4c8666521c7d3da7f7315c91fcd8e6a6afb4f03",
+    "shared/timeutils/timeutils.h": "b5caeee30f43ab05acc45f7f92c6751a31e7d547387e1421acbae8f06cc6e1d0",
+    "shared/tinyusb/mp_usbd.c": "b95dc69e8a156d56ca0e977810c1d0efa4308e127593f6ce73f2e4b9b5a9834d",
+    "shared/tinyusb/mp_usbd.h": "8344ebeefb1f9548c4566686eca1c827fd91e018e800d418c2d4f47645c36799",
+    "shared/tinyusb/mp_usbd_cdc.c": "171574f2e79d62df9794b211395a7e64e615f35246d4b48e6578d63e81daefc9",
+    "shared/tinyusb/mp_usbd_cdc.h": "0599edb0914cbefb8640dcb11fde0e1c6058c848bcf92dc9d4533678062dc955",
+    "shared/tinyusb/mp_usbd_descriptor.c": "10ce671cf98eef14e200ac1a764b421b5d1eae6097055bf4e26a9a1b0244ca02",
+    "shared/tinyusb/mp_usbd_runtime.c": "34fa74cbd8c5585d68fb9427798c03e8501af4bc8cc2feaf419864e8d421c563",
+    "shared/tinyusb/tusb_config.h": "f1790c7ca045545f8d4c7be9d45f6cbc840adb7b41c4819ed1dcca3f172a71f4"
+  },
+  "shadows": {},
+  "stems": {
+    "extmod/asyncio/__init__": {
+      "ref_files": [
+        "extmod/asyncio/__init__.py"
+      ],
+      "ref_digest": "25de279c9b5ebc7d2bc102eb43c4f2c06c4c67902c092b732863d000e0f6a43c",
+      "shadow": "extmod_rs/asyncio/__init__.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/core": {
+      "ref_files": [
+        "extmod/asyncio/core.py"
+      ],
+      "ref_digest": "85a2f41f8cff71c931d00014de5582d78fd7ab24a7275495ca89e53bdc838313",
+      "shadow": "extmod_rs/asyncio/core.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/event": {
+      "ref_files": [
+        "extmod/asyncio/event.py"
+      ],
+      "ref_digest": "d679b2dbcd19c40c0ed760fa8c1356683ef515e8c12a154a8638e2a344cb0b07",
+      "shadow": "extmod_rs/asyncio/event.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/funcs": {
+      "ref_files": [
+        "extmod/asyncio/funcs.py"
+      ],
+      "ref_digest": "8be0c94c7a64fd52bec2eb715df572bad47b3b37a99d3be73507db8fde7b2fb9",
+      "shadow": "extmod_rs/asyncio/funcs.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/lock": {
+      "ref_files": [
+        "extmod/asyncio/lock.py"
+      ],
+      "ref_digest": "deaf408176a7757f4e3c5073a0ab73b07b3725a2c8cd84b3fc56d0c39ed88d68",
+      "shadow": "extmod_rs/asyncio/lock.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/stream": {
+      "ref_files": [
+        "extmod/asyncio/stream.py"
+      ],
+      "ref_digest": "f41b2c89f6b6eefd91661acb50bbb470fb80b355aa084b18b27a8d48fd4fb73c",
+      "shadow": "extmod_rs/asyncio/stream.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/task": {
+      "ref_files": [
+        "extmod/asyncio/task.py"
+      ],
+      "ref_digest": "674bb1bda1b16c634fbb3201526bf0682a61d19fc647ef6eb078b3a9ed3008fe",
+      "shadow": "extmod_rs/asyncio/task.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/asyncio/uasyncio": {
+      "ref_files": [
+        "extmod/asyncio/uasyncio.py"
+      ],
+      "ref_digest": "6388e7db3dba357a04a7d29fa84366483634c0cf5e1682a1d8b08ab4c9d2439c",
+      "shadow": "extmod_rs/asyncio/uasyncio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/cyw43_config_common": {
+      "ref_files": [
+        "extmod/cyw43_config_common.h"
+      ],
+      "ref_digest": "cb228c84b0ce1a250bd4da9207260d125587994a696c64719e1241143e575fb2",
+      "shadow": "extmod_rs/cyw43_config_common.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/font_petme128_8x8": {
+      "ref_files": [
+        "extmod/font_petme128_8x8.h"
+      ],
+      "ref_digest": "9bb5980da6cbbc1cef8da66a22c469b69d036fd9dee06df0da765ec8d367fd10",
+      "shadow": "extmod_rs/font_petme128_8x8.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_adc": {
+      "ref_files": [
+        "extmod/machine_adc.c"
+      ],
+      "ref_digest": "18f8765334745f934715475426a8556a86dd3729a425c20db32cf1bf368b008a",
+      "shadow": "extmod_rs/machine_adc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_adc_block": {
+      "ref_files": [
+        "extmod/machine_adc_block.c"
+      ],
+      "ref_digest": "1dec4a546126701e8512d172d73d52b42f72cb1073b9fad462980125fa7c51ef",
+      "shadow": "extmod_rs/machine_adc_block.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_bitstream": {
+      "ref_files": [
+        "extmod/machine_bitstream.c"
+      ],
+      "ref_digest": "79b97e3e02bcbd2cddb817f35eafd665e7269538fcbcbb8bc17f74e8af2c7e04",
+      "shadow": "extmod_rs/machine_bitstream.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_can": {
+      "ref_files": [
+        "extmod/machine_can.c",
+        "extmod/machine_can.h"
+      ],
+      "ref_digest": "bbde2a1b8b8a207f06efdc333458eb0e7bc0720d1ab643954b4ea0200a52ceb9",
+      "shadow": "extmod_rs/machine_can.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_can_port": {
+      "ref_files": [
+        "extmod/machine_can_port.h"
+      ],
+      "ref_digest": "99ef9cc35af4d43cc13c455b5a2b765d1e95833fd93d4478535bb2da2b488dd4",
+      "shadow": "extmod_rs/machine_can_port.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_i2c": {
+      "ref_files": [
+        "extmod/machine_i2c.c"
+      ],
+      "ref_digest": "a9e37fafc97810f140500fa7d7edd909be076ba2e9822743aec75c70f277f0c4",
+      "shadow": "extmod_rs/machine_i2c.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_i2c_target": {
+      "ref_files": [
+        "extmod/machine_i2c_target.c"
+      ],
+      "ref_digest": "3ada775f870868aa97eae3dcccc515c60ddfd246c2b9b88b4a721954ad777912",
+      "shadow": "extmod_rs/machine_i2c_target.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_i2s": {
+      "ref_files": [
+        "extmod/machine_i2s.c"
+      ],
+      "ref_digest": "cd3cfe189e6503e16d564ffcab66b4f59f2f99761d591bb4d2daf588b5afea8e",
+      "shadow": "extmod_rs/machine_i2s.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_mem": {
+      "ref_files": [
+        "extmod/machine_mem.c"
+      ],
+      "ref_digest": "82b760237b43b26815c89fa161f5a48fda5c87b9b6b61d8ad4f131d53bc49718",
+      "shadow": "extmod_rs/machine_mem.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_pinbase": {
+      "ref_files": [
+        "extmod/machine_pinbase.c"
+      ],
+      "ref_digest": "a90f5d17d52eac9888c5bce1f10fd9331324e99c2b2644a72cf6221f663ae170",
+      "shadow": "extmod_rs/machine_pinbase.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_pulse": {
+      "ref_files": [
+        "extmod/machine_pulse.c"
+      ],
+      "ref_digest": "b5418210d829ea6dba06c18176a175953b54a958727c3a1af5ba747128d737fc",
+      "shadow": "extmod_rs/machine_pulse.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_pwm": {
+      "ref_files": [
+        "extmod/machine_pwm.c"
+      ],
+      "ref_digest": "5db95111ca9c1a934fd1aa12427806c19d4171a8e26a9c57c2a7e3ceef4d0c16",
+      "shadow": "extmod_rs/machine_pwm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_signal": {
+      "ref_files": [
+        "extmod/machine_signal.c"
+      ],
+      "ref_digest": "86f70062281a8daa83d8f3aa5d0430d52583f626b4f5be4708281e65c475bd73",
+      "shadow": "extmod_rs/machine_signal.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_spi": {
+      "ref_files": [
+        "extmod/machine_spi.c"
+      ],
+      "ref_digest": "3535184ad7da52d92f9636834f4ed5a1f35e5f0b3f45c2d7a37b2e15a356f6b7",
+      "shadow": "extmod_rs/machine_spi.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_timer": {
+      "ref_files": [
+        "extmod/machine_timer.c"
+      ],
+      "ref_digest": "f671ebd91f6e46db59a4cb60ba2f38618b120c13086d19c0a32fc58430311eb0",
+      "shadow": "extmod_rs/machine_timer.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_uart": {
+      "ref_files": [
+        "extmod/machine_uart.c"
+      ],
+      "ref_digest": "a90966c87b00f995c2a0bc78300fa3cf16ec899a0f60c43d1dc3309d4baed8d5",
+      "shadow": "extmod_rs/machine_uart.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_usb_device": {
+      "ref_files": [
+        "extmod/machine_usb_device.c"
+      ],
+      "ref_digest": "2845bee01af0a13be0b8d774d23b883d584279847f9b30d1ea0273e4d16787c9",
+      "shadow": "extmod_rs/machine_usb_device.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/machine_wdt": {
+      "ref_files": [
+        "extmod/machine_wdt.c"
+      ],
+      "ref_digest": "df0efae9e3c95de0f44f53e89d270dddd1da275dec1d467dd1bcbdd2aa373924",
+      "shadow": "extmod_rs/machine_wdt.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/misc": {
+      "ref_files": [
+        "extmod/misc.h"
+      ],
+      "ref_digest": "f3583101b770de68a9e620c313348cc6562a32d22995c867d0ed8137e6108fa4",
+      "shadow": "extmod_rs/misc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modasyncio": {
+      "ref_files": [
+        "extmod/modasyncio.c"
+      ],
+      "ref_digest": "ba48cf4351b087a3c2748e1d59a72f814a169b7f8635a6cf1c4fa229611762bc",
+      "shadow": "extmod_rs/modasyncio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modbinascii": {
+      "ref_files": [
+        "extmod/modbinascii.c"
+      ],
+      "ref_digest": "60307ad9d47036139c3b377978d095030a3530079f4decba9f29f8aae3cb8a34",
+      "shadow": "extmod_rs/modbinascii.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modbluetooth": {
+      "ref_files": [
+        "extmod/modbluetooth.c",
+        "extmod/modbluetooth.h"
+      ],
+      "ref_digest": "27b2078235eee71b72a424ac4a3d348bebbebf975f78ed6aaa9c49018ca08937",
+      "shadow": "extmod_rs/modbluetooth.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modbtree": {
+      "ref_files": [
+        "extmod/modbtree.c"
+      ],
+      "ref_digest": "271a51e5802510b7043c653dd443fc9f05c20ec95845038149fd60356b1dc1af",
+      "shadow": "extmod_rs/modbtree.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modcryptolib": {
+      "ref_files": [
+        "extmod/modcryptolib.c"
+      ],
+      "ref_digest": "71ad29225709dfbaadd8436ee48ca58b79b1c4d5e406d5b25db0e37ca94ad527",
+      "shadow": "extmod_rs/modcryptolib.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/moddeflate": {
+      "ref_files": [
+        "extmod/moddeflate.c"
+      ],
+      "ref_digest": "1f87b051423ce5382300598a251f87cb6087b563d606465d4a73aa0dbad2f3cd",
+      "shadow": "extmod_rs/moddeflate.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modframebuf": {
+      "ref_files": [
+        "extmod/modframebuf.c"
+      ],
+      "ref_digest": "e3ba4245c0bd8a5afbce33d8ddcb18ed5ac3d83e9bb48e394af8e41412e9e4ed",
+      "shadow": "extmod_rs/modframebuf.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modhashlib": {
+      "ref_files": [
+        "extmod/modhashlib.c"
+      ],
+      "ref_digest": "2a658ca41f4ff50bca9bf561ab98549367b3e26c85ffbf74d17ee373fb4eab86",
+      "shadow": "extmod_rs/modhashlib.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modheapq": {
+      "ref_files": [
+        "extmod/modheapq.c"
+      ],
+      "ref_digest": "2ced8c32baf524c06b85d5df007e31bd593eb9ddecbef1a683b9a0914b925e2a",
+      "shadow": "extmod_rs/modheapq.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modjson": {
+      "ref_files": [
+        "extmod/modjson.c"
+      ],
+      "ref_digest": "31d77fe5f1107a6f38d395f8f126df2eefdcb519106e55148da0af36312e79f6",
+      "shadow": "extmod_rs/modjson.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modlwip": {
+      "ref_files": [
+        "extmod/modlwip.c"
+      ],
+      "ref_digest": "2a8819e4a9822368966744889a2008c7b7c0d118c26f6d3f958c4e9273dce052",
+      "shadow": "extmod_rs/modlwip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modmachine": {
+      "ref_files": [
+        "extmod/modmachine.c",
+        "extmod/modmachine.h"
+      ],
+      "ref_digest": "88d583dc4712b6bfade862cd7923ac331d387b9489dedfc7e1bf29409fbc126b",
+      "shadow": "extmod_rs/modmachine.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modmarshal": {
+      "ref_files": [
+        "extmod/modmarshal.c"
+      ],
+      "ref_digest": "973abb234005ff33ebf51d90cf50d385d0baa659501a54769b89cf1255244531",
+      "shadow": "extmod_rs/modmarshal.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modnetwork": {
+      "ref_files": [
+        "extmod/modnetwork.c",
+        "extmod/modnetwork.h"
+      ],
+      "ref_digest": "201e49c32b0f900e949868c71280a2344494a1fc3a10519dc9570291c7b17c5d",
+      "shadow": "extmod_rs/modnetwork.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modonewire": {
+      "ref_files": [
+        "extmod/modonewire.c"
+      ],
+      "ref_digest": "aea1a3c983ee4360749c012251b36142b17c9ce73a3531c436efe18924f0c185",
+      "shadow": "extmod_rs/modonewire.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modopenamp": {
+      "ref_files": [
+        "extmod/modopenamp.c",
+        "extmod/modopenamp.h"
+      ],
+      "ref_digest": "284b83e87bdf633fdae9a763d28ba5baa19d8588c40f10f3fa0e5e51463a6368",
+      "shadow": "extmod_rs/modopenamp.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modopenamp_remoteproc": {
+      "ref_files": [
+        "extmod/modopenamp_remoteproc.c",
+        "extmod/modopenamp_remoteproc.h"
+      ],
+      "ref_digest": "9d6778261ca47dc53ace30db5bed3406650f5b1248c67d094a6c60f2014525b3",
+      "shadow": "extmod_rs/modopenamp_remoteproc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modopenamp_remoteproc_store": {
+      "ref_files": [
+        "extmod/modopenamp_remoteproc_store.c"
+      ],
+      "ref_digest": "6f6eaa06ce78ae97978f16cd12781ea1997236a5202e3625382b6ea50166b076",
+      "shadow": "extmod_rs/modopenamp_remoteproc_store.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modos": {
+      "ref_files": [
+        "extmod/modos.c"
+      ],
+      "ref_digest": "3c662a6878e7e56e2769e7b4880de66b52b430081cc691810f305d60d102e4cd",
+      "shadow": "extmod_rs/modos.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modplatform": {
+      "ref_files": [
+        "extmod/modplatform.c",
+        "extmod/modplatform.h"
+      ],
+      "ref_digest": "eab32bcdf2aa8a26eb3a7a69b1d98f29d456b004e3d3a3be15d7581ffb67715e",
+      "shadow": "extmod_rs/modplatform.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modrandom": {
+      "ref_files": [
+        "extmod/modrandom.c"
+      ],
+      "ref_digest": "c7eea24676175a92b14bf91a546b01debedae0e9db044a51f15220d6afbec0b5",
+      "shadow": "extmod_rs/modrandom.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modre": {
+      "ref_files": [
+        "extmod/modre.c"
+      ],
+      "ref_digest": "93fad7baac9bc170fa6031551377e40bff3cba5e6e5b5e4a6532bd83471804b1",
+      "shadow": "extmod_rs/modre.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modselect": {
+      "ref_files": [
+        "extmod/modselect.c"
+      ],
+      "ref_digest": "f3282574bd25d4d6ec870f2b282b7e3c5defafe93afb5ae66d7987309c6f9bb2",
+      "shadow": "extmod_rs/modselect.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modsocket": {
+      "ref_files": [
+        "extmod/modsocket.c"
+      ],
+      "ref_digest": "3e23d9458277f2456fe44ce3bad7cdd61e7dcf6a45b1363bf888d33ffa0b1d06",
+      "shadow": "extmod_rs/modsocket.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modtime": {
+      "ref_files": [
+        "extmod/modtime.c",
+        "extmod/modtime.h"
+      ],
+      "ref_digest": "66671ae2a8f0278a85a4fe4f08777cb8644ff332acb3d1b5adcbe8fc74b8bb74",
+      "shadow": "extmod_rs/modtime.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modtls_axtls": {
+      "ref_files": [
+        "extmod/modtls_axtls.c"
+      ],
+      "ref_digest": "8bc4d408b929232227d3244f6e13059d415d096befb743a4e0167dd5be961a15",
+      "shadow": "extmod_rs/modtls_axtls.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modtls_mbedtls": {
+      "ref_files": [
+        "extmod/modtls_mbedtls.c"
+      ],
+      "ref_digest": "83c132fc29725d4668380caa5ece5de917785a8b3785da75dd1eee99f7af098d",
+      "shadow": "extmod_rs/modtls_mbedtls.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/moductypes": {
+      "ref_files": [
+        "extmod/moductypes.c"
+      ],
+      "ref_digest": "1302dca63086f4a4546529f12db53557fd804eb95dcc1ce1b720e5923f7903a5",
+      "shadow": "extmod_rs/moductypes.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modvfs": {
+      "ref_files": [
+        "extmod/modvfs.c"
+      ],
+      "ref_digest": "f4016d468c0afcd1495736f781cfe9af1e76c57f2dd97516c63c461aeda294de",
+      "shadow": "extmod_rs/modvfs.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modwebrepl": {
+      "ref_files": [
+        "extmod/modwebrepl.c"
+      ],
+      "ref_digest": "a6e61071b39ccc758768286de9238e841aec0ab7f9c7454c5648192914bab9b1",
+      "shadow": "extmod_rs/modwebrepl.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/modwebsocket": {
+      "ref_files": [
+        "extmod/modwebsocket.c",
+        "extmod/modwebsocket.h"
+      ],
+      "ref_digest": "9e268f62731b9a6c84d63a06068c955c248437cc4c86d512d00ac071251509e9",
+      "shadow": "extmod_rs/modwebsocket.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/mpbthci": {
+      "ref_files": [
+        "extmod/mpbthci.c",
+        "extmod/mpbthci.h"
+      ],
+      "ref_digest": "bc01c111364acb3a4d8ecf415e86aa706a58a0821de1ace14e539194ca1189bb",
+      "shadow": "extmod_rs/mpbthci.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_cyw43": {
+      "ref_files": [
+        "extmod/network_cyw43.c",
+        "extmod/network_cyw43.h"
+      ],
+      "ref_digest": "880e96737b46dd5eb5ac21853f33e7b297adae8d5e7271aeee3a5ee4c03508fd",
+      "shadow": "extmod_rs/network_cyw43.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_esp_hosted": {
+      "ref_files": [
+        "extmod/network_esp_hosted.c"
+      ],
+      "ref_digest": "da11fc4c1575d5a247a2963fec24fdd7c6c211464be24f2166b7b56de6846cf6",
+      "shadow": "extmod_rs/network_esp_hosted.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_lwip": {
+      "ref_files": [
+        "extmod/network_lwip.c"
+      ],
+      "ref_digest": "edf8ec782bea069db01fd96bd938cc49f6dddfdbb556fe0670456e00a8361949",
+      "shadow": "extmod_rs/network_lwip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_ninaw10": {
+      "ref_files": [
+        "extmod/network_ninaw10.c"
+      ],
+      "ref_digest": "ec69ffe786991594d087f5b50ef33ad06dc70ad1b1bea8dd1753656cfa6b12bc",
+      "shadow": "extmod_rs/network_ninaw10.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_ppp_lwip": {
+      "ref_files": [
+        "extmod/network_ppp_lwip.c"
+      ],
+      "ref_digest": "79c6efa657113e06f990febcb837a445c5a53f64b099870522f3e36e7f90fe5c",
+      "shadow": "extmod_rs/network_ppp_lwip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/network_wiznet5k": {
+      "ref_files": [
+        "extmod/network_wiznet5k.c"
+      ],
+      "ref_digest": "bf6d1c7fb843ba3583ff93c065fabddfa70c6adc36d0d64f20d7d995d1445bd1",
+      "shadow": "extmod_rs/network_wiznet5k.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/os_dupterm": {
+      "ref_files": [
+        "extmod/os_dupterm.c"
+      ],
+      "ref_digest": "99a31fd1dead45222c999acb2a7a2747dffd46c2bceca3def8efe5feeb60fb79",
+      "shadow": "extmod_rs/os_dupterm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs": {
+      "ref_files": [
+        "extmod/vfs.c",
+        "extmod/vfs.h"
+      ],
+      "ref_digest": "591bf081b9b00992a5c98d69baf16bfad8d397774eba7742b7f088c2ba43f06e",
+      "shadow": "extmod_rs/vfs.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_blockdev": {
+      "ref_files": [
+        "extmod/vfs_blockdev.c"
+      ],
+      "ref_digest": "f99c648361f1cd02ab6aab9c60febb798d1e2173a93b12648d7a90919aa3c54a",
+      "shadow": "extmod_rs/vfs_blockdev.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_fat": {
+      "ref_files": [
+        "extmod/vfs_fat.c",
+        "extmod/vfs_fat.h"
+      ],
+      "ref_digest": "a46f14c26a781d9ff4195f96a9d28c221465aba44847ef20718a94b25e561419",
+      "shadow": "extmod_rs/vfs_fat.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_fat_diskio": {
+      "ref_files": [
+        "extmod/vfs_fat_diskio.c"
+      ],
+      "ref_digest": "2778131462b7323b9977bf014d58a92229734e75db54ae4faef26580348387bc",
+      "shadow": "extmod_rs/vfs_fat_diskio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_fat_file": {
+      "ref_files": [
+        "extmod/vfs_fat_file.c"
+      ],
+      "ref_digest": "47178c42af2236cb5cc832c4e776ccb51ec92eb70d72495a987becfc5b577c6d",
+      "shadow": "extmod_rs/vfs_fat_file.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_lfs": {
+      "ref_files": [
+        "extmod/vfs_lfs.c",
+        "extmod/vfs_lfs.h"
+      ],
+      "ref_digest": "3faea28be22d049007091b7efedd155732cd8a02fabede21a38de5adfa706526",
+      "shadow": "extmod_rs/vfs_lfs.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_lfsx": {
+      "ref_files": [
+        "extmod/vfs_lfsx.c"
+      ],
+      "ref_digest": "4d170465d41dd78e1fdf723be8460c52bc821aee054cbf02a594d340388db3a5",
+      "shadow": "extmod_rs/vfs_lfsx.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_lfsx_file": {
+      "ref_files": [
+        "extmod/vfs_lfsx_file.c"
+      ],
+      "ref_digest": "54b6710c85d3fd60d4ef8c425233e73425a3ed4f587d753dfecfafb5465e7ca2",
+      "shadow": "extmod_rs/vfs_lfsx_file.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_posix": {
+      "ref_files": [
+        "extmod/vfs_posix.c",
+        "extmod/vfs_posix.h"
+      ],
+      "ref_digest": "9f60ce0155bb601c0307aa2328609d6f7dcc8086657d9ee65214dc402e98c481",
+      "shadow": "extmod_rs/vfs_posix.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_posix_file": {
+      "ref_files": [
+        "extmod/vfs_posix_file.c"
+      ],
+      "ref_digest": "3ce513c0649a8aa9bf1a38f291152a849b77080df405aeb4493fd4dcd4fdbeaa",
+      "shadow": "extmod_rs/vfs_posix_file.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_reader": {
+      "ref_files": [
+        "extmod/vfs_reader.c"
+      ],
+      "ref_digest": "9df1b87ca0a7d0a6228ebfe8fc0a3bf0a81f7e1e0b0c772c3fd5277a3ec1d6a2",
+      "shadow": "extmod_rs/vfs_reader.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_rom": {
+      "ref_files": [
+        "extmod/vfs_rom.c",
+        "extmod/vfs_rom.h"
+      ],
+      "ref_digest": "6a7be7368f2b1acce1b72d09b0aadc2bb3ced0ff4388419c787b747f8276b3d0",
+      "shadow": "extmod_rs/vfs_rom.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/vfs_rom_file": {
+      "ref_files": [
+        "extmod/vfs_rom_file.c"
+      ],
+      "ref_digest": "0871250d4c554544c50f9897ffe94457d805ab511474bd8785ea4822799c982b",
+      "shadow": "extmod_rs/vfs_rom_file.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "extmod/virtpin": {
+      "ref_files": [
+        "extmod/virtpin.c",
+        "extmod/virtpin.h"
+      ],
+      "ref_digest": "f259e619c117f2925cc1fe3d8235e395031337ca1492f27b387f09ff88574bc1",
+      "shadow": "extmod_rs/virtpin.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/main": {
+      "ref_files": [
+        "ports/qemu/main.c"
+      ],
+      "ref_digest": "a3bbcdf71c4f0b1ddf374056652b83063455724afe510e915626fe9afaecd43b",
+      "shadow": "ports_rs/qemu/main.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/mcu/rv32/interrupts": {
+      "ref_files": [
+        "ports/qemu/mcu/rv32/interrupts.c"
+      ],
+      "ref_digest": "0f990b5b436b19e02fcf916dde230bdd4798bd7758776c4544c1be95b0e8b5bd",
+      "shadow": "ports_rs/qemu/mcu/rv32/interrupts.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/mcu/rv32/startup": {
+      "ref_files": [
+        "ports/qemu/mcu/rv32/startup.c"
+      ],
+      "ref_digest": "89c1ce54079bb4521c6afdf1d272270d5029746bf8e7c6e76c19680507ffe0fa",
+      "shadow": "ports_rs/qemu/mcu/rv32/startup.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/modmachine": {
+      "ref_files": [
+        "ports/qemu/modmachine.c"
+      ],
+      "ref_digest": "6829d457056a22429973180eb68a29d626090cdbc460db92a3966824f4729143",
+      "shadow": "ports_rs/qemu/modmachine.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/mpconfigport": {
+      "ref_files": [
+        "ports/qemu/mpconfigport.h"
+      ],
+      "ref_digest": "7a51419c5ca99b093e11d95b0f241661399de5c76e68f321b0cb819cc90f93e2",
+      "shadow": "ports_rs/qemu/mpconfigport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/mphalport": {
+      "ref_files": [
+        "ports/qemu/mphalport.c",
+        "ports/qemu/mphalport.h"
+      ],
+      "ref_digest": "a18d3f9e85b93344cf50c6200ecad3c951e02e61f9945f179b42b0fef519664e",
+      "shadow": "ports_rs/qemu/mphalport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/qstrdefsport": {
+      "ref_files": [
+        "ports/qemu/qstrdefsport.h"
+      ],
+      "ref_digest": "5f3c16ecd578b9b46406020d7586b99e7c7d40161ca1f7e161fe0f8acd874317",
+      "shadow": "ports_rs/qemu/qstrdefsport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/uart": {
+      "ref_files": [
+        "ports/qemu/uart.c",
+        "ports/qemu/uart.h"
+      ],
+      "ref_digest": "1fd67d29ae3f8f483fb8888052dc5f4bba0a2b67e05df52becf86cdab3dba844",
+      "shadow": "ports_rs/qemu/uart.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/qemu/vfs_rom_ioctl": {
+      "ref_files": [
+        "ports/qemu/vfs_rom_ioctl.c"
+      ],
+      "ref_digest": "3558d0e83e2bdf9096ec776c9619b00a7e25fed59c9578375555ecf08c09c367",
+      "shadow": "ports_rs/qemu/vfs_rom_ioctl.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/alloc": {
+      "ref_files": [
+        "ports/unix/alloc.c"
+      ],
+      "ref_digest": "3ec24695659e678bf92cd027a6544be1b72467898c1d00ed5566d819f9f288b9",
+      "shadow": "ports_rs/unix/alloc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/coverage": {
+      "ref_files": [
+        "ports/unix/coverage.c"
+      ],
+      "ref_digest": "8a499ae4822f4651b6899f2d5618c84f2988a19adc97a7676e278e4128e33878",
+      "shadow": "ports_rs/unix/coverage.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/fatfs_port": {
+      "ref_files": [
+        "ports/unix/fatfs_port.c"
+      ],
+      "ref_digest": "f204af2b05661726bd2487b9e6bd2279c140d9f4137c839c645024bfebe1f77f",
+      "shadow": "ports_rs/unix/fatfs_port.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/gccollect": {
+      "ref_files": [
+        "ports/unix/gccollect.c"
+      ],
+      "ref_digest": "37d07031ea5fa896612d196bab3993802206f92dec469072c0dfc232f76c3fde",
+      "shadow": "ports_rs/unix/gccollect.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/input": {
+      "ref_files": [
+        "ports/unix/input.c",
+        "ports/unix/input.h"
+      ],
+      "ref_digest": "7be37329e94cd5acc80d55a7394eec1cd3fcad880ff7fbdd7b0f1452c1ac490d",
+      "shadow": "ports_rs/unix/input.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/main": {
+      "ref_files": [
+        "ports/unix/main.c"
+      ],
+      "ref_digest": "1c5c44ee5d39a25f918228b4e9bf3cdd8c7d73127ac8236b5dde8e0ae38ff710",
+      "shadow": "ports_rs/unix/main.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modffi": {
+      "ref_files": [
+        "ports/unix/modffi.c"
+      ],
+      "ref_digest": "a4fd224dcc2051aceabb2f93c18943593cef47cef0a049c3763608bf6a2c419b",
+      "shadow": "ports_rs/unix/modffi.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modjni": {
+      "ref_files": [
+        "ports/unix/modjni.c"
+      ],
+      "ref_digest": "24cf21fe08cbc654a76a7355902474074b0aec22672f49d42ddbeccc78dc17e4",
+      "shadow": "ports_rs/unix/modjni.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modmachine": {
+      "ref_files": [
+        "ports/unix/modmachine.c"
+      ],
+      "ref_digest": "95bfce9ca1ba0f45b1c0cfe40ae5c0f7ed8b5ea5fd3a6e99760f43b7339b9038",
+      "shadow": "ports_rs/unix/modmachine.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modos": {
+      "ref_files": [
+        "ports/unix/modos.c"
+      ],
+      "ref_digest": "1260b696013d7e7a9b8de01851db79831d02540ce110dde52b274b8b9fc100da",
+      "shadow": "ports_rs/unix/modos.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modsocket": {
+      "ref_files": [
+        "ports/unix/modsocket.c"
+      ],
+      "ref_digest": "b81df5a68e4f8e0f29e6ab2f95c1c97f4b4b363d73f0a86a03f09f866b122923",
+      "shadow": "ports_rs/unix/modsocket.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modtermios": {
+      "ref_files": [
+        "ports/unix/modtermios.c"
+      ],
+      "ref_digest": "7acdf31234c408cbd4c5ccc402a0d302738afca60dfe484081e40475f996ba26",
+      "shadow": "ports_rs/unix/modtermios.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/modtime": {
+      "ref_files": [
+        "ports/unix/modtime.c"
+      ],
+      "ref_digest": "66c5ecb20fb45b852034b9a30f55dab4e2494b12b290ae3fcd021f9877660289",
+      "shadow": "ports_rs/unix/modtime.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpbthciport": {
+      "ref_files": [
+        "ports/unix/mpbthciport.c"
+      ],
+      "ref_digest": "765abf9713012f4cae05d2ad24e0d6c80ce48b113bb07fc1f50826a91d8ea31d",
+      "shadow": "ports_rs/unix/mpbthciport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpbtstackport": {
+      "ref_files": [
+        "ports/unix/mpbtstackport.h"
+      ],
+      "ref_digest": "c5b17d2a72fec1a105f35ca2e9618d3feba517d35007f4162beaf609e4392e7c",
+      "shadow": "ports_rs/unix/mpbtstackport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpbtstackport_common": {
+      "ref_files": [
+        "ports/unix/mpbtstackport_common.c"
+      ],
+      "ref_digest": "cdf69ab5ed4eb1cde2cc77d6dbace6b982340afd1de704e30d484a82dfeb41aa",
+      "shadow": "ports_rs/unix/mpbtstackport_common.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpbtstackport_h4": {
+      "ref_files": [
+        "ports/unix/mpbtstackport_h4.c"
+      ],
+      "ref_digest": "7a7178f6454adea945f757cda5de7612acc79e637d66cbf39b7a14716f41be45",
+      "shadow": "ports_rs/unix/mpbtstackport_h4.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpbtstackport_usb": {
+      "ref_files": [
+        "ports/unix/mpbtstackport_usb.c"
+      ],
+      "ref_digest": "6f9ce2ffed3a0e82d91a68988b87fc30905f72fe118c7471e73d11e008a1d264",
+      "shadow": "ports_rs/unix/mpbtstackport_usb.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpconfigport": {
+      "ref_files": [
+        "ports/unix/mpconfigport.h"
+      ],
+      "ref_digest": "21712acb0f0807305409d30666b9cb082feca293419d9a6cbacc949a14de00d7",
+      "shadow": "ports_rs/unix/mpconfigport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mphalport": {
+      "ref_files": [
+        "ports/unix/mphalport.h"
+      ],
+      "ref_digest": "37ee74c4eb188c9dee34d51984b417b55573953a7a1db495a4b7b7f50426925f",
+      "shadow": "ports_rs/unix/mphalport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpnimbleport": {
+      "ref_files": [
+        "ports/unix/mpnimbleport.c",
+        "ports/unix/mpnimbleport.h"
+      ],
+      "ref_digest": "609ae436995bd1ae397919e872c5d1fc2f6c2e034e115426b57bf49193261eaa",
+      "shadow": "ports_rs/unix/mpnimbleport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/mpthreadport": {
+      "ref_files": [
+        "ports/unix/mpthreadport.c",
+        "ports/unix/mpthreadport.h"
+      ],
+      "ref_digest": "5dda8c96a1011a1943ed5228267b2a721111805106a03f46a2b49e6cfbdcdd9a",
+      "shadow": "ports_rs/unix/mpthreadport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/qstrdefsport": {
+      "ref_files": [
+        "ports/unix/qstrdefsport.h"
+      ],
+      "ref_digest": "b9214588b19fb1f8138eb3dc80ceb4f1fc6baeebc517743877aed86273dd1478",
+      "shadow": "ports_rs/unix/qstrdefsport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/stack_size": {
+      "ref_files": [
+        "ports/unix/stack_size.h"
+      ],
+      "ref_digest": "0c1994de19374aca55b79d1e5e5260c70e50654d00cffca78bd2f7e745293f52",
+      "shadow": "ports_rs/unix/stack_size.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "ports/unix/unix_mphal": {
+      "ref_files": [
+        "ports/unix/unix_mphal.c"
+      ],
+      "ref_digest": "88a1bde1ece4c6c49731e95d1ffb0d4006f270352632845673ddec8b35216975",
+      "shadow": "ports_rs/unix/unix_mphal.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/argcheck": {
+      "ref_files": [
+        "py/argcheck.c"
+      ],
+      "ref_digest": "772a705986414c9e5d8b311e18f6369f4e76ed1781c9a6ff35acfcaddf1255bb",
+      "shadow": "py_rs/argcheck.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmarm": {
+      "ref_files": [
+        "py/asmarm.c",
+        "py/asmarm.h"
+      ],
+      "ref_digest": "0e24ec1e7626cf7e7a62d0c2b350984308c314fce0776bbdeb1fc2fa2e410a21",
+      "shadow": "py_rs/asmarm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmbase": {
+      "ref_files": [
+        "py/asmbase.c",
+        "py/asmbase.h"
+      ],
+      "ref_digest": "32d034f45fa3875762ca78bb72a0cc8943c666cc9d39f73cc9da36f0e6dc9123",
+      "shadow": "py_rs/asmbase.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmrv32": {
+      "ref_files": [
+        "py/asmrv32.c",
+        "py/asmrv32.h"
+      ],
+      "ref_digest": "db74e2fe52945e274d4d78bb9fc71ba1c3a7b7b7673764325f7208ab0ea5d6da",
+      "shadow": "py_rs/asmrv32.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmthumb": {
+      "ref_files": [
+        "py/asmthumb.c",
+        "py/asmthumb.h"
+      ],
+      "ref_digest": "b1c2960f8be625bbd1dc4c3695a57ad2ff97c52877b5914b6e8b34b4a333f754",
+      "shadow": "py_rs/asmthumb.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmx64": {
+      "ref_files": [
+        "py/asmx64.c",
+        "py/asmx64.h"
+      ],
+      "ref_digest": "34670c09911377596eb7c0ff4872e1aef41453a27d5729e60b9c1da343ae0bfe",
+      "shadow": "py_rs/asmx64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmx86": {
+      "ref_files": [
+        "py/asmx86.c",
+        "py/asmx86.h"
+      ],
+      "ref_digest": "0ab40e96e69a4053fdbd0916a884672a2d0c7a20182e1dfaea01bca0edc146a8",
+      "shadow": "py_rs/asmx86.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/asmxtensa": {
+      "ref_files": [
+        "py/asmxtensa.c",
+        "py/asmxtensa.h"
+      ],
+      "ref_digest": "b08b83fff216cdf46ac33cb1358ea083fa600799d9bcca870c8c11ec72713c60",
+      "shadow": "py_rs/asmxtensa.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/bc": {
+      "ref_files": [
+        "py/bc.c",
+        "py/bc.h"
+      ],
+      "ref_digest": "dd309df8db25790708f76dedef06897e5ccc22499d9712070d51e8dfbc2e6578",
+      "shadow": "py_rs/bc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/bc0": {
+      "ref_files": [
+        "py/bc0.h"
+      ],
+      "ref_digest": "1bce8111183e65f2cfb9bf67bdee5ceb2cbfba317a0731fe1c8a216716ed243c",
+      "shadow": "py_rs/bc0.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/binary": {
+      "ref_files": [
+        "py/binary.c",
+        "py/binary.h"
+      ],
+      "ref_digest": "60d3928a87fc7fc22433cec76eed4f6605ab9ac38429a7d0465c5291c1caa3b5",
+      "shadow": "py_rs/binary.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/builtin": {
+      "ref_files": [
+        "py/builtin.h"
+      ],
+      "ref_digest": "7ccb773b0638e331d7a5160771de32f17fc79874fde86e653edb2e556c96a409",
+      "shadow": "py_rs/builtin.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/builtinevex": {
+      "ref_files": [
+        "py/builtinevex.c"
+      ],
+      "ref_digest": "7c5ba014cf6442af16d1c2a0f91d437b077f8899b12b392c5657d7d5ec2183ee",
+      "shadow": "py_rs/builtinevex.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/builtinhelp": {
+      "ref_files": [
+        "py/builtinhelp.c"
+      ],
+      "ref_digest": "667697b88979a57c4a292e54e40e704ffaf999422a4da408a684d4db5cdccf58",
+      "shadow": "py_rs/builtinhelp.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/builtinimport": {
+      "ref_files": [
+        "py/builtinimport.c"
+      ],
+      "ref_digest": "4a8c247a54bc43950fd38863c1d3bf8b37d8a08203b426c7d5613a720d5300bb",
+      "shadow": "py_rs/builtinimport.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/compile": {
+      "ref_files": [
+        "py/compile.c",
+        "py/compile.h"
+      ],
+      "ref_digest": "cf4c17848de1c66bdf70dca86aa7f638b8ed25f6baaff9f70d8f4e7cf9b0043f",
+      "shadow": "py_rs/compile.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/cstack": {
+      "ref_files": [
+        "py/cstack.c",
+        "py/cstack.h"
+      ],
+      "ref_digest": "f3d58213e1c0676bd63a12b6ede591d5a8bdd122a55afd58ba62e00f2dab14ee",
+      "shadow": "py_rs/cstack.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/dynruntime": {
+      "ref_files": [
+        "py/dynruntime.h"
+      ],
+      "ref_digest": "bf0383f8fb2a7a58f612920db095c2fd18d5835f702e688b62faf1075fce755f",
+      "shadow": "py_rs/dynruntime.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emit": {
+      "ref_files": [
+        "py/emit.h"
+      ],
+      "ref_digest": "873b45f142d0c082dd804c7647cd0293b065249e05338d494021a9484ae9ca60",
+      "shadow": "py_rs/emit.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitbc": {
+      "ref_files": [
+        "py/emitbc.c"
+      ],
+      "ref_digest": "d1c479fac0cc7e3cae219b257e8f156d3444c0c70115e33cca07e6d2b9f5ae9e",
+      "shadow": "py_rs/emitbc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitcommon": {
+      "ref_files": [
+        "py/emitcommon.c"
+      ],
+      "ref_digest": "b3351d01d43c173c7ec2732af1244cc38c5769d313cfab3933d9f13531fdc659",
+      "shadow": "py_rs/emitcommon.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitglue": {
+      "ref_files": [
+        "py/emitglue.c",
+        "py/emitglue.h"
+      ],
+      "ref_digest": "300c3b9d66503ab2227fcaa2a9102361df117523dc53000f6dbed84ed0f27606",
+      "shadow": "py_rs/emitglue.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitinlinerv32": {
+      "ref_files": [
+        "py/emitinlinerv32.c"
+      ],
+      "ref_digest": "24478fb844a4c3a273955d9da89c44b85a93cfd40ce934a59e0c4c0f7508b7fc",
+      "shadow": "py_rs/emitinlinerv32.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitinlinethumb": {
+      "ref_files": [
+        "py/emitinlinethumb.c"
+      ],
+      "ref_digest": "e710474080b081a1dacf1d2f61fc9e207a5575b207aab60c120a2c39f1cbb619",
+      "shadow": "py_rs/emitinlinethumb.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitinlinextensa": {
+      "ref_files": [
+        "py/emitinlinextensa.c"
+      ],
+      "ref_digest": "9186e5c2611e03b0a0226be91d96019d157a661fe123c2a481b6f495c3586803",
+      "shadow": "py_rs/emitinlinextensa.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnarm": {
+      "ref_files": [
+        "py/emitnarm.c"
+      ],
+      "ref_digest": "27610909bb36fd2d144f365c3534391597189be3d7c65711719b0f98b907cc09",
+      "shadow": "py_rs/emitnarm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnative": {
+      "ref_files": [
+        "py/emitnative.c"
+      ],
+      "ref_digest": "59e1b2859eea045772856d8dfc85675b2d8ee35bc38d1f82005e36e5afedf0c4",
+      "shadow": "py_rs/emitnative.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitndebug": {
+      "ref_files": [
+        "py/emitndebug.c"
+      ],
+      "ref_digest": "04b809fa5040c2252faf3cca2ad9493c507fd6414a24ea64bfaa823ed6144a44",
+      "shadow": "py_rs/emitndebug.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnrv32": {
+      "ref_files": [
+        "py/emitnrv32.c"
+      ],
+      "ref_digest": "4ceb75b482958eebfd08aeb43c0e16469ea64149e381ddaac4deaefb19541b0e",
+      "shadow": "py_rs/emitnrv32.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnthumb": {
+      "ref_files": [
+        "py/emitnthumb.c"
+      ],
+      "ref_digest": "8ae7ef86dee346a89a2d625d0da2640d491c7560ef03dc0286de11228d752341",
+      "shadow": "py_rs/emitnthumb.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnx64": {
+      "ref_files": [
+        "py/emitnx64.c"
+      ],
+      "ref_digest": "1d822470e370757ff353656f0b706ceb4042695976b81e2ee8ea1a3c1e7b4e91",
+      "shadow": "py_rs/emitnx64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnx86": {
+      "ref_files": [
+        "py/emitnx86.c"
+      ],
+      "ref_digest": "e6eeccc5272974d77178c0c924ec715cdb099c83d2c512f0869804454fb221e7",
+      "shadow": "py_rs/emitnx86.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnxtensa": {
+      "ref_files": [
+        "py/emitnxtensa.c"
+      ],
+      "ref_digest": "1016565584289208ab1da212dc1a7094b07f15e8778c8d6c3a9d76b31cdeb122",
+      "shadow": "py_rs/emitnxtensa.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/emitnxtensawin": {
+      "ref_files": [
+        "py/emitnxtensawin.c"
+      ],
+      "ref_digest": "cbe10d5e1583d3d7ca14c3b393d45e3bdda27b3726c69bb4084878ed47eac292",
+      "shadow": "py_rs/emitnxtensawin.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/formatfloat": {
+      "ref_files": [
+        "py/formatfloat.c",
+        "py/formatfloat.h"
+      ],
+      "ref_digest": "93752f6c9ffafb95dddb42144ce4ecc0245c4b90067f0d7aeea884330d73561c",
+      "shadow": "py_rs/formatfloat.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/frozenmod": {
+      "ref_files": [
+        "py/frozenmod.c",
+        "py/frozenmod.h"
+      ],
+      "ref_digest": "e1eb7c615a2d34ff17c41e9349a69edc016b23232fd1dec4d157cf42b6b5f377",
+      "shadow": "py_rs/frozenmod.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/gc": {
+      "ref_files": [
+        "py/gc.c",
+        "py/gc.h"
+      ],
+      "ref_digest": "7812d7ed07126ca3c803da27ccbe08d1bfa597769c8a30ba0454e087b0ea2c00",
+      "shadow": "py_rs/gc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/grammar": {
+      "ref_files": [
+        "py/grammar.h"
+      ],
+      "ref_digest": "0f0e2cd5ce605a5996e73a38105bbcaa274d75fcb1aacafb4dd03389e80c7951",
+      "shadow": "py_rs/grammar.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/lexer": {
+      "ref_files": [
+        "py/lexer.c",
+        "py/lexer.h"
+      ],
+      "ref_digest": "6d5351ef5e0dfbf6a1eea1ecdeca56ba5ca8ef72a21de1ef041b1d2ee596a936",
+      "shadow": "py_rs/lexer.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/malloc": {
+      "ref_files": [
+        "py/malloc.c"
+      ],
+      "ref_digest": "a604736d3dc18d393b34442555ddb48d64eb684f7fa35e59bd3fdf941fd3e813",
+      "shadow": "py_rs/malloc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/map": {
+      "ref_files": [
+        "py/map.c"
+      ],
+      "ref_digest": "c1c00d33e53841627cc2ca205821541b58410afd160aee91bfa3f2e51eaae916",
+      "shadow": "py_rs/map.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/misc": {
+      "ref_files": [
+        "py/misc.h"
+      ],
+      "ref_digest": "f26959b815ce37f391a142107dceea4f5ff79f1c9bd2c61da99ea9e624b0bdb5",
+      "shadow": "py_rs/misc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modarray": {
+      "ref_files": [
+        "py/modarray.c"
+      ],
+      "ref_digest": "0471194cce3f6fd93753b66753f0bac51f2d40cd0b3165654c41a68567f7d76e",
+      "shadow": "py_rs/modarray.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modbuiltins": {
+      "ref_files": [
+        "py/modbuiltins.c"
+      ],
+      "ref_digest": "24efe6834a7f610cf2221d18cc291d2322395d1857e52e3bfbc66863881385ae",
+      "shadow": "py_rs/modbuiltins.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modcmath": {
+      "ref_files": [
+        "py/modcmath.c"
+      ],
+      "ref_digest": "ce636535de2058a466c18e5feea5ceb53074eab731746ee02f855a4c278d459a",
+      "shadow": "py_rs/modcmath.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modcollections": {
+      "ref_files": [
+        "py/modcollections.c"
+      ],
+      "ref_digest": "d2b1ccc0ca611fb5a04dfd5a1945e5d022a44597cf9962eda6070f236cdab529",
+      "shadow": "py_rs/modcollections.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/moderrno": {
+      "ref_files": [
+        "py/moderrno.c"
+      ],
+      "ref_digest": "674419fbb356ef3a3b00e3308c302304a641afc15840b1b48a45ac8c57c49e20",
+      "shadow": "py_rs/moderrno.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modgc": {
+      "ref_files": [
+        "py/modgc.c"
+      ],
+      "ref_digest": "e668db8b071147f90277b5f65e3d6ea3e66892a27964dd58338983a7338d5804",
+      "shadow": "py_rs/modgc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modio": {
+      "ref_files": [
+        "py/modio.c"
+      ],
+      "ref_digest": "78c83db6295786386715b98b882a52324d09bfd2356e16cd14510f64b3ac006b",
+      "shadow": "py_rs/modio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modmath": {
+      "ref_files": [
+        "py/modmath.c"
+      ],
+      "ref_digest": "603bb4dbc5739592db7452579bb1c0c3c5991454adfd6466f0dad6e734cf264c",
+      "shadow": "py_rs/modmath.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modmicropython": {
+      "ref_files": [
+        "py/modmicropython.c"
+      ],
+      "ref_digest": "abae7907221f328715fb9e0047acefdf981215f154954d8144cdabc0f4af7472",
+      "shadow": "py_rs/modmicropython.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modstring": {
+      "ref_files": [
+        "py/modstring.c"
+      ],
+      "ref_digest": "e7b3d697c422936263af33599c66751500aeda0a8648aaca8d975dab0dde3b59",
+      "shadow": "py_rs/modstring.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modstruct": {
+      "ref_files": [
+        "py/modstruct.c"
+      ],
+      "ref_digest": "dca9b53e3c5460fc273dc184e9b71ede47ea490715050e48235cb4f758773deb",
+      "shadow": "py_rs/modstruct.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modsys": {
+      "ref_files": [
+        "py/modsys.c"
+      ],
+      "ref_digest": "252f48d71d30c0804a8dc2e964f1dbb40d2800a065e42eea6c5ff265afa24479",
+      "shadow": "py_rs/modsys.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modthread": {
+      "ref_files": [
+        "py/modthread.c"
+      ],
+      "ref_digest": "d313c885f8e365ea70959c0a094feb9de7b3090557cbfe5d445774b5f821237d",
+      "shadow": "py_rs/modthread.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/modweakref": {
+      "ref_files": [
+        "py/modweakref.c"
+      ],
+      "ref_digest": "a17cdc1fd5e21bdfc4a3d3ac4647aec39a28f22a37a46a1da64cd11d8763b33f",
+      "shadow": "py_rs/modweakref.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mpconfig": {
+      "ref_files": [
+        "py/mpconfig.h"
+      ],
+      "ref_digest": "a053b0ef9ccb6bc42693e7e500c6c173ad3bfcba08543819631126bea43b6dc4",
+      "shadow": "py_rs/mpconfig.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mperrno": {
+      "ref_files": [
+        "py/mperrno.h"
+      ],
+      "ref_digest": "886ecf14383a6117ecf19c7e7fe83d086fee4c70b8a76d45d8799a9a6eb30a1b",
+      "shadow": "py_rs/mperrno.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mphal": {
+      "ref_files": [
+        "py/mphal.h"
+      ],
+      "ref_digest": "bd394092e0fbaf9cd5153b24289a1441677c0ccce5898a2504d9aec5b89f5135",
+      "shadow": "py_rs/mphal.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mpprint": {
+      "ref_files": [
+        "py/mpprint.c",
+        "py/mpprint.h"
+      ],
+      "ref_digest": "df2e1fde7017f1a0fd6926f7f14b5fb15e822ff8eadc4cf4e9e93a5af2cbcd5e",
+      "shadow": "py_rs/mpprint.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mpstate": {
+      "ref_files": [
+        "py/mpstate.c",
+        "py/mpstate.h"
+      ],
+      "ref_digest": "f3edee86ad3101c89bfbc83c706c48d1a283d82aa3b2c9578339c4d208fdca0f",
+      "shadow": "py_rs/mpstate.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mpthread": {
+      "ref_files": [
+        "py/mpthread.h"
+      ],
+      "ref_digest": "5ab899c659e49ba061e6ecc332c82c34c16a504aceda485b3087e3c1f2254cad",
+      "shadow": "py_rs/mpthread.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/mpz": {
+      "ref_files": [
+        "py/mpz.c",
+        "py/mpz.h"
+      ],
+      "ref_digest": "68e35135c520c4cb92af6e026bf0e2eafdf4bd1f84be34b8fc2cd245b3830772",
+      "shadow": "py_rs/mpz.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nativeglue": {
+      "ref_files": [
+        "py/nativeglue.c",
+        "py/nativeglue.h"
+      ],
+      "ref_digest": "68a6631d2abfe0360a4a7fb7cf72b0ae779b63849e827e111c7e20280af0f96f",
+      "shadow": "py_rs/nativeglue.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlr": {
+      "ref_files": [
+        "py/nlr.c",
+        "py/nlr.h"
+      ],
+      "ref_digest": "581879459eda91d30d4d2cc5fb115a4e6184e2a2c9049715da10dafddf6a9bbd",
+      "shadow": "py_rs/nlr.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlraarch64": {
+      "ref_files": [
+        "py/nlraarch64.c"
+      ],
+      "ref_digest": "a888c4819899366f3e572644b9efb90c0d1b8a7237042ea343370a2af6bfc470",
+      "shadow": "py_rs/nlraarch64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrloong64": {
+      "ref_files": [
+        "py/nlrloong64.c"
+      ],
+      "ref_digest": "5d50a7c8ea1f38c2944aa3eaf8b4b655f3c67291034f21b226f27aea1b608ce4",
+      "shadow": "py_rs/nlrloong64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrmips": {
+      "ref_files": [
+        "py/nlrmips.c"
+      ],
+      "ref_digest": "5059496b102c944a8055a739de2a52e42392ac050371d033877d365d68956e04",
+      "shadow": "py_rs/nlrmips.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrpowerpc": {
+      "ref_files": [
+        "py/nlrpowerpc.c"
+      ],
+      "ref_digest": "c6e83dd5781ff0239a901bb38ecb5d842581a724976dd5a61625edf634efc676",
+      "shadow": "py_rs/nlrpowerpc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrrv32": {
+      "ref_files": [
+        "py/nlrrv32.c"
+      ],
+      "ref_digest": "dea436b8ec59cbc7afa19fcfb598384266e4ee24f2122b49e0a5c86183daae97",
+      "shadow": "py_rs/nlrrv32.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrrv64": {
+      "ref_files": [
+        "py/nlrrv64.c"
+      ],
+      "ref_digest": "e7949e0e065385b4fc351b75c541d2cb8e57c66d4a7c972ea8af7427369ebe30",
+      "shadow": "py_rs/nlrrv64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrsetjmp": {
+      "ref_files": [
+        "py/nlrsetjmp.c"
+      ],
+      "ref_digest": "b0aabbf7a74245f034c71c9b3d49d378ecae5371886719e9c5fe37b83776a087",
+      "shadow": "py_rs/nlrsetjmp.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrthumb": {
+      "ref_files": [
+        "py/nlrthumb.c"
+      ],
+      "ref_digest": "79690d088f36255f61afc061071a46e6f2019b96cafcc6c7566e65cf2f1f99c7",
+      "shadow": "py_rs/nlrthumb.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrx64": {
+      "ref_files": [
+        "py/nlrx64.c"
+      ],
+      "ref_digest": "72b8e832a055fc838504b457fe7e76b1835c1e4e0fa4b9d7c530fb7f1eb33bfe",
+      "shadow": "py_rs/nlrx64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrx86": {
+      "ref_files": [
+        "py/nlrx86.c"
+      ],
+      "ref_digest": "89d77f3790685eb8bf2559ed99ccc5d84f650128ee8339417cb8ac00f01c61dc",
+      "shadow": "py_rs/nlrx86.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/nlrxtensa": {
+      "ref_files": [
+        "py/nlrxtensa.c"
+      ],
+      "ref_digest": "58eb9805d8b42d20b476626177c6c6efd01f4051689dddaccdbe225130ccd848",
+      "shadow": "py_rs/nlrxtensa.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/obj": {
+      "ref_files": [
+        "py/obj.c",
+        "py/obj.h"
+      ],
+      "ref_digest": "04cc07d603339d378ef4cbadeb122b5b76a0fcd393768a2e5e10eff003c586b7",
+      "shadow": "py_rs/obj.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objarray": {
+      "ref_files": [
+        "py/objarray.c",
+        "py/objarray.h"
+      ],
+      "ref_digest": "ad76416d5c4e5f20011ae230ace587e5a402e451e458e6420efdc3ba732ac994",
+      "shadow": "py_rs/objarray.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objattrtuple": {
+      "ref_files": [
+        "py/objattrtuple.c"
+      ],
+      "ref_digest": "f1a30818dc2b4f2d65989c969e4209a9f15ee6b3c469344dcc0f63f0670aaa4b",
+      "shadow": "py_rs/objattrtuple.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objbool": {
+      "ref_files": [
+        "py/objbool.c"
+      ],
+      "ref_digest": "e72ef7a0ad953716c4e4b59f31e030d360242c7395207807c6b9a7ecfbe48700",
+      "shadow": "py_rs/objbool.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objboundmeth": {
+      "ref_files": [
+        "py/objboundmeth.c"
+      ],
+      "ref_digest": "9b0483c2dead0d8e7d822bed29cf5148a4e45b89322da07accace93a927a167e",
+      "shadow": "py_rs/objboundmeth.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objcell": {
+      "ref_files": [
+        "py/objcell.c"
+      ],
+      "ref_digest": "72b1f2535264aa95b575801380a0b870cac43d28090b48a30837e14e2a616d00",
+      "shadow": "py_rs/objcell.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objclosure": {
+      "ref_files": [
+        "py/objclosure.c"
+      ],
+      "ref_digest": "b033e3c5849b6997ed6df4794b2ea4dd1002dcf013296a3aeecac79783996af8",
+      "shadow": "py_rs/objclosure.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objcode": {
+      "ref_files": [
+        "py/objcode.c",
+        "py/objcode.h"
+      ],
+      "ref_digest": "8fb99329fd61d14cf28e81afe204a7d963a5a600055097cd6c49d790b528e13c",
+      "shadow": "py_rs/objcode.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objcomplex": {
+      "ref_files": [
+        "py/objcomplex.c"
+      ],
+      "ref_digest": "18991f820fac0185acaade20e1de1c5bbf32de7db0b60deeddd1c11f12c898a3",
+      "shadow": "py_rs/objcomplex.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objdeque": {
+      "ref_files": [
+        "py/objdeque.c"
+      ],
+      "ref_digest": "585376e0a8b2cff895ea27e4985d30c0223ae045e7ad3d45208aead7c9b755d6",
+      "shadow": "py_rs/objdeque.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objdict": {
+      "ref_files": [
+        "py/objdict.c"
+      ],
+      "ref_digest": "1d43fc6ef5e67ad314b24fd21f9cc8b7e09801132f308dfa5fe86248b5528e29",
+      "shadow": "py_rs/objdict.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objenumerate": {
+      "ref_files": [
+        "py/objenumerate.c"
+      ],
+      "ref_digest": "7a2fe37d167dd284a2c55eb96435eb4a21c79cc40018eac8cc71079cb0d08fc2",
+      "shadow": "py_rs/objenumerate.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objexcept": {
+      "ref_files": [
+        "py/objexcept.c",
+        "py/objexcept.h"
+      ],
+      "ref_digest": "260df6585ada8665e7d9c14b7720ef8951c721a42f6741e615e11e387d4a8c8f",
+      "shadow": "py_rs/objexcept.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objfilter": {
+      "ref_files": [
+        "py/objfilter.c"
+      ],
+      "ref_digest": "12bb0622309f0331a14ccf39cef7f74353d5f45beed31275ecb2440541f8a4f3",
+      "shadow": "py_rs/objfilter.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objfloat": {
+      "ref_files": [
+        "py/objfloat.c"
+      ],
+      "ref_digest": "a6f29701e1d097a7604a70b9dcada21ee4fc5ecb5af8176bbd2dcdbdfbb1f32c",
+      "shadow": "py_rs/objfloat.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objfun": {
+      "ref_files": [
+        "py/objfun.c",
+        "py/objfun.h"
+      ],
+      "ref_digest": "e71552e934ef62fd93e28d8890ca27bc7125232e6cfe6b2d3bfd9c617d4b6377",
+      "shadow": "py_rs/objfun.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objgenerator": {
+      "ref_files": [
+        "py/objgenerator.c",
+        "py/objgenerator.h"
+      ],
+      "ref_digest": "8d96814bc055bf97bf101f0b0cdfbe71068d14163787964ea306c7cd3503b550",
+      "shadow": "py_rs/objgenerator.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objgetitemiter": {
+      "ref_files": [
+        "py/objgetitemiter.c"
+      ],
+      "ref_digest": "081f7a0fc4c28b393faee79868e975215fc8b705d1a00c0fb2f51e290dbbb0ad",
+      "shadow": "py_rs/objgetitemiter.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objint": {
+      "ref_files": [
+        "py/objint.c",
+        "py/objint.h"
+      ],
+      "ref_digest": "9e6a7938ea89f3e0bcb66c0349efe0f2c9c02022986d18d8c9d54dbec2a870b8",
+      "shadow": "py_rs/objint.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objint_impl": {
+      "ref_files": [
+        "py/objint_impl.h"
+      ],
+      "ref_digest": "78dde7f3c09c566907fa70b93ef6ae5bccba70c9ff8bca5fc01c4f6df3f65fb5",
+      "shadow": "py_rs/objint_impl.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objint_longlong": {
+      "ref_files": [
+        "py/objint_longlong.c"
+      ],
+      "ref_digest": "42b0892a93950e9ddb5ec95b3535abecac1c006b5d7ac3097d98c15255abd4ab",
+      "shadow": "py_rs/objint_longlong.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objint_mpz": {
+      "ref_files": [
+        "py/objint_mpz.c"
+      ],
+      "ref_digest": "b094b8c17b4f01e4d1a914671aad416f0f7a74e88d6dc6d69b1289d6cba51f71",
+      "shadow": "py_rs/objint_mpz.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objlist": {
+      "ref_files": [
+        "py/objlist.c",
+        "py/objlist.h"
+      ],
+      "ref_digest": "93869eb23acb1a7eba66a1f7ecac7376c962881ef57f7ab7335a6414f87595e0",
+      "shadow": "py_rs/objlist.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objmap": {
+      "ref_files": [
+        "py/objmap.c"
+      ],
+      "ref_digest": "2411d974f08f0f5fd3178c85d8c3a65553e83d74a6eb590aa6fecaa2c1d5f93b",
+      "shadow": "py_rs/objmap.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objmodule": {
+      "ref_files": [
+        "py/objmodule.c",
+        "py/objmodule.h"
+      ],
+      "ref_digest": "0fa2e6c0ad35f4d80632d9314f750b405505ab4d9433d596cc6787077deeca6a",
+      "shadow": "py_rs/objmodule.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objnamedtuple": {
+      "ref_files": [
+        "py/objnamedtuple.c",
+        "py/objnamedtuple.h"
+      ],
+      "ref_digest": "81c522a24a392c8b64728707e2e5384456c1b7abb2ebabbf412211f4333ad1e3",
+      "shadow": "py_rs/objnamedtuple.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objnone": {
+      "ref_files": [
+        "py/objnone.c"
+      ],
+      "ref_digest": "88188d8f74b315c939e85063c4204a42c7a151c0063b05789a9de71e193f4891",
+      "shadow": "py_rs/objnone.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objobject": {
+      "ref_files": [
+        "py/objobject.c"
+      ],
+      "ref_digest": "441741097d424b6b2148492a066e11e1c8f9163d6b3e3f8541222c60f5e1589f",
+      "shadow": "py_rs/objobject.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objpolyiter": {
+      "ref_files": [
+        "py/objpolyiter.c"
+      ],
+      "ref_digest": "0440ad68b255a07420f0954ef1860ceff3e4906b4bbcb9f455774c539de0e232",
+      "shadow": "py_rs/objpolyiter.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objproperty": {
+      "ref_files": [
+        "py/objproperty.c"
+      ],
+      "ref_digest": "4dcf59f9e03b11266b14295c8b20504bd8a53f2707657b8fa9da9a157784cdaf",
+      "shadow": "py_rs/objproperty.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objrange": {
+      "ref_files": [
+        "py/objrange.c"
+      ],
+      "ref_digest": "31b2ceae4ba42db6ddd262b653853060ff2c53a00cffa6a2f67e13ac61cfb442",
+      "shadow": "py_rs/objrange.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objreversed": {
+      "ref_files": [
+        "py/objreversed.c"
+      ],
+      "ref_digest": "d23e338ce57b9e7d56ab62ceff064351a505a2cec6d44d23b9ab7d34af4ac587",
+      "shadow": "py_rs/objreversed.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objringio": {
+      "ref_files": [
+        "py/objringio.c"
+      ],
+      "ref_digest": "e7510df69518ee544ed285896c6c96647f514aa334f6f50a0863816c143d9c5a",
+      "shadow": "py_rs/objringio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objset": {
+      "ref_files": [
+        "py/objset.c"
+      ],
+      "ref_digest": "f829e7829183fabf104caa4bf599d500509f5e68ae972817de4f97e6dfdc2af1",
+      "shadow": "py_rs/objset.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objsingleton": {
+      "ref_files": [
+        "py/objsingleton.c"
+      ],
+      "ref_digest": "57f6651980c8979f5a8f2b14d382027b0b322c9b20b246995f4791491da0674b",
+      "shadow": "py_rs/objsingleton.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objslice": {
+      "ref_files": [
+        "py/objslice.c"
+      ],
+      "ref_digest": "39f0d6cdc1930a65c913f8209c0126269683e5b0cd8fb9b8271740d8c4667495",
+      "shadow": "py_rs/objslice.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objstr": {
+      "ref_files": [
+        "py/objstr.c",
+        "py/objstr.h"
+      ],
+      "ref_digest": "a7a54212ef0784c44aa5470664a005869510547684368b2dedcff869743bd502",
+      "shadow": "py_rs/objstr.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objstringio": {
+      "ref_files": [
+        "py/objstringio.c",
+        "py/objstringio.h"
+      ],
+      "ref_digest": "87da0eecbc10e41b5375e9ffc2d8cb66c0931de748db0921b6b04a947a07d099",
+      "shadow": "py_rs/objstringio.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objstrunicode": {
+      "ref_files": [
+        "py/objstrunicode.c"
+      ],
+      "ref_digest": "49cfaaa3dea1fb69a5f3fe85672f0be1ceb4271c91826b52f95efd7b98ab7f01",
+      "shadow": "py_rs/objstrunicode.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objtemplate": {
+      "ref_files": [
+        "py/objtemplate.c"
+      ],
+      "ref_digest": "7a0ef7eade96fbae767c30088296c37a7501202dc9768aa578be049608caf074",
+      "shadow": "py_rs/objtemplate.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objtuple": {
+      "ref_files": [
+        "py/objtuple.c",
+        "py/objtuple.h"
+      ],
+      "ref_digest": "7cf54cc426c801dca416fc2629638c2827aeb8ab1efdfca634091bad9d35a9b0",
+      "shadow": "py_rs/objtuple.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objtype": {
+      "ref_files": [
+        "py/objtype.c",
+        "py/objtype.h"
+      ],
+      "ref_digest": "f552aa9af5c5df8c083bf4b183e8cc856012600aa235d6de70c96a7bfa7b7716",
+      "shadow": "py_rs/objtype.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/objzip": {
+      "ref_files": [
+        "py/objzip.c"
+      ],
+      "ref_digest": "03770bb6bdba3472170f510338565ac56bd72d1a237d9dccc9e157f780573817",
+      "shadow": "py_rs/objzip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/opmethods": {
+      "ref_files": [
+        "py/opmethods.c"
+      ],
+      "ref_digest": "31ac18581b06617ddd20b5d56252bb9751c61eab6ff0a23835fa32b395ce31de",
+      "shadow": "py_rs/opmethods.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/pairheap": {
+      "ref_files": [
+        "py/pairheap.c",
+        "py/pairheap.h"
+      ],
+      "ref_digest": "a03dafe368aa4b27465c6dacaba51329802294577cf4e0d59fb8d9d4e9e731e1",
+      "shadow": "py_rs/pairheap.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/parse": {
+      "ref_files": [
+        "py/parse.c",
+        "py/parse.h"
+      ],
+      "ref_digest": "233bbab51f73c6824f2b22f07e1c60ef35e219eb3d1447e38baf7f6f4bcabe0a",
+      "shadow": "py_rs/parse.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/parsenum": {
+      "ref_files": [
+        "py/parsenum.c",
+        "py/parsenum.h"
+      ],
+      "ref_digest": "bae6dc93b162e4bdddc542be6c41f6b2238404e69f993a257bdcff29a155da74",
+      "shadow": "py_rs/parsenum.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/parsenumbase": {
+      "ref_files": [
+        "py/parsenumbase.c",
+        "py/parsenumbase.h"
+      ],
+      "ref_digest": "4d2f70e4df240fe35b3f81c73f46a6ace4fdb4eaa4181ed753c60d6661596c01",
+      "shadow": "py_rs/parsenumbase.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/persistentcode": {
+      "ref_files": [
+        "py/persistentcode.c",
+        "py/persistentcode.h"
+      ],
+      "ref_digest": "82831a9d30f9f6ed43b0cec8b1f76219aadc92000154037b0b089ee581a701ff",
+      "shadow": "py_rs/persistentcode.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/profile": {
+      "ref_files": [
+        "py/profile.c",
+        "py/profile.h"
+      ],
+      "ref_digest": "ebf9d3efa8e7d5326f25368d2463fea9821eb84dc887fd858b72dd8535d65974",
+      "shadow": "py_rs/profile.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/pystack": {
+      "ref_files": [
+        "py/pystack.c",
+        "py/pystack.h"
+      ],
+      "ref_digest": "5739e395e31bdfa766135672f63194dd5e79b5bf5e423289d8db9ab77d22b942",
+      "shadow": "py_rs/pystack.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/qstr": {
+      "ref_files": [
+        "py/qstr.c",
+        "py/qstr.h"
+      ],
+      "ref_digest": "87bbe1fff14fc4d6c48a8dfbd359c4b4790bdce95e7fe34ed8e43aac873960ac",
+      "shadow": "py_rs/qstr.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/qstrdefs": {
+      "ref_files": [
+        "py/qstrdefs.h"
+      ],
+      "ref_digest": "23582b9b134f06e9941b3671b03009025399bdd3a713a7735fa89b0e47a0058f",
+      "shadow": "py_rs/qstrdefs.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/reader": {
+      "ref_files": [
+        "py/reader.c",
+        "py/reader.h"
+      ],
+      "ref_digest": "a682a30df0735b245f6fd7449f969e6f3d6fbd9009531bdde6d94591c51ce79f",
+      "shadow": "py_rs/reader.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/repl": {
+      "ref_files": [
+        "py/repl.c",
+        "py/repl.h"
+      ],
+      "ref_digest": "59ac694c6553575b7b291fda8aaa57cfc738b118a5166a5205c43b306ff1fd08",
+      "shadow": "py_rs/repl.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/ringbuf": {
+      "ref_files": [
+        "py/ringbuf.c",
+        "py/ringbuf.h"
+      ],
+      "ref_digest": "b9494e967a1db912c9d40c1aacf4eaa3937c79e0c9729f9afd59a24b5a36009b",
+      "shadow": "py_rs/ringbuf.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/runtime": {
+      "ref_files": [
+        "py/runtime.c",
+        "py/runtime.h"
+      ],
+      "ref_digest": "669c2c3aa5676af43ac069b8c028901906cd2f70defac6820657c519f5068c0d",
+      "shadow": "py_rs/runtime.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/runtime0": {
+      "ref_files": [
+        "py/runtime0.h"
+      ],
+      "ref_digest": "fa03617f4eb9518bd064e4cdf560f60b9b39fe6ad909cec53570cf05a0982aba",
+      "shadow": "py_rs/runtime0.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/runtime_utils": {
+      "ref_files": [
+        "py/runtime_utils.c"
+      ],
+      "ref_digest": "c0446af730dcc469568b81a4fcf0e69a0421ce83606e260d929b757e1ad4f5fd",
+      "shadow": "py_rs/runtime_utils.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/scheduler": {
+      "ref_files": [
+        "py/scheduler.c"
+      ],
+      "ref_digest": "8a56a05e205c1f24d5c606ca5534c81fe2a5e856af5aa35ecb71e28e87f7e097",
+      "shadow": "py_rs/scheduler.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/scope": {
+      "ref_files": [
+        "py/scope.c",
+        "py/scope.h"
+      ],
+      "ref_digest": "ca6da6553aa40d9abf36da6582827dbc75f5e626b355c7bfbaade8e5cc314298",
+      "shadow": "py_rs/scope.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/sequence": {
+      "ref_files": [
+        "py/sequence.c"
+      ],
+      "ref_digest": "25c012de237a84f1fceef166dd3379a82fc81b52285c5a179b0c22f4302699f9",
+      "shadow": "py_rs/sequence.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/showbc": {
+      "ref_files": [
+        "py/showbc.c"
+      ],
+      "ref_digest": "18618750e83c496e30b3dd45dd17edbb884b11f4f6558e33b652893a9fd20c08",
+      "shadow": "py_rs/showbc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/smallint": {
+      "ref_files": [
+        "py/smallint.c",
+        "py/smallint.h"
+      ],
+      "ref_digest": "cfb47d5e3d23193aa545b0c1896adbe6d5f2f7a5ba69dd37a4ea6b5337000a89",
+      "shadow": "py_rs/smallint.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/stackctrl": {
+      "ref_files": [
+        "py/stackctrl.c",
+        "py/stackctrl.h"
+      ],
+      "ref_digest": "2226cb2a2f4b1261f9a91fc8dd23a60b02acb8b1efe2c1963429ec072f424a5e",
+      "shadow": "py_rs/stackctrl.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/stream": {
+      "ref_files": [
+        "py/stream.c",
+        "py/stream.h"
+      ],
+      "ref_digest": "a56ba8531fa701b34dc9c5d6b844f51c6688ecfde26c2ed155aab82182c19204",
+      "shadow": "py_rs/stream.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/unicode": {
+      "ref_files": [
+        "py/unicode.c",
+        "py/unicode.h"
+      ],
+      "ref_digest": "cb5684461d54b5bda9af7cf70b713072c06b748180cba807c19a979489604d77",
+      "shadow": "py_rs/unicode.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/vm": {
+      "ref_files": [
+        "py/vm.c"
+      ],
+      "ref_digest": "f1b675ff2c399c4e75da4c2353aa29b83203cdf9d3ce1c317cc9dbc1d2557e4c",
+      "shadow": "py_rs/vm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/vmentrytable": {
+      "ref_files": [
+        "py/vmentrytable.h"
+      ],
+      "ref_digest": "bba1e8b5ef050463c60a1804427f906cdc76a590ec43354ea454d0a072439e35",
+      "shadow": "py_rs/vmentrytable.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/vstr": {
+      "ref_files": [
+        "py/vstr.c"
+      ],
+      "ref_digest": "d94a21b8a49966a3995df6afc43822fcf91f0a37fd1e575db211eca413659472",
+      "shadow": "py_rs/vstr.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "py/warning": {
+      "ref_files": [
+        "py/warning.c"
+      ],
+      "ref_digest": "fdc60b641c5f977fddc4056e68088cad060629b95957909b9d073d300f7cc099",
+      "shadow": "py_rs/warning.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/libc/__errno": {
+      "ref_files": [
+        "shared/libc/__errno.c"
+      ],
+      "ref_digest": "26996a649386ada5b8aa83d8ced5bcc7ccf5e3da2c4f9bb9634a14d827ef3c80",
+      "shadow": "shared_rs/libc/__errno.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/libc/abort_": {
+      "ref_files": [
+        "shared/libc/abort_.c"
+      ],
+      "ref_digest": "4f9fd89705706a1a8d12d3820fb4e8d26ee74ee3e3829110efafc3dd290c4f2c",
+      "shadow": "shared_rs/libc/abort_.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/libc/printf": {
+      "ref_files": [
+        "shared/libc/printf.c"
+      ],
+      "ref_digest": "13dfcf7c9e223f4ee28e3797f6b589822081c9cc24e41ecc3f2a77df7bc92337",
+      "shadow": "shared_rs/libc/printf.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/libc/string0": {
+      "ref_files": [
+        "shared/libc/string0.c"
+      ],
+      "ref_digest": "23bc7de2097e5b6fa4f6294d65a9e1bee93840b3df44cad7da161075aa8daf38",
+      "shadow": "shared_rs/libc/string0.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/memzip/import": {
+      "ref_files": [
+        "shared/memzip/import.c"
+      ],
+      "ref_digest": "a3567517b17a9f5308769080df7d8f174756dd26d456e1499d42643094d550b9",
+      "shadow": "shared_rs/memzip/import.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/memzip/lexermemzip": {
+      "ref_files": [
+        "shared/memzip/lexermemzip.c"
+      ],
+      "ref_digest": "f72d08a58a520157f2c730f32cadea1c5219436ad85492405e71c3b4407b190b",
+      "shadow": "shared_rs/memzip/lexermemzip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/memzip/memzip": {
+      "ref_files": [
+        "shared/memzip/memzip.c",
+        "shared/memzip/memzip.h"
+      ],
+      "ref_digest": "4a1e1b6bc8e6616735ef7b7ac57127c97348841d466c3d787d856a53c7595938",
+      "shadow": "shared_rs/memzip/memzip.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/netutils/dhcpserver": {
+      "ref_files": [
+        "shared/netutils/dhcpserver.c",
+        "shared/netutils/dhcpserver.h"
+      ],
+      "ref_digest": "7de061d98404883376e5f011905aded1b939f8af97f5e1551c44b99718230008",
+      "shadow": "shared_rs/netutils/dhcpserver.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/netutils/netutils": {
+      "ref_files": [
+        "shared/netutils/netutils.c",
+        "shared/netutils/netutils.h"
+      ],
+      "ref_digest": "da8c9db3230c9718b85fce674741c4ebe52f1bf9c57ae86676039ef2207daedf",
+      "shadow": "shared_rs/netutils/netutils.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/netutils/trace": {
+      "ref_files": [
+        "shared/netutils/trace.c"
+      ],
+      "ref_digest": "368b1f6f73fe72abc8a84c895624b3f0232f944580e5ae6e61df29e5acf4bc99",
+      "shadow": "shared_rs/netutils/trace.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/readline/readline": {
+      "ref_files": [
+        "shared/readline/readline.c",
+        "shared/readline/readline.h"
+      ],
+      "ref_digest": "7f4ee00cece72b79f92fbc0d403a6bf3e326d43cd1f1a825d1e8cdd6a7df5e71",
+      "shadow": "shared_rs/readline/readline.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper": {
+      "ref_files": [
+        "shared/runtime/gchelper.h"
+      ],
+      "ref_digest": "6e103ec0f7e3dc6a3b270fdb2cb300c0a90b3691dff7646d32d7b81691701fad",
+      "shadow": "shared_rs/runtime/gchelper.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_generic": {
+      "ref_files": [
+        "shared/runtime/gchelper_generic.c"
+      ],
+      "ref_digest": "9b8c883a8c43e0d218f8bbbd7458a497b68164a277db507679494001abb92224",
+      "shadow": "shared_rs/runtime/gchelper_generic.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_loong64": {
+      "ref_files": [
+        "shared/runtime/gchelper_loong64.s"
+      ],
+      "ref_digest": "189626c19aedcb61c0f68977429b7f3e93a6a557fc086f248dcb40d0ac7f2c06",
+      "shadow": "shared_rs/runtime/gchelper_loong64.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_native": {
+      "ref_files": [
+        "shared/runtime/gchelper_native.c"
+      ],
+      "ref_digest": "746a08f6b80d433f8e917c8540aa6513e177004b44ee1de70f20763323b8ceb9",
+      "shadow": "shared_rs/runtime/gchelper_native.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_rv32i": {
+      "ref_files": [
+        "shared/runtime/gchelper_rv32i.s"
+      ],
+      "ref_digest": "c719c9c18465b48850b3580155cb3267f749937f30775f7787c17ad397187a49",
+      "shadow": "shared_rs/runtime/gchelper_rv32i.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_rv64i": {
+      "ref_files": [
+        "shared/runtime/gchelper_rv64i.s"
+      ],
+      "ref_digest": "9cec11ef0003a955de96ff2496a3f8c69f62fa358408ebd77c50931fdc34d878",
+      "shadow": "shared_rs/runtime/gchelper_rv64i.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_thumb1": {
+      "ref_files": [
+        "shared/runtime/gchelper_thumb1.s"
+      ],
+      "ref_digest": "7c78e6320f5be2bfbf6b2d25c88b91a71c572a930db96ea22e6afe4e4be2ef45",
+      "shadow": "shared_rs/runtime/gchelper_thumb1.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/gchelper_thumb2": {
+      "ref_files": [
+        "shared/runtime/gchelper_thumb2.s"
+      ],
+      "ref_digest": "3aca07c1baa9232b8def74e1eb5ffa34f7995a6ec7e16baeb99d830f4ee9475a",
+      "shadow": "shared_rs/runtime/gchelper_thumb2.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/interrupt_char": {
+      "ref_files": [
+        "shared/runtime/interrupt_char.c",
+        "shared/runtime/interrupt_char.h"
+      ],
+      "ref_digest": "84d14e0f6e8f90d7aff3686cd5e20b92fb8337cdd7a78c4cfe112401be6ecab3",
+      "shadow": "shared_rs/runtime/interrupt_char.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/mpirq": {
+      "ref_files": [
+        "shared/runtime/mpirq.c",
+        "shared/runtime/mpirq.h"
+      ],
+      "ref_digest": "44265571b96c8392868dd21fc831de8686487622277bb3564f9204d78be5b2ee",
+      "shadow": "shared_rs/runtime/mpirq.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/pyexec": {
+      "ref_files": [
+        "shared/runtime/pyexec.c",
+        "shared/runtime/pyexec.h"
+      ],
+      "ref_digest": "99457b33bf36053b392593b6d06fa85586693e82d0cdf735b24edf366a0248d9",
+      "shadow": "shared_rs/runtime/pyexec.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/semihosting_arm": {
+      "ref_files": [
+        "shared/runtime/semihosting_arm.c",
+        "shared/runtime/semihosting_arm.h"
+      ],
+      "ref_digest": "b4e51a7a090753ed211998c2c55106fa19f88f874f780af50f3adcad2c95f7c0",
+      "shadow": "shared_rs/runtime/semihosting_arm.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/semihosting_rv32": {
+      "ref_files": [
+        "shared/runtime/semihosting_rv32.c",
+        "shared/runtime/semihosting_rv32.h"
+      ],
+      "ref_digest": "0338bdd6f4a539e86c6c49f85c293ac004d1e1fbaeb5cfcffdd80d54a416c57a",
+      "shadow": "shared_rs/runtime/semihosting_rv32.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/softtimer": {
+      "ref_files": [
+        "shared/runtime/softtimer.c",
+        "shared/runtime/softtimer.h"
+      ],
+      "ref_digest": "584ab1c1b8f9d41b735e55ff6b40ca03af55c2a83fa9012508aa5bfc8816074c",
+      "shadow": "shared_rs/runtime/softtimer.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/stdout_helpers": {
+      "ref_files": [
+        "shared/runtime/stdout_helpers.c"
+      ],
+      "ref_digest": "187745c0dfcc0baa40de154d97c21a9cc5b7745152427ef412c8f8f19db70eb8",
+      "shadow": "shared_rs/runtime/stdout_helpers.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/runtime/sys_stdio_mphal": {
+      "ref_files": [
+        "shared/runtime/sys_stdio_mphal.c"
+      ],
+      "ref_digest": "a625d13176f8ef630f062bf98b055297d09b2bf4377f0a302bdc9b5fda77d20d",
+      "shadow": "shared_rs/runtime/sys_stdio_mphal.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/timeutils/timeutils": {
+      "ref_files": [
+        "shared/timeutils/timeutils.c",
+        "shared/timeutils/timeutils.h"
+      ],
+      "ref_digest": "be7baa85ea99604cdff42cdb242e674c867416993a20862960ac9387fa6496c7",
+      "shadow": "shared_rs/timeutils/timeutils.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/tinyusb/mp_usbd": {
+      "ref_files": [
+        "shared/tinyusb/mp_usbd.c",
+        "shared/tinyusb/mp_usbd.h"
+      ],
+      "ref_digest": "2a7d7633e09da820a988dbb59fd5cc823b56fb161420d48ef131489008de6741",
+      "shadow": "shared_rs/tinyusb/mp_usbd.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/tinyusb/mp_usbd_cdc": {
+      "ref_files": [
+        "shared/tinyusb/mp_usbd_cdc.c",
+        "shared/tinyusb/mp_usbd_cdc.h"
+      ],
+      "ref_digest": "3b616d6abfd6469df76253e731ad27f346d0930621acb84a0b1751119ad295eb",
+      "shadow": "shared_rs/tinyusb/mp_usbd_cdc.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/tinyusb/mp_usbd_descriptor": {
+      "ref_files": [
+        "shared/tinyusb/mp_usbd_descriptor.c"
+      ],
+      "ref_digest": "0c56c95ec7a55c038d9bb3376c7e0578c7655fe8569f2ec27522a57b1eeebfcb",
+      "shadow": "shared_rs/tinyusb/mp_usbd_descriptor.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/tinyusb/mp_usbd_runtime": {
+      "ref_files": [
+        "shared/tinyusb/mp_usbd_runtime.c"
+      ],
+      "ref_digest": "64bc5e2ccbf24595a5969ee7e390967bddafb5b0a9b00438c619d311e11f146f",
+      "shadow": "shared_rs/tinyusb/mp_usbd_runtime.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    },
+    "shared/tinyusb/tusb_config": {
+      "ref_files": [
+        "shared/tinyusb/tusb_config.h"
+      ],
+      "ref_digest": "e0da22c07c027f51fcd658816a2bb42922e220f41c951360263e522157611a81",
+      "shadow": "shared_rs/tinyusb/tusb_config.rs",
+      "shadow_sha": "",
+      "status": "missing"
+    }
+  }
+}
