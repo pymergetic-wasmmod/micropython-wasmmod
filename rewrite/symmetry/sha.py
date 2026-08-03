@@ -124,7 +124,7 @@ class ShaStore:
                         if prev_sha is not None and prev_sha != sha:
                             ref_changed = True
                             break
-                if ref_changed and st.status in {"done", "partial", "stub"}:
+                if ref_changed and st.status in {"done", "gaps", "partial", "stub"}:
                     st.status = "stale"
                     extra = "upstream ref changed since checkpoint"
                     st.detail = f"{st.detail}; {extra}" if st.detail else extra

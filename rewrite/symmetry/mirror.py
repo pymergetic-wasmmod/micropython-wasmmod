@@ -7,7 +7,12 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from .classify import classify_rs
-from .constants import SKIP_DIR_NAMES, SKIP_DIR_SUFFIXES, SKIP_FILE_GLOBS
+from .constants import (
+    SKIP_DIR_NAMES,
+    SKIP_DIR_PREFIXES,
+    SKIP_DIR_SUFFIXES,
+    SKIP_FILE_GLOBS,
+)
 from .models import MirrorReport, MirrorSpec, StemResult
 from .sha import combined_digest, file_sha256
 
@@ -24,6 +29,8 @@ class MirrorScanner:
             if part in SKIP_DIR_NAMES:
                 return True
             if any(part.endswith(suf) for suf in SKIP_DIR_SUFFIXES):
+                return True
+            if any(part == pref or part.startswith(pref + "-") for pref in SKIP_DIR_PREFIXES):
                 return True
         return False
 

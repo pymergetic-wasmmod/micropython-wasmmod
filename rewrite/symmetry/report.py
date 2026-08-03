@@ -11,6 +11,7 @@ def format_counts_line(name: str, counts: dict[str, int], pct: float, width: int
     return (
         f"{name:<{width}}"
         f"{counts.get('done', 0):4d} done  "
+        f"{counts.get('gaps', 0):3d} gaps  "
         f"{counts.get('partial', 0):3d} partial  "
         f"{counts.get('stub', 0):3d} stub  "
         f"{counts.get('stale', 0):3d} stale  "
@@ -52,6 +53,7 @@ def _fmt_conv_row(label: str, row: dict, width: int = 12) -> str:
     return (
         f"  {label:<{width}}"
         f"{row.get('done', 0):4d} done  "
+        f"{row.get('gaps', 0):3d} gaps  "
         f"{row.get('partial', 0):3d} partial  "
         f"{row.get('stub', 0):3d} stub  "
         f"{row.get('stale', 0):3d} stale  "
@@ -92,12 +94,17 @@ def print_conversion_stats(report: FullReport) -> None:
     doneish = tot_done = 0
     missingish = 0
     for row in stats["by_stem_shape"]:
-        tot_done += row["done"] + row["partial"] + row["stub"]
+        tot_done += (
+            row["done"]
+            + row.get("gaps", 0)
+            + row["partial"]
+            + row["stub"]
+        )
         missingish += row["missing"] + row["stale"]
         doneish += row["done"]
     print(
         f"  summary  {doneish} done stems, "
-        f"{tot_done - doneish} in-progress (partial/stub), "
+        f"{tot_done - doneish} in-progress (gaps/partial/stub), "
         f"{missingish} remaining (missing/stale)"
     )
 
@@ -146,7 +153,9 @@ def print_human(
 
     for m in report.mirrors:
         c = m.counts()
-        tracked = sum(c[s] for s in ("done", "partial", "stub", "stale", "missing"))
+        tracked = sum(
+            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
+        )
         if tracked == 0 and not m.stems:
             print(f"{m.name + '/':<14}(disabled or empty)")
             continue
@@ -154,7 +163,9 @@ def print_human(
         print(format_counts_line(label, c, m.progress_pct()))
 
     tot = report.total_counts()
-    tracked = sum(tot[s] for s in ("done", "partial", "stub", "stale", "missing"))
+    tracked = sum(
+        tot[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
+    )
     if tracked:
         print("-" * 72)
         print(format_counts_line("TOTAL", tot, report.file_progress_pct()))

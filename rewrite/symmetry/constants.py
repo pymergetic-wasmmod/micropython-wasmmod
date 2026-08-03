@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-STATUS_ORDER = ("done", "partial", "stub", "stale", "missing", "ignored")
+STATUS_ORDER = ("done", "gaps", "partial", "stub", "stale", "missing", "ignored")
 
 SKIP_DIR_NAMES = {
     "mbedtls",
@@ -13,8 +13,12 @@ SKIP_DIR_NAMES = {
     "variants",
     "boards",
     "test-frzmpy",
+    "CMakeFiles",
+    "wamr",
 }
 SKIP_DIR_SUFFIXES = ("-include",)
+# Build output trees under ports (e.g. build/, build-standard/).
+SKIP_DIR_PREFIXES = ("build",)
 SKIP_FILE_GLOBS = (
     "Makefile",
     "README*",
@@ -65,6 +69,7 @@ DEFAULT_INFRA = (
 # Weighted progress for conversion tracking.
 STATUS_WEIGHT = {
     "done": 1.0,
+    "gaps": 0.4,  # mostly translated; listed gaps block "done"
     "partial": 0.5,
     "stub": 0.25,
     "stale": 0.1,

@@ -79,7 +79,9 @@ class MirrorReport:
 
     def progress_pct(self) -> float:
         c = self.counts()
-        tracked = sum(c[s] for s in ("done", "partial", "stub", "stale", "missing"))
+        tracked = sum(
+            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
+        )
         if tracked == 0:
             return 100.0
         weight = sum(c[s] * STATUS_WEIGHT.get(s, 0.0) for s in c)
@@ -103,7 +105,9 @@ class FullReport:
 
     def file_progress_pct(self) -> float:
         c = self.total_counts()
-        tracked = sum(c[s] for s in ("done", "partial", "stub", "stale", "missing"))
+        tracked = sum(
+            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
+        )
         if tracked == 0:
             return 100.0
         weight = sum(c[s] * STATUS_WEIGHT.get(s, 0.0) for s in c)
@@ -209,6 +213,7 @@ class FullReport:
                     {
                         "key": key,
                         "done": c.get("done", 0),
+                        "gaps": c.get("gaps", 0),
                         "partial": c.get("partial", 0),
                         "stub": c.get("stub", 0),
                         "stale": c.get("stale", 0),

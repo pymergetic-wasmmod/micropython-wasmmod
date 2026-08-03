@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .checker import SymmetryChecker, repo_root
 from .report import print_human, write_markdown
+from .scaffold import Scaffolder
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--status",
-        choices=["done", "partial", "stub", "stale", "missing"],
+        choices=["done", "gaps", "partial", "stub", "stale", "missing"],
         default=None,
         help="List all stems with this status",
     )
@@ -58,6 +59,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fail-on-regression", action="store_true")
     p.add_argument("--list-missing", action="store_true")
     p.add_argument("--list-modules", action="store_true")
+    p.add_argument(
+        "--scaffold-stubs",
+        action="store_true",
+        help="Create missing *_rs stub .rs files, mod/lib.rs trees, and Cargo workspace",
+    )
+    p.add_argument(
+        "--scaffold-force",
+        action="store_true",
+        help="With --scaffold-stubs, overwrite existing stub .rs files",
+    )
     return p
 
 
@@ -78,6 +89,29 @@ def main(argv: list[str] | None = None) -> int:
                 f"{len(mod['exports']):3d} exports  {mod['source']}"
             )
         return 0
+
+    if args.scaffold_stubs:
+        scaffolder = Scaffolder(checker)
+        pre = checker.scan(
+            include_pm=False, compare_shas=False, compare_progress=False
+        )
+        if args.tree:
+            want = set(args.tree)
+            pre.mirrors = [m for m in pre.mirrors if m.name in want]
+        result = scaffolder.run(
+            pre, force=args.scaffold_force, write_cargo=True, write_mods=True
+        )
+        print(
+            f"Scaffold: created {len(result.created)} stubs, "
+            f"skipped {len(result.skipped)} existing, "
+            f"wrote {len(result.mod_files)} mod/lib.rs, "
+            f"{len(result.cargo_files)} Cargo.toml"
+        )
+        for p in result.created[:20]:
+            print(f"  + {p}")
+        if len(result.created) > 20:
+            print(f"  … +{len(result.created) - 20} more")
+        # Fall through to a fresh report after scaffolding.
 
     trees = set(args.tree) if args.tree else None
     # Full-repo SHA/history diffs only when scanning all mirrors (filtered

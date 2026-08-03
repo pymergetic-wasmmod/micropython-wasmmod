@@ -1,0 +1,20 @@
+# MetalPython — Rust rewrite workspace (shadow *_rs trees).
+# Upstream MicroPython C/Python trees are reference-only; do not edit them.
+[workspace]
+resolver = "2"
+members = [
+    "py_rs",
+    "shared_rs",
+    "extmod_rs",
+    "ports_rs/unix",
+    "ports_rs/qemu",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+py_rs = { path = "py_rs" }
+shared_rs = { path = "shared_rs" }
+extmod_rs = { path = "extmod_rs" }

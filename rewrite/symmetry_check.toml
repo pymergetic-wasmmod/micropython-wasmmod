@@ -22,6 +22,7 @@ dirs = [
     "extmod/mbedtls",
     "ports/unix/mbedtls",
     "ports/unix/variants",
+    "ports/unix/build-standard",
     "ports/qemu/boards",
     "ports/qemu/test-frzmpy",
 ]

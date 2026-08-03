@@ -1,0 +1,25 @@
+[package]
+name = "extmod_rs"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "extmod_rs"
+path = "lib.rs"
+
+[dependencies]
+py_rs = { workspace = true }
+shared_rs = { workspace = true }
+sha2 = "0.10"
+aes = "0.8"
+cipher = "0.4"
+flate2 = "1.0"
+libc = "0.2"
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+rustls-pemfile = "2"
+webpki-roots = "0.26"
+x509-parser = { version = "0.18", default-features = false }
+fatfs = { version = "0.3", default-features = false, features = ["std", "alloc"] }
+littlefs2-rust = { version = "0.1.1", default-features = false, features = ["std"] }
