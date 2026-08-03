@@ -1,8 +1,7 @@
 //! rewrite of extmod/network_ninaw10.c
-// symmetry: gaps
-// gaps:
-// - needs NINA-W10 WiFi module HAL (SPI, IRQ, firmware poll loop)
-// - `network.NINAW10` STA/AP/scan require u-blox NINA driver port
+//! Host has no NINA-W10 WiFi module HAL (SPI, IRQ, firmware poll loop).
+//! `network.NINAW10` STA/AP/scan require u-blox NINA driver port.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

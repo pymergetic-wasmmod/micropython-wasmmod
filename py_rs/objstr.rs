@@ -4,10 +4,14 @@ use core::mem::size_of;
 
 use crate::argcheck;
 use crate::cstack;
-use crate::map::{self, LookupKind, Map, MapElem};
 use crate::malloc;
+use crate::map::{self, LookupKind, Map, MapElem};
 use crate::mpconfig;
-use crate::mpprint::{self, Print, PrintKind, PF_FLAG_ADD_PERCENT, PF_FLAG_CENTER_ADJUST, PF_FLAG_LEFT_ADJUST, PF_FLAG_PAD_AFTER_SIGN, PF_FLAG_SEP_POS, PF_FLAG_SHOW_OCTAL_LETTER, PF_FLAG_SHOW_PREFIX, PF_FLAG_SHOW_SIGN, PF_FLAG_SPACE_SIGN};
+use crate::mpprint::{
+    self, Print, PrintKind, PF_FLAG_ADD_PERCENT, PF_FLAG_CENTER_ADJUST, PF_FLAG_LEFT_ADJUST,
+    PF_FLAG_PAD_AFTER_SIGN, PF_FLAG_SEP_POS, PF_FLAG_SHOW_OCTAL_LETTER, PF_FLAG_SHOW_PREFIX,
+    PF_FLAG_SHOW_SIGN, PF_FLAG_SPACE_SIGN,
+};
 use crate::obj::{
     self, BufferInfo, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_SENTINEL, TYPE_FLAG_BINDS_SELF,
     TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_EQ_NOT_REFLEXIVE,
@@ -24,7 +28,11 @@ use crate::raise::{self, MpRaise};
 use crate::runtime;
 use crate::runtime0::{BinaryOp, UnaryOp};
 use crate::sequence;
-use crate::unicode::{self, Encoding, utf8_charlen, utf8_next_char, utf8_ptr_to_index, unichar_isalpha, unichar_isdigit, unichar_islower, unichar_isupper, unichar_isspace, unichar_isxdigit, unichar_tolower, unichar_toupper, unichar_xdigit_value};
+use crate::unicode::{
+    self, unichar_isalpha, unichar_isdigit, unichar_islower, unichar_isspace, unichar_isupper,
+    unichar_isxdigit, unichar_tolower, unichar_toupper, unichar_xdigit_value, utf8_charlen,
+    utf8_next_char, utf8_ptr_to_index, Encoding,
+};
 use crate::vstr::{self, Vstr};
 
 #[repr(C)]
@@ -43,13 +51,28 @@ type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
 type BuiltinFnKw = fn(usize, &[Obj], &mut Map) -> Obj;
 
 #[repr(C)]
-struct ObjFunBuiltin1 { base: ObjBase, fun: BuiltinFn1 }
+struct ObjFunBuiltin1 {
+    base: ObjBase,
+    fun: BuiltinFn1,
+}
 #[repr(C)]
-struct ObjFunBuiltin2 { base: ObjBase, fun: BuiltinFn2 }
+struct ObjFunBuiltin2 {
+    base: ObjBase,
+    fun: BuiltinFn2,
+}
 #[repr(C)]
-struct ObjFunBuiltinVar { base: ObjBase, min_args: u8, max_args: u8, fun: BuiltinFnVar }
+struct ObjFunBuiltinVar {
+    base: ObjBase,
+    min_args: u8,
+    max_args: u8,
+    fun: BuiltinFnVar,
+}
 #[repr(C)]
-struct ObjFunBuiltinKw { base: ObjBase, min_args: u8, fun: BuiltinFnKw }
+struct ObjFunBuiltinKw {
+    base: ObjBase,
+    min_args: u8,
+    fun: BuiltinFnKw,
+}
 
 static mut FUN_BUILTIN_1_SLOTS: [*const (); 1] = [fun_builtin_1_call as *const ()];
 static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const ()];
@@ -57,32 +80,84 @@ static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *con
 static mut FUN_BUILTIN_KW_SLOTS: [*const (); 1] = [fun_builtin_kw_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
-    name: 0, slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0, slot_index_subscr: 0,
-    slot_index_iter: 0, slot_index_buffer: 0, slot_index_protocol: 0, slot_index_parent: 0,
-    slot_index_locals_dict: 0, slots: unsafe { FUN_BUILTIN_1_SLOTS.as_ptr() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FUN_BUILTIN_1_SLOTS.as_ptr() },
 };
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
-    name: 0, slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0, slot_index_subscr: 0,
-    slot_index_iter: 0, slot_index_buffer: 0, slot_index_protocol: 0, slot_index_parent: 0,
-    slot_index_locals_dict: 0, slots: unsafe { FUN_BUILTIN_2_SLOTS.as_ptr() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FUN_BUILTIN_2_SLOTS.as_ptr() },
 };
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
-    name: 0, slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0, slot_index_subscr: 0,
-    slot_index_iter: 0, slot_index_buffer: 0, slot_index_protocol: 0, slot_index_parent: 0,
-    slot_index_locals_dict: 0, slots: unsafe { FUN_BUILTIN_VAR_SLOTS.as_ptr() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FUN_BUILTIN_VAR_SLOTS.as_ptr() },
 };
 static TYPE_FUN_BUILTIN_KW: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
-    name: 0, slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0, slot_index_subscr: 0,
-    slot_index_iter: 0, slot_index_buffer: 0, slot_index_protocol: 0, slot_index_parent: 0,
-    slot_index_locals_dict: 0, slots: unsafe { FUN_BUILTIN_KW_SLOTS.as_ptr() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FUN_BUILTIN_KW_SLOTS.as_ptr() },
 };
 
 fn fun_builtin_1_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
@@ -95,14 +170,21 @@ fn fun_builtin_2_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 }
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 fn fun_builtin_kw_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinKw) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, usize::MAX, false);
+    argcheck::check_num(n_args, n_kw, self_.min_args as usize, usize::MAX, true);
     let mut kwargs = Map::default();
     if n_kw != 0 {
+        map::init(&mut kwargs, n_kw);
         for i in 0..n_kw {
             let key = args[n_args + 2 * i];
             let value = args[n_args + 2 * i + 1];
@@ -115,19 +197,38 @@ fn fun_builtin_kw_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -
 }
 fn new_fun_builtin_1(fun: BuiltinFn1) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin1>().expect("fun1");
-    unsafe { (*o).base.type_ = &TYPE_FUN_BUILTIN_1 as *const ObjType; (*o).fun = fun; obj::from_ptr(o as *const ObjFunBuiltin1 as *const ()) }
+    unsafe {
+        (*o).base.type_ = &TYPE_FUN_BUILTIN_1 as *const ObjType;
+        (*o).fun = fun;
+        obj::from_ptr(o as *const ObjFunBuiltin1 as *const ())
+    }
 }
 fn new_fun_builtin_2(fun: BuiltinFn2) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin2>().expect("fun2");
-    unsafe { (*o).base.type_ = &TYPE_FUN_BUILTIN_2 as *const ObjType; (*o).fun = fun; obj::from_ptr(o as *const ObjFunBuiltin2 as *const ()) }
+    unsafe {
+        (*o).base.type_ = &TYPE_FUN_BUILTIN_2 as *const ObjType;
+        (*o).fun = fun;
+        obj::from_ptr(o as *const ObjFunBuiltin2 as *const ())
+    }
 }
 fn new_fun_builtin_var(min: u8, max: u8, fun: BuiltinFnVar) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltinVar>().expect("funv");
-    unsafe { (*o).base.type_ = &TYPE_FUN_BUILTIN_VAR as *const ObjType; (*o).min_args = min; (*o).max_args = max; (*o).fun = fun; obj::from_ptr(o as *const ObjFunBuiltinVar as *const ()) }
+    unsafe {
+        (*o).base.type_ = &TYPE_FUN_BUILTIN_VAR as *const ObjType;
+        (*o).min_args = min;
+        (*o).max_args = max;
+        (*o).fun = fun;
+        obj::from_ptr(o as *const ObjFunBuiltinVar as *const ())
+    }
 }
 fn new_fun_builtin_kw(min: u8, fun: BuiltinFnKw) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltinKw>().expect("funkw");
-    unsafe { (*o).base.type_ = &TYPE_FUN_BUILTIN_KW as *const ObjType; (*o).min_args = min; (*o).fun = fun; obj::from_ptr(o as *const ObjFunBuiltinKw as *const ()) }
+    unsafe {
+        (*o).base.type_ = &TYPE_FUN_BUILTIN_KW as *const ObjType;
+        (*o).min_args = min;
+        (*o).fun = fun;
+        obj::from_ptr(o as *const ObjFunBuiltinKw as *const ())
+    }
 }
 
 // --- data access --------------------------------------------------------------
@@ -143,10 +244,14 @@ fn str_type_of(o: Obj) -> &'static ObjType {
 }
 
 fn heap_str(o: Obj) -> Option<&'static ObjStr> {
-    if obj::is_qstr(o) { return None; }
+    if obj::is_qstr(o) {
+        return None;
+    }
     if obj::is_exact_type(o, type_bytes()) || obj::is_exact_type(o, type_str()) {
         Some(unsafe { &*(obj::as_ptr(o) as *const ObjStr) })
-    } else { None }
+    } else {
+        None
+    }
 }
 
 pub fn get_str_data_len(o: Obj) -> (Vec<u8>, usize) {
@@ -159,6 +264,15 @@ pub fn get_str_data_len(o: Obj) -> (Vec<u8>, usize) {
     } else if let Some(s) = heap_str(o) {
         let data = unsafe { std::slice::from_raw_parts(s.data, s.len) }.to_vec();
         (data, s.len)
+    } else if mpconfig::PY_BUILTINS_BYTEARRAY
+        && obj::is_exact_type(o, crate::objarray::type_bytearray())
+    {
+        // C casts bytearray→str via layout compatibility; Rust layouts differ.
+        let mut buf = BufferInfo::default();
+        obj::get_buffer_raise(o, &mut buf, obj::BUFFER_READ);
+        let data = buf.as_bytes().to_vec();
+        let len = data.len();
+        (data, len)
     } else {
         bad_implicit_conversion(o);
     }
@@ -168,9 +282,8 @@ pub fn get_str_data_len(o: Obj) -> (Vec<u8>, usize) {
 pub fn with_str_bytes<R>(o: Obj, f: impl FnOnce(*const u8, usize) -> R) -> R {
     if obj::is_qstr(o) {
         let q = obj::qstr_value(o);
-        let len = qstr::qstr_len(q).unwrap_or(0);
-        if let Some((data, _)) = qstr::qstr_data(q) {
-            return f(data.as_ptr(), len);
+        if let Some((ptr, len)) = qstr::qstr_bytes(q) {
+            return f(ptr, len);
         }
         bad_implicit_conversion(o);
     } else if let Some(s) = heap_str(o) {
@@ -181,25 +294,58 @@ pub fn with_str_bytes<R>(o: Obj, f: impl FnOnce(*const u8, usize) -> R) -> R {
 }
 
 fn get_str_hash(o: Obj) -> usize {
-    if obj::is_qstr(o) { qstr::qstr_hash(obj::qstr_value(o)).unwrap_or(0) }
-    else if let Some(s) = heap_str(o) { s.hash }
-    else { 0 }
+    if obj::is_qstr(o) {
+        qstr::qstr_hash(obj::qstr_value(o)).unwrap_or(0)
+    } else if let Some(s) = heap_str(o) {
+        s.hash
+    } else {
+        0
+    }
 }
 
-fn bad_implicit_conversion(_: Obj) -> ! { raise::raise(MpRaise::TypeError("can't convert to str implicitly")); }
+fn bad_implicit_conversion(_: Obj) -> ! {
+    raise::raise(MpRaise::TypeError("can't convert to str implicitly"));
+}
 
 fn check_is_str_or_bytes(o: Obj) {
-    if !obj::is_str_or_bytes(o) { raise::raise(MpRaise::TypeError("str/bytes method on wrong type")); }
+    // C `mp_check_self` is often a no-op in release; bytearray shares these methods.
+    let ok = obj::is_str_or_bytes(o)
+        || (mpconfig::PY_BUILTINS_BYTEARRAY
+            && obj::is_exact_type(o, crate::objarray::type_bytearray()));
+    if !ok {
+        raise::raise(MpRaise::TypeError("str/bytes method on wrong type"));
+    }
 }
 
 fn str_check_arg_type(self_type: &ObjType, arg: Obj) {
-    if obj::get_type(arg) as *const ObjType != self_type as *const ObjType {
+    // bytes ↔ bytearray are interchangeable for method args (C `str_check_arg_type`).
+    let mut self_t = self_type as *const ObjType;
+    let mut arg_t = obj::get_type(arg) as *const ObjType;
+    if mpconfig::PY_BUILTINS_BYTEARRAY {
+        let ba = crate::objarray::type_bytearray() as *const ObjType;
+        let by = type_bytes() as *const ObjType;
+        if arg_t == ba {
+            arg_t = by;
+        }
+        if self_t == ba {
+            self_t = by;
+        }
+    }
+    if arg_t != self_t {
         bad_implicit_conversion(arg);
     }
 }
 
 fn make_empty_str_of_type(type_: &ObjType) -> Obj {
-    if core::ptr::eq(type_, type_bytes()) { const_empty_bytes() } else { obj::new_qstr(qstr::QSTR_EMPTY) }
+    if core::ptr::eq(type_, type_bytes()) {
+        const_empty_bytes()
+    } else if mpconfig::PY_BUILTINS_BYTEARRAY
+        && core::ptr::eq(type_, crate::objarray::type_bytearray())
+    {
+        crate::objarray::new_bytearray(0, &[])
+    } else {
+        obj::new_qstr(qstr::QSTR_EMPTY)
+    }
 }
 
 fn index_to_ptr(type_: &ObjType, data: &[u8], len: usize, index: Obj, is_slice: bool) -> usize {
@@ -212,11 +358,21 @@ fn index_to_ptr(type_: &ObjType, data: &[u8], len: usize, index: Obj, is_slice: 
 }
 
 pub fn find_subbytes(haystack: &[u8], needle: &[u8], direction: i32) -> Option<usize> {
-    if haystack.len() < needle.len() { return None; }
-    let (mut i, end) = if direction > 0 { (0usize, haystack.len() - needle.len()) } else { (haystack.len() - needle.len(), 0) };
+    if haystack.len() < needle.len() {
+        return None;
+    }
+    let (mut i, end) = if direction > 0 {
+        (0usize, haystack.len() - needle.len())
+    } else {
+        (haystack.len() - needle.len(), 0)
+    };
     loop {
-        if haystack[i..i + needle.len()] == *needle { return Some(i); }
-        if i == end { break; }
+        if haystack[i..i + needle.len()] == *needle {
+            return Some(i);
+        }
+        if i == end {
+            break;
+        }
         i = if direction > 0 { i + 1 } else { i - 1 };
     }
     None
@@ -246,18 +402,30 @@ pub fn str_print_quoted(print: &Print, str_data: &[u8], is_bytes: bool) {
     let mut sq = false;
     let mut dq = false;
     for &b in str_data {
-        if b == b'\'' { sq = true; } else if b == b'"' { dq = true; }
+        if b == b'\'' {
+            sq = true;
+        } else if b == b'"' {
+            dq = true;
+        }
     }
     let qc = if sq && !dq { b'"' } else { b'\'' };
     let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(qc)]);
     for &b in str_data {
-        if b == qc { let _ = mpprint::printf(print, "\\%c", [mpprint::VaArg::Char(qc)]); }
-        else if b == b'\\' { mpprint::print_str(print, "\\\\"); }
-        else if b >= 0x20 && b != 0x7f && (!is_bytes || b < 0x80) { let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(b)]); }
-        else if b == b'\n' { mpprint::print_str(print, "\\n"); }
-        else if b == b'\r' { mpprint::print_str(print, "\\r"); }
-        else if b == b'\t' { mpprint::print_str(print, "\\t"); }
-        else { let _ = mpprint::printf(print, "\\x%02x", [mpprint::VaArg::UInt(b as u32)]); }
+        if b == qc {
+            let _ = mpprint::printf(print, "\\%c", [mpprint::VaArg::Char(qc)]);
+        } else if b == b'\\' {
+            mpprint::print_str(print, "\\\\");
+        } else if b >= 0x20 && b != 0x7f && (!is_bytes || b < 0x80) {
+            let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(b)]);
+        } else if b == b'\n' {
+            mpprint::print_str(print, "\\n");
+        } else if b == b'\r' {
+            mpprint::print_str(print, "\\r");
+        } else if b == b'\t' {
+            mpprint::print_str(print, "\\t");
+        } else {
+            let _ = mpprint::printf(print, "\\x%02x", [mpprint::VaArg::UInt(b as u32)]);
+        }
     }
     let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(qc)]);
 }
@@ -265,12 +433,19 @@ pub fn str_print_quoted(print: &Print, str_data: &[u8], is_bytes: bool) {
 pub fn str_print_json(print: &Print, str_data: &[u8]) {
     mpprint::print_str(print, "\"");
     for &b in str_data {
-        if b == b'"' || b == b'\\' { let _ = mpprint::printf(print, "\\%c", [mpprint::VaArg::Char(b)]); }
-        else if b >= 32 { let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(b)]); }
-        else if b == b'\n' { mpprint::print_str(print, "\\n"); }
-        else if b == b'\r' { mpprint::print_str(print, "\\r"); }
-        else if b == b'\t' { mpprint::print_str(print, "\\t"); }
-        else { let _ = mpprint::printf(print, "\\u%04x", [mpprint::VaArg::UInt(b as u32)]); }
+        if b == b'"' || b == b'\\' {
+            let _ = mpprint::printf(print, "\\%c", [mpprint::VaArg::Char(b)]);
+        } else if b >= 32 {
+            let _ = mpprint::printf(print, "%c", [mpprint::VaArg::Char(b)]);
+        } else if b == b'\n' {
+            mpprint::print_str(print, "\\n");
+        } else if b == b'\r' {
+            mpprint::print_str(print, "\\r");
+        } else if b == b'\t' {
+            mpprint::print_str(print, "\\t");
+        } else {
+            let _ = mpprint::printf(print, "\\u%04x", [mpprint::VaArg::UInt(b as u32)]);
+        }
     }
     mpprint::print_str(print, "\"");
 }
@@ -281,11 +456,23 @@ fn str_print(print: &Print, self_in: Obj, kind: PrintKind) {
         str_print_json(print, &data[..len]);
         return;
     }
-    let is_bytes = if mpconfig::PY_BUILTINS_STR_UNICODE { true } else { obj::is_exact_type(self_in, type_bytes()) };
-    if kind == PrintKind::Raw || (!mpconfig::PY_BUILTINS_STR_UNICODE && kind == PrintKind::Str && !is_bytes) {
-        if let Some(f) = print.print_strn { f(print.data, data.as_ptr(), len); }
+    let is_bytes = if mpconfig::PY_BUILTINS_STR_UNICODE {
+        true
     } else {
-        if is_bytes { if let Some(f) = print.print_strn { f(print.data, b"b".as_ptr(), 1); } }
+        obj::is_exact_type(self_in, type_bytes())
+    };
+    if kind == PrintKind::Raw
+        || (!mpconfig::PY_BUILTINS_STR_UNICODE && kind == PrintKind::Str && !is_bytes)
+    {
+        if let Some(f) = print.print_strn {
+            f(print.data, data.as_ptr(), len);
+        }
+    } else {
+        if is_bytes {
+            if let Some(f) = print.print_strn {
+                f(print.data, b"b".as_ptr(), 1);
+            }
+        }
         str_print_quoted(print, &data[..len], is_bytes);
     }
 }
@@ -306,14 +493,23 @@ pub fn new_str_type_from_vstr(type_: &ObjType, vstr: &mut Vstr) -> Obj {
     } else {
         malloc::renew(vstr.buf, vstr.alloc, vstr.len + 1).expect("renew str")
     };
-    unsafe { *data.add(vstr.len) = 0; }
+    unsafe {
+        *data.add(vstr.len) = 0;
+    }
+    let len = vstr.len;
     vstr.buf = core::ptr::null_mut();
     vstr.alloc = 0;
+    if mpconfig::PY_BUILTINS_BYTEARRAY && core::ptr::eq(type_, crate::objarray::type_bytearray()) {
+        // C: `mp_obj_new_bytearray_by_ref` — take ownership of the vstr buffer.
+        let o = crate::objarray::new_bytearray_by_ref(len, data);
+        vstr::clear(vstr);
+        return o;
+    }
     let o = malloc::new_obj::<ObjStr>().expect("str obj");
     unsafe {
         (*o).base.type_ = type_ as *const ObjType;
-        (*o).len = vstr.len;
-        (*o).hash = qstr::compute_hash(std::slice::from_raw_parts(data, vstr.len));
+        (*o).len = len;
+        (*o).hash = qstr::compute_hash(std::slice::from_raw_parts(data, len));
         (*o).data = data;
         vstr::clear(vstr);
         obj::from_ptr(o as *const ObjStr as *const ())
@@ -343,10 +539,15 @@ pub fn new_str_of_type(type_: &ObjType, data: &[u8]) -> Obj {
     if mpconfig::PY_BUILTINS_STR_UNICODE && core::ptr::eq(type_, type_str()) {
         return new_str(data);
     }
+    if mpconfig::PY_BUILTINS_BYTEARRAY && core::ptr::eq(type_, crate::objarray::type_bytearray()) {
+        return crate::objarray::new_bytearray(data.len(), data);
+    }
     new_bytes(data)
 }
 
-pub fn new_str_via_qstr(data: &[u8]) -> Obj { obj::new_qstr(qstr::from_strn(data)) }
+pub fn new_str_via_qstr(data: &[u8]) -> Obj {
+    obj::new_qstr(qstr::from_strn(data))
+}
 
 pub fn new_str(data: &[u8]) -> Obj {
     if mpconfig::PY_BUILTINS_STR_UNICODE && mpconfig::PY_BUILTINS_STR_UNICODE_CHECK {
@@ -371,9 +572,13 @@ pub fn new_str_from_vstr(vstr: &mut Vstr) -> Obj {
     new_str_type_from_vstr(type_str(), vstr)
 }
 
-pub fn new_bytes_from_vstr(vstr: &mut Vstr) -> Obj { new_str_type_from_vstr(type_bytes(), vstr) }
+pub fn new_bytes_from_vstr(vstr: &mut Vstr) -> Obj {
+    new_str_type_from_vstr(type_bytes(), vstr)
+}
 
-pub fn new_bytes(data: &[u8]) -> Obj { new_str_copy(type_bytes(), Some(data), data.len()) }
+pub fn new_bytes(data: &[u8]) -> Obj {
+    new_str_copy(type_bytes(), Some(data), data.len())
+}
 
 /// Create a str object referencing ROM storage (persistent / VFS_ROM load).
 pub fn new_str_from_rom(data: *const u8, len: usize) -> Obj {
@@ -414,10 +619,14 @@ pub fn str_set_data(str: &mut ObjStr, data: *const u8, len: usize) {
 // --- equality / accessors -----------------------------------------------------
 
 pub fn str_equal(a: Obj, b: Obj) -> bool {
-    if obj::is_qstr(a) && obj::is_qstr(b) { return a == b; }
+    if obj::is_qstr(a) && obj::is_qstr(b) {
+        return a == b;
+    }
     let h1 = get_str_hash(a);
     let h2 = get_str_hash(b);
-    if h1 != 0 && h2 != 0 && h1 != h2 { return false; }
+    if h1 != 0 && h2 != 0 && h1 != h2 {
+        return false;
+    }
     let (d1, l1) = get_str_data_len(a);
     let (d2, l2) = get_str_data_len(b);
     l1 == l2 && d1[..l1] == d2[..l2]
@@ -426,18 +635,27 @@ pub fn str_equal(a: Obj, b: Obj) -> bool {
 pub fn str_len(o: Obj) -> usize {
     if obj::is_qstr(o) || obj::is_exact_type(o, type_str()) {
         let (data, len) = get_str_data_len(o);
-        if mpconfig::PY_BUILTINS_STR_UNICODE { utf8_charlen(&data[..len], len) } else { len }
+        if mpconfig::PY_BUILTINS_STR_UNICODE {
+            utf8_charlen(&data[..len], len)
+        } else {
+            len
+        }
     } else if obj::is_exact_type(o, type_bytes()) {
         get_str_data_len(o).1
-    } else { 0 }
+    } else {
+        0
+    }
 }
 
 pub fn str_get_qstr(o: Obj) -> Qstr {
-    if obj::is_qstr(o) { obj::qstr_value(o) }
-    else if obj::is_exact_type(o, type_str()) {
+    if obj::is_qstr(o) {
+        obj::qstr_value(o)
+    } else if obj::is_exact_type(o, type_str()) {
         let (data, len) = get_str_data_len(o);
         qstr::from_strn(&data[..len])
-    } else { bad_implicit_conversion(o); }
+    } else {
+        bad_implicit_conversion(o);
+    }
 }
 
 pub fn str_get_str(o: Obj) -> String {
@@ -459,12 +677,24 @@ pub fn type_str() -> &'static ObjType {
 }
 
 static mut TYPE_STR_NOUNICODE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_NOT_REFLEXIVE,
-    name: 0, slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 0,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0, slot_index_subscr: 0,
-    slot_index_iter: 0, slot_index_buffer: 0, slot_index_protocol: 0, slot_index_parent: 0,
-    slot_index_locals_dict: 0, slots: core::ptr::null(),
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 0,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: core::ptr::null(),
 };
 
 fn init_str_nounicode() {}
@@ -480,7 +710,9 @@ static mut BYTES_SLOTS: [*const (); 7] = [
 ];
 
 static mut TYPE_BYTES: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_NOT_REFLEXIVE,
     name: 0,
     slot_index_make_new: 1,
@@ -501,10 +733,17 @@ static mut TYPE_BYTES: ObjType = ObjType {
 static BYTES_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 static EMPTY_BYTES: std::sync::OnceLock<Obj> = std::sync::OnceLock::new();
 static STR_LOCALS: std::sync::OnceLock<Obj> = std::sync::OnceLock::new();
+static FROMHEX_CLASSMETHOD: std::sync::OnceLock<Obj> = std::sync::OnceLock::new();
 
 pub fn str_locals_dict_obj() -> Obj {
     init_bytes_type();
     *STR_LOCALS.get().expect("str locals")
+}
+
+/// Shared `fromhex` classmethod (`bytes` / `bytearray`), matching C `bytes_fromhex_classmethod_obj`.
+pub fn bytes_fromhex_classmethod_obj() -> Obj {
+    init_bytes_type();
+    *FROMHEX_CLASSMETHOD.get().expect("fromhex")
 }
 
 pub fn type_bytes() -> &'static ObjType {
@@ -517,76 +756,118 @@ fn const_empty_bytes() -> Obj {
     *EMPTY_BYTES.get().expect("empty bytes")
 }
 
+/// Methods shared by `str` / `bytes` / `bytearray` (C table after hex/decode entries).
+pub fn str_bytes_shared_methods() -> Vec<MapElem> {
+    let mut table: Vec<MapElem> = vec![
+        me("find", new_fun_builtin_var(2, 4, str_find)),
+        me("rfind", new_fun_builtin_var(2, 4, str_rfind)),
+        me("index", new_fun_builtin_var(2, 4, str_index)),
+        me("rindex", new_fun_builtin_var(2, 4, str_rindex)),
+        me("join", new_fun_builtin_2(str_join)),
+        me("split", new_fun_builtin_var(1, 3, str_split_method)),
+        me("rsplit", new_fun_builtin_var(1, 3, str_rsplit)),
+        me("startswith", new_fun_builtin_var(2, 4, str_startswith)),
+        me("endswith", new_fun_builtin_var(2, 4, str_endswith)),
+        me("strip", new_fun_builtin_var(1, 2, str_strip)),
+        me("lstrip", new_fun_builtin_var(1, 2, str_lstrip)),
+        me("rstrip", new_fun_builtin_var(1, 2, str_rstrip)),
+        me("format", new_fun_builtin_kw(1, str_format_kw)),
+        me("replace", new_fun_builtin_var(3, 4, str_replace)),
+        me("lower", new_fun_builtin_1(str_lower)),
+        me("upper", new_fun_builtin_1(str_upper)),
+        me("isspace", new_fun_builtin_1(str_isspace)),
+        me("isalpha", new_fun_builtin_1(str_isalpha)),
+        me("isdigit", new_fun_builtin_1(str_isdigit)),
+        me("isupper", new_fun_builtin_1(str_isupper)),
+        me("islower", new_fun_builtin_1(str_islower)),
+    ];
+    if mpconfig::PY_BUILTINS_STR_SPLITLINES {
+        table.push(me("splitlines", new_fun_builtin_var(1, 2, str_splitlines)));
+    }
+    if mpconfig::PY_BUILTINS_STR_COUNT {
+        table.push(me("count", new_fun_builtin_var(2, 4, str_count)));
+    }
+    if mpconfig::PY_BUILTINS_STR_PARTITION {
+        table.push(me("partition", new_fun_builtin_2(str_partition)));
+        table.push(me("rpartition", new_fun_builtin_2(str_rpartition)));
+    }
+    if mpconfig::PY_BUILTINS_STR_CENTER {
+        table.push(me("center", new_fun_builtin_2(str_center)));
+    }
+    table
+}
+
+fn pin_locals_dict(ptr: *mut ObjDict) {
+    crate::gc::add_root(ptr as *mut u8);
+    unsafe {
+        for elem in &(*ptr).map.table {
+            if elem.key != obj::OBJ_NULL
+                && elem.key != obj::OBJ_SENTINEL
+                && obj::is_obj(elem.value)
+            {
+                crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+            }
+        }
+    }
+}
+
+fn make_locals_dict(table: Vec<MapElem>) -> (*mut ObjDict, *const ()) {
+    let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+    unsafe {
+        map::init_fixed_table(&mut (*ptr).map, table);
+    }
+    pin_locals_dict(ptr);
+    (
+        ptr,
+        obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const (),
+    )
+}
+
 fn init_bytes_type() {
     BYTES_INIT.get_or_init(|| {
         unsafe {
             (*(core::ptr::addr_of_mut!(TYPE_BYTES) as *mut ObjType)).name = qstr::from_str("bytes");
         }
-        let mut table: Vec<MapElem> = vec![
-            me("find", new_fun_builtin_var(2, 4, str_find)),
-            me("rfind", new_fun_builtin_var(2, 4, str_rfind)),
-            me("index", new_fun_builtin_var(2, 4, str_index)),
-            me("rindex", new_fun_builtin_var(2, 4, str_rindex)),
-            me("join", new_fun_builtin_2(str_join)),
-            me("split", new_fun_builtin_var(1, 3, str_split_method)),
-            me("rsplit", new_fun_builtin_var(1, 3, str_rsplit)),
-            me("startswith", new_fun_builtin_var(2, 4, str_startswith)),
-            me("endswith", new_fun_builtin_var(2, 4, str_endswith)),
-            me("strip", new_fun_builtin_var(1, 2, str_strip)),
-            me("lstrip", new_fun_builtin_var(1, 2, str_lstrip)),
-            me("rstrip", new_fun_builtin_var(1, 2, str_rstrip)),
-            me("format", new_fun_builtin_kw(1, str_format_kw)),
-            me("replace", new_fun_builtin_var(3, 4, str_replace)),
-            me("lower", new_fun_builtin_1(str_lower)),
-            me("upper", new_fun_builtin_1(str_upper)),
-            me("isspace", new_fun_builtin_1(str_isspace)),
-            me("isalpha", new_fun_builtin_1(str_isalpha)),
-            me("isdigit", new_fun_builtin_1(str_isdigit)),
-            me("isupper", new_fun_builtin_1(str_isupper)),
-            me("islower", new_fun_builtin_1(str_islower)),
-        ];
-        if mpconfig::PY_BUILTINS_STR_SPLITLINES {
-            table.push(me("splitlines", new_fun_builtin_var(1, 1, str_splitlines)));
+        // C: str locals skip append/extend/hex/fromhex/decode; bytes skip append/extend/encode.
+        let shared = str_bytes_shared_methods();
+        let mut str_table = shared.clone();
+        if mpconfig::CPYTHON_COMPAT {
+            str_table.push(me("encode", new_fun_builtin_var(1, 3, str_encode)));
         }
-        if mpconfig::PY_BUILTINS_STR_COUNT {
-            table.push(me("count", new_fun_builtin_var(2, 4, str_count)));
-        }
-        if mpconfig::PY_BUILTINS_STR_PARTITION {
-            table.push(me("partition", new_fun_builtin_2(str_partition)));
-            table.push(me("rpartition", new_fun_builtin_2(str_rpartition)));
-        }
-        if mpconfig::PY_BUILTINS_STR_CENTER {
-            table.push(me("center", new_fun_builtin_2(str_center)));
-        }
+        let mut bytes_table: Vec<MapElem> = Vec::new();
         if mpconfig::PY_BUILTINS_BYTES_HEX {
-            table.push(me("hex", new_fun_builtin_var(1, 2, bytes_hex_method)));
-            table.push(me("fromhex", new_fun_builtin_var(1, 1, bytes_fromhex_method)));
+            let cm = crate::objtype::new_classmethod(new_fun_builtin_2(bytes_fromhex));
+            let _ = FROMHEX_CLASSMETHOD.set(cm);
+            bytes_table.push(me("hex", new_fun_builtin_var(1, 2, bytes_hex_method)));
+            bytes_table.push(me("fromhex", cm));
         }
         if mpconfig::CPYTHON_COMPAT {
-            table.push(me("decode", new_fun_builtin_var(1, 3, bytes_decode)));
-            table.push(me("encode", new_fun_builtin_var(1, 3, str_encode)));
+            bytes_table.push(me("decode", new_fun_builtin_var(1, 3, bytes_decode)));
         }
-        let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        bytes_table.extend(shared);
+
+        let (_str_ptr, str_slot) = make_locals_dict(str_table);
+        let (_bytes_ptr, bytes_slot) = make_locals_dict(bytes_table);
         unsafe {
-            map::init_fixed_table(&mut (*ptr).map, table);
-            BYTES_SLOTS[6] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
-            let _ = STR_LOCALS.set(obj::from_ptr(ptr as *const ObjDict as *const ()));
+            BYTES_SLOTS[6] = bytes_slot;
+            let _ = STR_LOCALS.set(Obj(str_slot as usize));
             let o = malloc::new_obj::<ObjStr>().expect("empty bytes");
-            unsafe {
-                (*o).base.type_ = &TYPE_BYTES as *const ObjType;
-                (*o).len = 0;
-                (*o).hash = qstr::compute_hash(b"");
-                let p = malloc::new::<u8>(1).expect("empty bytes data");
-                *p = 0;
-                (*o).data = p;
-                let _ = EMPTY_BYTES.set(obj::from_ptr(o as *const ObjStr as *const ()));
-            }
+            (*o).base.type_ = &TYPE_BYTES as *const ObjType;
+            (*o).len = 0;
+            (*o).hash = qstr::compute_hash(b"");
+            let p = malloc::new::<u8>(1).expect("empty bytes data");
+            *p = 0;
+            (*o).data = p;
+            let _ = EMPTY_BYTES.set(obj::from_ptr(o as *const ObjStr as *const ()));
         }
     });
 }
 
 fn me(name: &str, value: Obj) -> MapElem {
-    MapElem { key: obj::new_qstr(qstr::from_str(name)), value }
+    MapElem {
+        key: obj::new_qstr(qstr::from_str(name)),
+        value,
+    }
 }
 
 pub fn str_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
@@ -594,8 +875,16 @@ pub fn str_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj])
     match n_args {
         0 => obj::new_qstr(qstr::QSTR_EMPTY),
         1 => {
-            let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
-            let mut print = Print { data: core::ptr::null_mut(), print_strn: None };
+            let mut v = Vstr {
+                alloc: 0,
+                len: 0,
+                buf: core::ptr::null_mut(),
+                fixed_buf: false,
+            };
+            let mut print = Print {
+                data: core::ptr::null_mut(),
+                print_strn: None,
+            };
             vstr::init_print(&mut v, 16, &mut print);
             obj::print_helper(&print, args[0], PrintKind::Str);
             new_str_type_from_vstr(type_in, &mut v)
@@ -606,7 +895,7 @@ pub fn str_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj])
             } else {
                 let mut buf = BufferInfo::default();
                 obj::get_buffer_raise(args[0], &mut buf, obj::BUFFER_READ);
-                (unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) }.to_vec(), buf.len)
+                (buf.as_bytes().to_vec(), buf.len)
             };
             if mpconfig::PY_BUILTINS_STR_UNICODE_CHECK {
                 let enc = parse_encoding(str_get_qstr(args[1]));
@@ -626,7 +915,11 @@ pub fn str_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj])
                 hash = qstr::compute_hash(&str_data[..str_len]);
             }
             return with_str_bytes(args[0], |data, len| {
-                let o = new_str_copy(type_in, Some(unsafe { std::slice::from_raw_parts(data, len) }), len);
+                let o = new_str_copy(
+                    type_in,
+                    Some(unsafe { std::slice::from_raw_parts(data, len) }),
+                    len,
+                );
                 unsafe {
                     let s = &mut *(obj::as_ptr(o) as *mut ObjStr);
                     s.data = data;
@@ -640,17 +933,25 @@ pub fn str_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj])
 
 fn parse_encoding(q: Qstr) -> Encoding {
     let s = qstr::str_from_qstr(q).unwrap_or_default();
-    if s == "utf-8" || s == "utf8" { Encoding::Utf8 }
-    else if s == "ascii" { Encoding::Ascii }
-    else { raise::raise(MpRaise::RuntimeError("LookupError")); }
+    if s == "utf-8" || s == "utf8" {
+        Encoding::Utf8
+    } else if s == "ascii" {
+        Encoding::Ascii
+    } else {
+        raise::raise(MpRaise::RuntimeError("LookupError"));
+    }
 }
 
 pub fn bytes_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     if mpconfig::CPYTHON_COMPAT && n_kw != 0 {
         raise::raise(MpRaise::TypeError("keyword args"));
     }
-    if n_args == 0 { return const_empty_bytes(); }
-    if obj::is_exact_type(args[0], type_bytes()) { return args[0]; }
+    if n_args == 0 {
+        return const_empty_bytes();
+    }
+    if obj::is_exact_type(args[0], type_bytes()) {
+        return args[0];
+    }
     if obj::is_str(args[0]) {
         if n_args < 2 || n_args > 3 {
             raise::raise(MpRaise::TypeError("string argument without an encoding"));
@@ -661,7 +962,11 @@ pub fn bytes_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
             hash = qstr::compute_hash(&data[..len]);
         }
         return with_str_bytes(args[0], |ptr, blen| {
-            let o = new_str_copy(type_bytes(), Some(unsafe { std::slice::from_raw_parts(ptr, blen) }), blen);
+            let o = new_str_copy(
+                type_bytes(),
+                Some(unsafe { std::slice::from_raw_parts(ptr, blen) }),
+                blen,
+            );
             unsafe {
                 let s = &mut *(obj::as_ptr(o) as *mut ObjStr);
                 s.data = ptr;
@@ -670,22 +975,38 @@ pub fn bytes_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
             o
         });
     }
-    if n_args > 1 { raise::raise(MpRaise::TypeError("wrong number of arguments")); }
+    if n_args > 1 {
+        raise::raise(MpRaise::TypeError("wrong number of arguments"));
+    }
     if obj::is_small_int(args[0]) {
         let len = obj::small_int_value(args[0]);
-        if len < 0 { raise::raise(MpRaise::ValueError("negative length")); }
-        let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+        if len < 0 {
+            raise::raise(MpRaise::ValueError("negative length"));
+        }
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
         vstr::init_len(&mut v, len as usize);
         if !mpconfig::GC_CONSERVATIVE_CLEAR {
-            unsafe { std::ptr::write_bytes(v.buf, 0, len as usize); }
+            unsafe {
+                std::ptr::write_bytes(v.buf, 0, len as usize);
+            }
         }
         return new_bytes_from_vstr(&mut v);
     }
     let mut buf = BufferInfo::default();
     if obj::get_buffer(args[0], &mut buf, obj::BUFFER_READ) {
-        return new_bytes(unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) });
+        return new_bytes(buf.as_bytes());
     }
-    let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+    let mut v = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
     if let Some(l) = obj::len_maybe(args[0]) {
         vstr::init(&mut v, obj::small_int_value(l) as usize);
     } else {
@@ -694,7 +1015,9 @@ pub fn bytes_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
     let iter = runtime::getiter(args[0], None);
     loop {
         let item = runtime::iternext(iter);
-        if item == obj::OBJ_STOP_ITERATION { break; }
+        if item == obj::OBJ_STOP_ITERATION {
+            break;
+        }
         let val = obj::get_int(item);
         if mpconfig::FULL_CHECKS && (val < 0 || val > 255) {
             raise::raise(MpRaise::ValueError("bytes value out of range"));
@@ -706,35 +1029,62 @@ pub fn bytes_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
 
 pub fn str_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
     if op == BinaryOp::Modulo {
-        if !mpconfig::PY_BUILTINS_STR_OP_MODULO { return obj::OBJ_NULL; }
+        if !mpconfig::PY_BUILTINS_STR_OP_MODULO {
+            return obj::OBJ_NULL;
+        }
         return str_modulo_format(lhs, rhs);
     }
     let lhs_type = obj::get_type(lhs);
     let (lhs_data, lhs_len) = get_str_data_len(lhs);
     if op == BinaryOp::Multiply {
         let mut n: obj::Int = 0;
-        if !obj::get_int_maybe(rhs, &mut n) { return obj::OBJ_NULL; }
-        if n <= 0 { return make_empty_str_of_type(lhs_type); }
-        let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+        if !obj::get_int_maybe(rhs, &mut n) {
+            return obj::OBJ_NULL;
+        }
+        if n <= 0 {
+            return make_empty_str_of_type(lhs_type);
+        }
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
         vstr::init_len(&mut v, lhs_len * n as usize);
-        sequence::multiply(&lhs_data[..lhs_len], 1, lhs_len, n as usize, unsafe { std::slice::from_raw_parts_mut(v.buf, lhs_len * n as usize) });
+        sequence::multiply(&lhs_data[..lhs_len], 1, lhs_len, n as usize, unsafe {
+            std::slice::from_raw_parts_mut(v.buf, lhs_len * n as usize)
+        });
         return new_str_type_from_vstr(lhs_type, &mut v);
     }
-    let (rhs_data, rhs_len) = if obj::get_type(rhs) as *const ObjType == lhs_type as *const ObjType {
+    let (rhs_data, rhs_len) = if obj::get_type(rhs) as *const ObjType == lhs_type as *const ObjType
+    {
         get_str_data_len(rhs)
     } else if core::ptr::eq(lhs_type, type_bytes()) {
         let mut buf = BufferInfo::default();
-        if !obj::get_buffer(rhs, &mut buf, obj::BUFFER_READ) { return obj::OBJ_NULL; }
-        (unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) }.to_vec(), buf.len)
+        if !obj::get_buffer(rhs, &mut buf, obj::BUFFER_READ) {
+            return obj::OBJ_NULL;
+        }
+        (buf.as_bytes().to_vec(), buf.len)
     } else {
-        if op == BinaryOp::Contains { bad_implicit_conversion(rhs); }
+        if op == BinaryOp::Contains {
+            bad_implicit_conversion(rhs);
+        }
         return obj::OBJ_NULL;
     };
     match op {
         BinaryOp::Add | BinaryOp::InplaceAdd => {
-            if lhs_len == 0 && obj::get_type(rhs) as *const ObjType == lhs_type as *const ObjType { return rhs; }
-            if rhs_len == 0 { return lhs; }
-            let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+            if lhs_len == 0 && obj::get_type(rhs) as *const ObjType == lhs_type as *const ObjType {
+                return rhs;
+            }
+            if rhs_len == 0 {
+                return lhs;
+            }
+            let mut v = Vstr {
+                alloc: 0,
+                len: 0,
+                buf: core::ptr::null_mut(),
+                fixed_buf: false,
+            };
             vstr::init_len(&mut v, lhs_len + rhs_len);
             unsafe {
                 std::ptr::copy_nonoverlapping(lhs_data.as_ptr(), v.buf, lhs_len);
@@ -742,9 +1092,18 @@ pub fn str_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
             }
             new_str_type_from_vstr(lhs_type, &mut v)
         }
-        BinaryOp::Contains => obj::new_bool(find_subbytes(&lhs_data[..lhs_len], &rhs_data[..rhs_len], 1).is_some()),
-        BinaryOp::Equal | BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::More | BinaryOp::MoreEqual =>
-            obj::new_bool(sequence::cmp_bytes(op, &lhs_data[..lhs_len], &rhs_data[..rhs_len])),
+        BinaryOp::Contains => {
+            obj::new_bool(find_subbytes(&lhs_data[..lhs_len], &rhs_data[..rhs_len], 1).is_some())
+        }
+        BinaryOp::Equal
+        | BinaryOp::Less
+        | BinaryOp::LessEqual
+        | BinaryOp::More
+        | BinaryOp::MoreEqual => obj::new_bool(sequence::cmp_bytes(
+            op,
+            &lhs_data[..lhs_len],
+            &rhs_data[..rhs_len],
+        )),
         _ => obj::OBJ_NULL,
     }
 }
@@ -754,7 +1113,11 @@ pub fn bytes_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     let (data, len) = get_str_data_len(self_in);
     if value == OBJ_SENTINEL {
         if mpconfig::PY_BUILTINS_SLICE && obj::is_exact_type(index, crate::objslice::type_slice()) {
-            let mut bounds = objslice::BoundSlice { start: 0, stop: 0, step: 1 };
+            let mut bounds = objslice::BoundSlice {
+                start: 0,
+                stop: 0,
+                step: 1,
+            };
             if !sequence::get_fast_slice_indexes(len, index, &mut bounds) {
                 raise::raise(MpRaise::RuntimeError("only slices with step=1 supported"));
             }
@@ -766,7 +1129,9 @@ pub fn bytes_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
         } else {
             new_str_via_qstr(&data[idx..idx + 1])
         }
-    } else { obj::OBJ_NULL }
+    } else {
+        obj::OBJ_NULL
+    }
 }
 
 pub fn get_buffer(self_in: Obj, bufinfo: &mut BufferInfo, flags: u32) -> obj::Int {
@@ -777,11 +1142,18 @@ pub fn get_buffer(self_in: Obj, bufinfo: &mut BufferInfo, flags: u32) -> obj::In
             bufinfo.typecode = b'B' as i32;
         });
         0
-    } else { 1 }
+    } else {
+        1
+    }
 }
 
 #[repr(C)]
-struct ObjStr8Iter { base: ObjBase, iternext: crate::obj::IterNextFn, str: Obj, cur: usize }
+struct ObjStr8Iter {
+    base: ObjBase,
+    iternext: crate::obj::IterNextFn,
+    str: Obj,
+    cur: usize,
+}
 
 fn bytes_it_iternext(self_in: Obj) -> Obj {
     let self_ = unsafe { &mut *(obj::as_ptr(self_in) as *mut ObjStr8Iter) };
@@ -790,7 +1162,9 @@ fn bytes_it_iternext(self_in: Obj) -> Obj {
         let v = data[self_.cur];
         self_.cur += 1;
         obj::new_small_int(v as obj::Int)
-    } else { obj::OBJ_STOP_ITERATION }
+    } else {
+        obj::OBJ_STOP_ITERATION
+    }
 }
 
 fn new_bytes_iterator(str: Obj, iter_buf: *mut ObjIterBuf) -> Obj {
@@ -807,33 +1181,60 @@ fn new_bytes_iterator(str: Obj, iter_buf: *mut ObjIterBuf) -> Obj {
 fn str_join(self_in: Obj, arg: Obj) -> Obj {
     check_is_str_or_bytes(self_in);
     let self_type = obj::get_type(self_in);
+    let ret_type = self_type;
     let (sep, sep_len) = get_str_data_len(self_in);
     let mut arg = arg;
-    if !obj::is_exact_type(arg, objlist::type_list()) && !obj::is_exact_type(arg, objtuple::type_tuple()) {
+    if !obj::is_exact_type(arg, objlist::type_list())
+        && !obj::is_exact_type(arg, objtuple::type_tuple())
+    {
         arg = objlist::list_make_new(objlist::type_list(), 1, 0, &[arg]);
     }
     let (seq_len, seq_items) = obj::get_array(arg);
     let mut required = 0usize;
+    // C: treat bytearray as bytes for element-type checks.
+    let mut expect = self_type as *const ObjType;
+    if mpconfig::PY_BUILTINS_BYTEARRAY && expect == crate::objarray::type_bytearray() as *const ObjType
+    {
+        expect = type_bytes() as *const ObjType;
+    }
     for (i, &item) in seq_items.iter().enumerate() {
-        if obj::get_type(item) as *const ObjType != self_type as *const ObjType {
+        let mut item_t = obj::get_type(item) as *const ObjType;
+        if mpconfig::PY_BUILTINS_BYTEARRAY
+            && item_t == crate::objarray::type_bytearray() as *const ObjType
+        {
+            item_t = type_bytes() as *const ObjType;
+        }
+        if item_t != expect {
             raise::raise(MpRaise::TypeError("join expects consistent types"));
         }
-        if i > 0 { required += sep_len; }
+        if i > 0 {
+            required += sep_len;
+        }
         required += get_str_data_len(item).1;
     }
-    let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+    let _ = seq_len;
+    let mut v = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
     vstr::init_len(&mut v, required);
     let mut off = 0usize;
     for (i, &item) in seq_items.iter().enumerate() {
         if i > 0 {
-            unsafe { std::ptr::copy_nonoverlapping(sep.as_ptr(), v.buf.add(off), sep_len); }
+            unsafe {
+                std::ptr::copy_nonoverlapping(sep.as_ptr(), v.buf.add(off), sep_len);
+            }
             off += sep_len;
         }
         let (s, l) = get_str_data_len(item);
-        unsafe { std::ptr::copy_nonoverlapping(s.as_ptr(), v.buf.add(off), l); }
+        unsafe {
+            std::ptr::copy_nonoverlapping(s.as_ptr(), v.buf.add(off), l);
+        }
         off += l;
     }
-    new_str_type_from_vstr(self_type, &mut v)
+    new_str_type_from_vstr(ret_type, &mut v)
 }
 
 pub fn str_format(n_args: usize, args: &[Obj], mut kwargs: Option<&mut Map>) -> Obj {
@@ -866,7 +1267,23 @@ fn is_alignment(ch: u8) -> bool {
 }
 
 fn is_format_type(ch: u8) -> bool {
-    matches!(ch, b'b' | b'c' | b'd' | b'e' | b'E' | b'f' | b'F' | b'g' | b'G' | b'n' | b'o' | b's' | b'x' | b'X' | b'%')
+    matches!(
+        ch,
+        b'b' | b'c'
+            | b'd'
+            | b'e'
+            | b'E'
+            | b'f'
+            | b'F'
+            | b'g'
+            | b'G'
+            | b'n'
+            | b'o'
+            | b's'
+            | b'x'
+            | b'X'
+            | b'%'
+    )
 }
 
 fn arg_looks_integer(arg: Obj) -> bool {
@@ -875,6 +1292,21 @@ fn arg_looks_integer(arg: Obj) -> bool {
 
 fn arg_looks_numeric(arg: Obj) -> bool {
     arg_looks_integer(arg) || (mpconfig::PY_BUILTINS_FLOAT && objfloat::is_float(arg))
+}
+
+fn arg_as_int(arg: Obj) -> Obj {
+    if mpconfig::PY_BUILTINS_FLOAT && objfloat::is_float(arg) {
+        let f = objfloat::float_get(arg);
+        if !f.is_finite() {
+            raise::raise(MpRaise::OverflowError(
+                "can't convert float infinity/nan to int",
+            ));
+        }
+        // Enough for modulo formatting; large floats truncate like C's cast path.
+        crate::objint::new_int_from_ll(f as i64)
+    } else {
+        arg
+    }
 }
 
 fn print_format_char(print: &Print, arg: Obj, flags: u32, fill: u8, width: i32) {
@@ -889,8 +1321,16 @@ fn str_format_helper(
     args: &[Obj],
     kwargs: &mut Map,
 ) -> Vstr {
-    let mut vstr = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
-    let mut print = Print { data: core::ptr::null_mut(), print_strn: None };
+    let mut vstr = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
+    let mut print = Print {
+        data: core::ptr::null_mut(),
+        print_strn: None,
+    };
     vstr::init_print(&mut vstr, 16, &mut print);
 
     let mut pos = 0usize;
@@ -1023,9 +1463,21 @@ fn str_format_helper(
             conversion = b's';
         }
         if conversion != 0 {
-            let print_kind = if conversion == b's' { PrintKind::Str } else { PrintKind::Repr };
-            let mut arg_vstr = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
-            let mut arg_print = Print { data: core::ptr::null_mut(), print_strn: None };
+            let print_kind = if conversion == b's' {
+                PrintKind::Str
+            } else {
+                PrintKind::Repr
+            };
+            let mut arg_vstr = Vstr {
+                alloc: 0,
+                len: 0,
+                buf: core::ptr::null_mut(),
+                fixed_buf: false,
+            };
+            let mut arg_print = Print {
+                data: core::ptr::null_mut(),
+                print_strn: None,
+            };
             vstr::init_print(&mut arg_vstr, 16, &mut arg_print);
             obj::print_helper(&arg_print, arg, print_kind);
             arg = new_str_type_from_vstr(type_str(), &mut arg_vstr);
@@ -1101,7 +1553,8 @@ fn str_format_helper(
             fill = b' ';
         }
 
-        if flags & (PF_FLAG_SHOW_SIGN | PF_FLAG_SPACE_SIGN) != 0 && (ftype == b's' || ftype == b'c') {
+        if flags & (PF_FLAG_SHOW_SIGN | PF_FLAG_SPACE_SIGN) != 0 && (ftype == b's' || ftype == b'c')
+        {
             terse_str_format_value_error();
         }
 
@@ -1134,7 +1587,16 @@ fn str_format_helper(
                     continue;
                 }
                 b'X' | b'x' => {
-                    mpprint::print_mp_int(&print, arg, 16, ftype - (b'X' - b'A'), flags, fill, width, 0);
+                    mpprint::print_mp_int(
+                        &print,
+                        arg,
+                        16,
+                        ftype - (b'X' - b'A'),
+                        flags,
+                        fill,
+                        width,
+                        0,
+                    );
                     continue;
                 }
                 b'e' | b'E' | b'f' | b'F' | b'g' | b'G' | b'%' => {}
@@ -1155,7 +1617,7 @@ fn str_format_helper(
                     b'e' | b'E' | b'f' | b'F' | b'g' | b'G' => {
                         mpprint::print_float(
                             &print,
-                            objfloat::float_get(arg),
+                            objfloat::get_float(arg),
                             ftype,
                             flags,
                             fill,
@@ -1167,7 +1629,7 @@ fn str_format_helper(
                         flags |= PF_FLAG_ADD_PERCENT;
                         mpprint::print_float(
                             &print,
-                            objfloat::float_get(arg) * 100.0,
+                            objfloat::get_float(arg) * 100.0,
                             b'f',
                             flags,
                             fill,
@@ -1207,44 +1669,74 @@ pub fn str_split(n_args: usize, args: &[Obj]) -> Obj {
     let self_type = obj::get_type(args[0]);
     let mut splits: i32 = -1;
     let mut sep = obj::CONST_NONE;
-    if n_args > 1 { sep = args[1]; if n_args > 2 { splits = obj::get_int(args[2]) as i32; } }
+    if n_args > 1 {
+        sep = args[1];
+        if n_args > 2 {
+            splits = obj::get_int(args[2]) as i32;
+        }
+    }
     let res = objlist::new_list(0, None);
     let (s, len) = get_str_data_len(args[0]);
     let data = s.clone();
     let top = len;
     let mut pos = 0usize;
     if sep == obj::CONST_NONE {
-        while pos < top && unichar_isspace(data[pos] as u32) { pos += 1; }
+        while pos < top && unichar_isspace(data[pos] as u32) {
+            pos += 1;
+        }
         while pos < top && splits != 0 {
             let start = pos;
-            while pos < top && !unichar_isspace(data[pos] as u32) { pos += 1; }
-            objlist::list_append(res, new_str_of_type(self_type, &data[start..pos]));
-            if pos >= top { break; }
-            while pos < top && unichar_isspace(data[pos] as u32) { pos += 1; }
-            if splits > 0 { splits -= 1; }
-        }
-        if pos < top { objlist::list_append(res, new_str_of_type(self_type, &data[pos..top])); }
-    } else {
-        str_check_arg_type(self_type, sep);
-        let (sep_data, sep_len) = get_str_data_len(sep);
-        if sep_len == 0 { raise::raise(MpRaise::ValueError("empty separator")); }
-        loop {
-            let start = pos;
-            loop {
-                if splits == 0 || pos + sep_len > top { pos = top; break; }
-                if data[pos..pos + sep_len] == sep_data[..sep_len] { break; }
+            while pos < top && !unichar_isspace(data[pos] as u32) {
                 pos += 1;
             }
             objlist::list_append(res, new_str_of_type(self_type, &data[start..pos]));
-            if pos >= top { break; }
+            if pos >= top {
+                break;
+            }
+            while pos < top && unichar_isspace(data[pos] as u32) {
+                pos += 1;
+            }
+            if splits > 0 {
+                splits -= 1;
+            }
+        }
+        if pos < top {
+            objlist::list_append(res, new_str_of_type(self_type, &data[pos..top]));
+        }
+    } else {
+        str_check_arg_type(self_type, sep);
+        let (sep_data, sep_len) = get_str_data_len(sep);
+        if sep_len == 0 {
+            raise::raise(MpRaise::ValueError("empty separator"));
+        }
+        loop {
+            let start = pos;
+            loop {
+                if splits == 0 || pos + sep_len > top {
+                    pos = top;
+                    break;
+                }
+                if data[pos..pos + sep_len] == sep_data[..sep_len] {
+                    break;
+                }
+                pos += 1;
+            }
+            objlist::list_append(res, new_str_of_type(self_type, &data[start..pos]));
+            if pos >= top {
+                break;
+            }
             pos += sep_len;
-            if splits > 0 { splits -= 1; }
+            if splits > 0 {
+                splits -= 1;
+            }
         }
     }
     res
 }
 
-fn str_split_method(n: usize, args: &[Obj]) -> Obj { str_split(n, args) }
+fn str_split_method(n: usize, args: &[Obj]) -> Obj {
+    str_split(n, args)
+}
 
 fn str_rsplit(n_args: usize, args: &[Obj]) -> Obj {
     if n_args < 3 {
@@ -1301,13 +1793,18 @@ fn str_rsplit(n_args: usize, args: &[Obj]) -> Obj {
     objlist::new_list(res_items.len(), Some(&res_items))
 }
 
-fn str_rsplit_method(n: usize, args: &[Obj]) -> Obj { str_rsplit(n, args) }
+fn str_rsplit_method(n: usize, args: &[Obj]) -> Obj {
+    str_rsplit(n, args)
+}
 
 fn str_finder(n_args: usize, args: &[Obj], direction: i32, is_index: bool) -> Obj {
     let self_type = obj::get_type(args[0]);
     check_is_str_or_bytes(args[0]);
     let (haystack, haystack_len) = get_str_data_len(args[0]);
-    let (needle, _needle_len) = if core::ptr::eq(self_type, type_bytes()) {
+    let (needle, _needle_len) = if core::ptr::eq(self_type, type_bytes())
+        || (mpconfig::PY_BUILTINS_BYTEARRAY
+            && core::ptr::eq(self_type, crate::objarray::type_bytearray()))
+    {
         let mut iv = 0isize;
         if obj::get_int_maybe(args[1], &mut iv) {
             (vec![iv as u8], 1)
@@ -1321,10 +1818,16 @@ fn str_finder(n_args: usize, args: &[Obj], direction: i32, is_index: bool) -> Ob
     };
     let mut start = 0usize;
     let mut end = haystack_len;
-    if n_args >= 3 && args[2] != obj::CONST_NONE { start = index_to_ptr(self_type, &haystack, haystack_len, args[2], true); }
-    if n_args >= 4 && args[3] != obj::CONST_NONE { end = index_to_ptr(self_type, &haystack, haystack_len, args[3], true); }
+    if n_args >= 3 && args[2] != obj::CONST_NONE {
+        start = index_to_ptr(self_type, &haystack, haystack_len, args[2], true);
+    }
+    if n_args >= 4 && args[3] != obj::CONST_NONE {
+        end = index_to_ptr(self_type, &haystack, haystack_len, args[3], true);
+    }
     if end < start {
-        if is_index { raise::raise(MpRaise::ValueError("substring not found")); }
+        if is_index {
+            raise::raise(MpRaise::ValueError("substring not found"));
+        }
         return obj::new_small_int(-1);
     }
     if let Some(p) = find_subbytes(&haystack[start..end], &needle, direction) {
@@ -1340,10 +1843,18 @@ fn str_finder(n_args: usize, args: &[Obj], direction: i32, is_index: bool) -> Ob
     }
 }
 
-fn str_find(n: usize, a: &[Obj]) -> Obj { str_finder(n, a, 1, false) }
-fn str_rfind(n: usize, a: &[Obj]) -> Obj { str_finder(n, a, -1, false) }
-fn str_index(n: usize, a: &[Obj]) -> Obj { str_finder(n, a, 1, true) }
-fn str_rindex(n: usize, a: &[Obj]) -> Obj { str_finder(n, a, -1, true) }
+pub(crate) fn str_find(n: usize, a: &[Obj]) -> Obj {
+    str_finder(n, a, 1, false)
+}
+pub(crate) fn str_rfind(n: usize, a: &[Obj]) -> Obj {
+    str_finder(n, a, -1, false)
+}
+pub(crate) fn str_index(n: usize, a: &[Obj]) -> Obj {
+    str_finder(n, a, 1, true)
+}
+pub(crate) fn str_rindex(n: usize, a: &[Obj]) -> Obj {
+    str_finder(n, a, -1, true)
+}
 
 fn str_startendswith(n_args: usize, args: &[Obj], ends: bool) -> Obj {
     let (str_data, str_len) = get_substring_data(args[0], n_args - 2, &args[2..n_args]);
@@ -1356,16 +1867,30 @@ fn str_startendswith(n_args: usize, args: &[Obj], ends: bool) -> Obj {
     }
     for i in 0..n {
         let (pref, plen) = get_str_data_len(prefixes[i]);
-        let s = if ends { str_len.saturating_sub(plen) } else { 0 };
-        if plen <= str_len && str_data[s..s + plen] == pref[..plen] { return obj::CONST_TRUE; }
+        let s = if ends {
+            str_len.saturating_sub(plen)
+        } else {
+            0
+        };
+        if plen <= str_len && str_data[s..s + plen] == pref[..plen] {
+            return obj::CONST_TRUE;
+        }
     }
     obj::CONST_FALSE
 }
 
-fn str_startswith(n: usize, a: &[Obj]) -> Obj { str_startendswith(n, a, false) }
-fn str_endswith(n: usize, a: &[Obj]) -> Obj { str_startendswith(n, a, true) }
+fn str_startswith(n: usize, a: &[Obj]) -> Obj {
+    str_startendswith(n, a, false)
+}
+fn str_endswith(n: usize, a: &[Obj]) -> Obj {
+    str_startendswith(n, a, true)
+}
 
-enum StripKind { L, R, Both }
+enum StripKind {
+    L,
+    R,
+    Both,
+}
 
 fn str_uni_strip(kind: StripKind, n_args: usize, args: &[Obj]) -> Obj {
     check_is_str_or_bytes(args[0]);
@@ -1389,24 +1914,48 @@ fn str_uni_strip(kind: StripKind, n_args: usize, args: &[Obj]) -> Obj {
     while len_left > 0 {
         let b = orig[i];
         if find_subbytes(&chars[..clen], &[b], 1).is_none() {
-            if first.is_none() { first = Some(i); last = if matches!(kind, StripKind::L) { orig_len - 1 } else { i }; }
-            else if matches!(kind, StripKind::Both) { last = i; }
-            if matches!(kind, StripKind::R) { break; }
+            if first.is_none() {
+                first = Some(i);
+                last = if matches!(kind, StripKind::L) {
+                    orig_len - 1
+                } else {
+                    i
+                };
+            } else if matches!(kind, StripKind::Both) {
+                last = i;
+            }
+            if matches!(kind, StripKind::R) {
+                break;
+            }
         }
-        if delta > 0 { i += 1; } else { i = i.wrapping_sub(1); }
+        if delta > 0 {
+            i += 1;
+        } else {
+            i = i.wrapping_sub(1);
+        }
         len_left -= 1;
     }
-    let Some(first) = first else { return make_empty_str_of_type(self_type); };
+    let Some(first) = first else {
+        return make_empty_str_of_type(self_type);
+    };
     let stripped_len = last - first + 1;
-    if stripped_len == orig_len { return args[0]; }
+    if stripped_len == orig_len {
+        return args[0];
+    }
     new_str_of_type(self_type, &orig[first..first + stripped_len])
 }
 
-fn str_strip(n: usize, a: &[Obj]) -> Obj { str_uni_strip(StripKind::Both, n, a) }
-fn str_lstrip(n: usize, a: &[Obj]) -> Obj { str_uni_strip(StripKind::L, n, a) }
-fn str_rstrip(n: usize, a: &[Obj]) -> Obj { str_uni_strip(StripKind::R, n, a) }
+fn str_strip(n: usize, a: &[Obj]) -> Obj {
+    str_uni_strip(StripKind::Both, n, a)
+}
+fn str_lstrip(n: usize, a: &[Obj]) -> Obj {
+    str_uni_strip(StripKind::L, n, a)
+}
+fn str_rstrip(n: usize, a: &[Obj]) -> Obj {
+    str_uni_strip(StripKind::R, n, a)
+}
 
-fn str_replace(n: usize, args: &[Obj]) -> Obj {
+pub(crate) fn str_replace(n: usize, args: &[Obj]) -> Obj {
     check_is_str_or_bytes(args[0]);
     let self_type = obj::get_type(args[0]);
     str_check_arg_type(self_type, args[1]);
@@ -1414,7 +1963,9 @@ fn str_replace(n: usize, args: &[Obj]) -> Obj {
     let (str_data, str_len) = get_str_data_len(args[0]);
     let (old, old_len) = get_str_data_len(args[1]);
     let (new, new_len) = get_str_data_len(args[2]);
-    if old_len > str_len { return args[0]; }
+    if old_len > str_len {
+        return args[0];
+    }
     let mut out = Vec::new();
     let mut pos = 0usize;
     while pos <= str_len.saturating_sub(old_len) {
@@ -1422,39 +1973,75 @@ fn str_replace(n: usize, args: &[Obj]) -> Obj {
             out.extend_from_slice(&str_data[pos..pos + p]);
             out.extend_from_slice(&new);
             pos += p + old_len;
-        } else { break; }
+        } else {
+            break;
+        }
     }
     out.extend_from_slice(&str_data[pos..str_len]);
-    if out.len() == str_len && out[..] == str_data[..str_len] { return args[0]; }
+    if out.len() == str_len && out[..] == str_data[..str_len] {
+        return args[0];
+    }
     new_str_of_type(self_type, &out)
 }
 
 fn str_caseconv(op: fn(u32) -> u32, self_in: Obj) -> Obj {
     let (data, len) = get_str_data_len(self_in);
     let mut out = data[..len].to_vec();
-    for b in &mut out { *b = op(*b as u32) as u8; }
-    new_str_type_from_vstr(obj::get_type(self_in), &mut { let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false }; vstr::init_len(&mut v, len); unsafe { std::ptr::copy_nonoverlapping(out.as_ptr(), v.buf, len); }; v })
+    for b in &mut out {
+        *b = op(*b as u32) as u8;
+    }
+    new_str_type_from_vstr(obj::get_type(self_in), &mut {
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        vstr::init_len(&mut v, len);
+        unsafe {
+            std::ptr::copy_nonoverlapping(out.as_ptr(), v.buf, len);
+        };
+        v
+    })
 }
 
-fn str_lower(self_in: Obj) -> Obj { str_caseconv(unichar_tolower, self_in) }
-fn str_upper(self_in: Obj) -> Obj { str_caseconv(unichar_toupper, self_in) }
+fn str_lower(self_in: Obj) -> Obj {
+    str_caseconv(unichar_tolower, self_in)
+}
+fn str_upper(self_in: Obj) -> Obj {
+    str_caseconv(unichar_toupper, self_in)
+}
 
 fn str_uni_istype(f: fn(u32) -> bool, self_in: Obj) -> Obj {
     let (data, len) = get_str_data_len(self_in);
-    if len == 0 { return obj::CONST_FALSE; }
+    if len == 0 {
+        return obj::CONST_FALSE;
+    }
     for &b in &data[..len] {
-        if !f(b as u32) { return obj::CONST_FALSE; }
+        if !f(b as u32) {
+            return obj::CONST_FALSE;
+        }
     }
     obj::CONST_TRUE
 }
 
-fn str_isspace(o: Obj) -> Obj { str_uni_istype(unichar_isspace, o) }
-fn str_isalpha(o: Obj) -> Obj { str_uni_istype(unichar_isalpha, o) }
-fn str_isdigit(o: Obj) -> Obj { str_uni_istype(unichar_isdigit, o) }
-fn str_isupper(o: Obj) -> Obj { str_uni_istype(unichar_isupper, o) }
-fn str_islower(o: Obj) -> Obj { str_uni_istype(unichar_islower, o) }
+fn str_isspace(o: Obj) -> Obj {
+    str_uni_istype(unichar_isspace, o)
+}
+fn str_isalpha(o: Obj) -> Obj {
+    str_uni_istype(unichar_isalpha, o)
+}
+fn str_isdigit(o: Obj) -> Obj {
+    str_uni_istype(unichar_isdigit, o)
+}
+fn str_isupper(o: Obj) -> Obj {
+    str_uni_istype(unichar_isupper, o)
+}
+fn str_islower(o: Obj) -> Obj {
+    str_uni_istype(unichar_islower, o)
+}
 
-fn str_count(n: usize, args: &[Obj]) -> Obj {
+pub(crate) fn str_count(n: usize, args: &[Obj]) -> Obj {
     check_is_str_or_bytes(args[0]);
     let self_type = obj::get_type(args[0]);
     str_check_arg_type(self_type, args[1]);
@@ -1462,14 +2049,38 @@ fn str_count(n: usize, args: &[Obj]) -> Obj {
     let (needle, needle_len) = get_str_data_len(args[1]);
     let mut start = 0usize;
     let mut end = haystack_len;
-    if n >= 3 && args[2] != obj::CONST_NONE { start = index_to_ptr(self_type, &haystack, haystack_len, args[2], true); }
-    if n >= 4 && args[3] != obj::CONST_NONE { end = index_to_ptr(self_type, &haystack, haystack_len, args[3], true); }
-    if needle_len == 0 { return obj::new_small_int(utf8_charlen(&haystack[start..end], end - start) as obj::Int + 1); }
+    if n >= 3 && args[2] != obj::CONST_NONE {
+        start = index_to_ptr(self_type, &haystack, haystack_len, args[2], true);
+    }
+    if n >= 4 && args[3] != obj::CONST_NONE {
+        end = index_to_ptr(self_type, &haystack, haystack_len, args[3], true);
+    }
+    if needle_len == 0 {
+        return obj::new_small_int(
+            utf8_charlen(&haystack[start..end], end - start) as obj::Int + 1,
+        );
+    }
     let mut count = 0i32;
     let mut p = start;
     while p + needle_len <= end {
-        if haystack[p..p + needle_len] == needle[..needle_len] { count += 1; p += needle_len; }
-        else { p = if core::ptr::eq(self_type, type_str()) { p + utf8_next_char(&haystack[p..]).len() } else { p + 1 }; }
+        if haystack[p..p + needle_len] == needle[..needle_len] {
+            count += 1;
+            p += needle_len;
+        } else {
+            // Advance one Unicode character (not `utf8_next_char(...).len()`, which is
+            // the *remaining* slice length and becomes 0 on the last character).
+            let rest = &haystack[p..];
+            let next = utf8_next_char(rest);
+            let char_len = rest.len() - next.len();
+            if char_len == 0 {
+                break;
+            }
+            p += if core::ptr::eq(self_type, type_str()) {
+                char_len
+            } else {
+                1
+            };
+        }
     }
     obj::new_small_int(count as obj::Int)
 }
@@ -1480,9 +2091,24 @@ fn str_partitioner(self_in: Obj, arg: Obj, direction: i32) -> Obj {
     str_check_arg_type(self_type, arg);
     let (str_data, str_len) = get_str_data_len(self_in);
     let (sep, sep_len) = get_str_data_len(arg);
-    if sep_len == 0 { raise::raise(MpRaise::ValueError("empty separator")); }
-    let mut result = [make_empty_str_of_type(self_type), make_empty_str_of_type(self_type), make_empty_str_of_type(self_type)];
-    if direction > 0 { result[0] = self_in; } else { result[2] = self_in; }
+    if sep_len == 0 {
+        raise::raise(MpRaise::ValueError("empty separator"));
+    }
+    let mut result = [
+        make_empty_str_of_type(self_type),
+        make_empty_str_of_type(self_type),
+        make_empty_str_of_type(self_type),
+    ];
+    if direction > 0 {
+        result[0] = self_in;
+    } else {
+        result[2] = self_in;
+    }
+    let mut arg = arg;
+    if mpconfig::PY_BUILTINS_BYTEARRAY && !core::ptr::eq(obj::get_type(arg), self_type) {
+        // C: convert bytes↔bytearray separator to match self type for the middle element.
+        arg = new_str_of_type(self_type, &sep);
+    }
     if let Some(p) = find_subbytes(&str_data, &sep, direction) {
         result[0] = new_str_of_type(self_type, &str_data[..p]);
         result[1] = arg;
@@ -1491,21 +2117,40 @@ fn str_partitioner(self_in: Obj, arg: Obj, direction: i32) -> Obj {
     objtuple::new_tuple(3, Some(&result))
 }
 
-fn str_partition(self_in: Obj, arg: Obj) -> Obj { str_partitioner(self_in, arg, 1) }
-fn str_rpartition(self_in: Obj, arg: Obj) -> Obj { str_partitioner(self_in, arg, -1) }
+fn str_partition(self_in: Obj, arg: Obj) -> Obj {
+    str_partitioner(self_in, arg, 1)
+}
+fn str_rpartition(self_in: Obj, arg: Obj) -> Obj {
+    str_partitioner(self_in, arg, -1)
+}
 
 fn str_center(self_in: Obj, width_in: Obj) -> Obj {
     let (data, str_len) = get_str_data_len(self_in);
     let width = obj::get_int(width_in) as usize;
-    let char_len = if mpconfig::PY_BUILTINS_STR_UNICODE { utf8_charlen(&data, str_len) } else { str_len };
-    if char_len >= width { return self_in; }
+    let char_len = if mpconfig::PY_BUILTINS_STR_UNICODE {
+        utf8_charlen(&data, str_len)
+    } else {
+        str_len
+    };
+    if char_len >= width {
+        return self_in;
+    }
     let padding = width - char_len;
     let total = padding + str_len;
-    let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+    let mut v = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
     vstr::init_len(&mut v, total);
-    unsafe { std::ptr::write_bytes(v.buf, b' ', total); }
+    unsafe {
+        std::ptr::write_bytes(v.buf, b' ', total);
+    }
     let left = padding / 2;
-    unsafe { std::ptr::copy_nonoverlapping(data.as_ptr(), v.buf.add(left), str_len); }
+    unsafe {
+        std::ptr::copy_nonoverlapping(data.as_ptr(), v.buf.add(left), str_len);
+    }
     new_str_type_from_vstr(obj::get_type(self_in), &mut v)
 }
 
@@ -1518,17 +2163,28 @@ fn str_splitlines(n: usize, args: &[Obj]) -> Obj {
     while pos < len {
         let start = pos;
         let mut m = 0usize;
-        if data[pos] == b'\n' {
-            m = 1;
-        } else if data[pos] == b'\r' {
-            m = if pos + 1 < len && data[pos + 1] == b'\n' { 2 } else { 1 };
-        }
-        if m == 0 {
+        while pos < len {
+            if data[pos] == b'\n' {
+                m = 1;
+                break;
+            } else if data[pos] == b'\r' {
+                m = if pos + 1 < len && data[pos + 1] == b'\n' {
+                    2
+                } else {
+                    1
+                };
+                break;
+            }
             pos += 1;
-            continue;
         }
-        let end = if keepends { pos + m } else { pos };
-        objlist::list_append(res, new_str_of_type(self_type, &data[start..end]));
+        let mut sub_len = pos - start;
+        if keepends {
+            sub_len += m;
+        }
+        objlist::list_append(
+            res,
+            new_str_of_type(self_type, &data[start..start + sub_len]),
+        );
         pos += m;
     }
     res
@@ -1557,38 +2213,199 @@ fn str_modulo_format(pattern: Obj, rhs: Obj) -> Obj {
         args_storage = items;
         args = &args_storage;
         n_args = n;
-    } else if obj::is_dict_or_ordereddict(rhs) {
+    } else if obj::is_exact_type(rhs, objdict::type_dict()) {
+        // C only treats exact `dict` as mapping for `%(key)s` (not ordereddict).
         dict = rhs;
-        n_args = 1;
     }
-    let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
-    let mut print = Print { data: core::ptr::null_mut(), print_strn: None };
+    let mut v = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
+    let mut print = Print {
+        data: core::ptr::null_mut(),
+        print_strn: None,
+    };
     vstr::init_print(&mut v, 16, &mut print);
     let mut arg_i = 0usize;
     let mut i = 0usize;
     while i < plen {
-        if pat[i] != b'%' { vstr::add_byte(&mut v, pat[i]); i += 1; continue; }
+        if pat[i] != b'%' {
+            vstr::add_byte(&mut v, pat[i]);
+            i += 1;
+            continue;
+        }
         i += 1;
-        if i >= plen { raise::raise(MpRaise::ValueError("incomplete format")); }
-        if pat[i] == b'%' { vstr::add_byte(&mut v, b'%'); i += 1; continue; }
-        if arg_i >= n_args { raise::raise(MpRaise::TypeError("format string needs more arguments")); }
-        let arg = if dict != obj::OBJ_NULL { objdict::dict_get(dict, args[arg_i]) } else { args[arg_i] };
-        arg_i += 1;
+        if i >= plen {
+            raise::raise(MpRaise::ValueError("incomplete format"));
+        }
+        if pat[i] == b'%' {
+            vstr::add_byte(&mut v, b'%');
+            i += 1;
+            continue;
+        }
+
+        // Dictionary value lookup: "%(key)s"
+        let mut arg = obj::OBJ_NULL;
+        if pat[i] == b'(' {
+            if dict == obj::OBJ_NULL {
+                raise::raise(MpRaise::TypeError("format needs a dict"));
+            }
+            arg_i = 1; // consumed the single dict argument
+            i += 1;
+            let key_start = i;
+            while i < plen && pat[i] != b')' {
+                i += 1;
+            }
+            if i >= plen {
+                raise::raise(MpRaise::ValueError("incomplete format key"));
+            }
+            let key = new_str_via_qstr(&pat[key_start..i]);
+            arg = objdict::dict_get(dict, key);
+            i += 1; // skip ')'
+        }
+
+        let mut flags = 0u32;
+        let mut fill = b' ';
+        let mut alt = false;
+        while i < plen {
+            match pat[i] {
+                b'-' => flags |= PF_FLAG_LEFT_ADJUST,
+                b'+' => flags |= PF_FLAG_SHOW_SIGN,
+                b' ' => flags |= PF_FLAG_SPACE_SIGN,
+                b'#' => alt = true,
+                b'0' => {
+                    flags |= PF_FLAG_PAD_AFTER_SIGN;
+                    fill = b'0';
+                }
+                _ => break,
+            }
+            i += 1;
+        }
+        let mut width = 0i32;
+        if i < plen && pat[i].is_ascii_digit() {
+            while i < plen && pat[i].is_ascii_digit() {
+                width = width * 10 + (pat[i] - b'0') as i32;
+                i += 1;
+            }
+        }
+        let mut prec = -1i32;
+        if i < plen && pat[i] == b'.' {
+            i += 1;
+            prec = 0;
+            while i < plen && pat[i].is_ascii_digit() {
+                prec = prec * 10 + (pat[i] - b'0') as i32;
+                i += 1;
+            }
+        }
+        if i >= plen {
+            raise::raise(MpRaise::ValueError("incomplete format"));
+        }
+
+        // Positional / whole-dict argument when no %(key)
+        if arg == obj::OBJ_NULL {
+            if arg_i >= n_args {
+                raise::raise(MpRaise::TypeError("format string needs more arguments"));
+            }
+            arg = args[arg_i];
+            arg_i += 1;
+        }
+
         match pat[i] {
             b's' | b'r' => {
-                let mut pv = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
-                let mut pr = Print { data: core::ptr::null_mut(), print_strn: None };
+                let mut pv = Vstr {
+                    alloc: 0,
+                    len: 0,
+                    buf: core::ptr::null_mut(),
+                    fixed_buf: false,
+                };
+                let mut pr = Print {
+                    data: core::ptr::null_mut(),
+                    print_strn: None,
+                };
                 vstr::init_print(&mut pv, 16, &mut pr);
-                let kind = if pat[i] == b'r' { PrintKind::Repr } else { PrintKind::Str };
+                let mut kind = if pat[i] == b'r' {
+                    PrintKind::Repr
+                } else {
+                    PrintKind::Str
+                };
+                // b"%s" % b"..." prints undecorated bytes (C PRINT_RAW).
+                if kind == PrintKind::Str
+                    && is_bytes
+                    && obj::is_exact_type(arg, type_bytes())
+                {
+                    kind = PrintKind::Raw;
+                }
                 obj::print_helper(&pr, arg, kind);
-                vstr::add_strn(&mut v, unsafe { std::slice::from_raw_parts(pv.buf, pv.len) });
+                let mut vlen = pv.len;
+                let use_prec = if prec < 0 { vlen as i32 } else { prec };
+                if vlen > use_prec as usize {
+                    vlen = use_prec as usize;
+                }
+                mpprint::print_strn(
+                    &print,
+                    unsafe { std::slice::from_raw_parts(pv.buf, vlen) },
+                    flags,
+                    b' ',
+                    width,
+                );
                 vstr::clear(&mut pv);
             }
+            b'c' => {
+                if obj::is_str(arg) {
+                    let (s, slen) = get_str_data_len(arg);
+                    if slen != 1 {
+                        raise::raise(MpRaise::TypeError("%c needs int or char"));
+                    }
+                    mpprint::print_strn(&print, &s[..1], flags, b' ', width);
+                } else if arg_looks_integer(arg) {
+                    print_format_char(&print, arg, flags, b' ', width);
+                } else {
+                    raise::raise(MpRaise::TypeError("integer needed"));
+                }
+            }
             b'd' | b'i' | b'u' => {
-                mpprint::print_mp_int(&print, arg, 10, b'a', 0, b' ', -1, -1);
+                let arg = arg_as_int(arg);
+                mpprint::print_mp_int(&print, arg, 10, b'a', flags, fill, width, prec);
+            }
+            b'o' => {
+                if alt {
+                    flags |= PF_FLAG_SHOW_PREFIX | PF_FLAG_SHOW_OCTAL_LETTER;
+                }
+                mpprint::print_mp_int(&print, arg, 8, b'a', flags, fill, width, prec);
             }
             b'x' | b'X' => {
-                mpprint::print_mp_int(&print, arg, 16, pat[i] - (b'X' - b'A'), 0, b' ', -1, -1);
+                if alt {
+                    flags |= PF_FLAG_SHOW_PREFIX;
+                }
+                mpprint::print_mp_int(
+                    &print,
+                    arg,
+                    16,
+                    pat[i] - (b'X' - b'A'),
+                    flags,
+                    fill,
+                    width,
+                    prec,
+                );
+            }
+            b'b' => {
+                if alt {
+                    flags |= PF_FLAG_SHOW_PREFIX;
+                }
+                mpprint::print_mp_int(&print, arg, 2, b'a', flags, fill, width, prec);
+            }
+            b'e' | b'E' | b'f' | b'F' | b'g' | b'G' if mpconfig::PY_BUILTINS_FLOAT => {
+                mpprint::print_float(
+                    &print,
+                    objfloat::get_float(arg),
+                    pat[i],
+                    flags,
+                    fill,
+                    width,
+                    prec,
+                );
             }
             _ => raise::raise(MpRaise::ValueError("unsupported format character")),
         }
@@ -1601,35 +2418,69 @@ fn str_modulo_format(pattern: Obj, rhs: Obj) -> Obj {
 fn bytes_hex(n: usize, args: &[Obj], type_: &ObjType) -> Obj {
     let mut buf = BufferInfo::default();
     obj::get_buffer_raise(args[0], &mut buf, obj::BUFFER_READ);
-    if buf.len == 0 { return make_empty_str_of_type(type_); }
+    if buf.len == 0 {
+        return make_empty_str_of_type(type_);
+    }
     let mut out_len = buf.len * 2;
-    if n > 1 { out_len += buf.len - 1; }
-    let mut v = Vstr { alloc: 0, len: 0, buf: core::ptr::null_mut(), fixed_buf: false };
+    if n > 1 {
+        out_len += buf.len - 1;
+    }
+    let mut v = Vstr {
+        alloc: 0,
+        len: 0,
+        buf: core::ptr::null_mut(),
+        fixed_buf: false,
+    };
     vstr::init_len(&mut v, out_len);
-    let inb = unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) };
+    let inb = buf.as_bytes();
     let mut o = 0usize;
     for (idx, &byte) in inb.iter().enumerate() {
         for shift in [4u8, 0] {
             let mut d = (byte >> shift) & 0xf;
-            if d > 9 { d += b'a' - b'9' - 1; }
-            unsafe { *v.buf.add(o) = d + b'0'; }
+            if d > 9 {
+                d += b'a' - b'9' - 1;
+            }
+            unsafe {
+                *v.buf.add(o) = d + b'0';
+            }
             o += 1;
         }
         if n > 1 && idx + 1 != inb.len() {
             let (sep, _) = get_str_data_len(args[1]);
-            unsafe { *v.buf.add(o) = sep[0]; }
+            unsafe {
+                *v.buf.add(o) = sep[0];
+            }
             o += 1;
         }
     }
     new_str_type_from_vstr(type_, &mut v)
 }
 
-fn bytes_hex_method(n: usize, args: &[Obj]) -> Obj { bytes_hex(n, args, type_bytes()) }
+fn bytes_hex_method(n: usize, args: &[Obj]) -> Obj {
+    // C: `bytes_hex_as_str` — `.hex()` returns `str`, not `bytes`.
+    bytes_hex(n, args, type_str())
+}
 
-fn bytes_fromhex_method(_n: usize, args: &[Obj]) -> Obj {
+/// Shared by `bytearray.hex` / `memoryview.hex` (returns `str`).
+pub fn bytearray_hex_method(n: usize, args: &[Obj]) -> Obj {
+    bytes_hex(n, args, type_str())
+}
+
+/// `bytearray.decode` — same as `bytes.decode`.
+pub fn bytearray_decode_method(n: usize, args: &[Obj]) -> Obj {
+    bytes_decode(n, args)
+}
+
+/// `binascii.hexlify` (`bytes_hex_as_bytes_obj` in C).
+pub fn binascii_hexlify(n: usize, args: &[Obj]) -> Obj {
+    bytes_hex(n, args, type_bytes())
+}
+
+/// Parse hex digits from `data` into an object of `type_` (`mp_obj_bytes_fromhex`).
+fn bytes_fromhex_into(type_: &ObjType, data: Obj) -> Obj {
     let mut buf = BufferInfo::default();
-    obj::get_buffer_raise(args[0], &mut buf, obj::BUFFER_READ);
-    let inb = unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) };
+    obj::get_buffer_raise(data, &mut buf, obj::BUFFER_READ);
+    let inb = buf.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(inb.len() / 2);
     let mut i = 0usize;
     while i < inb.len() {
@@ -1639,15 +2490,30 @@ fn bytes_fromhex_method(_n: usize, args: &[Obj]) -> Obj {
         if i >= inb.len() {
             break;
         }
-        if i + 1 >= inb.len() || !unichar_isxdigit(inb[i] as u32) || !unichar_isxdigit(inb[i + 1] as u32) {
+        if i + 1 >= inb.len()
+            || !unichar_isxdigit(inb[i] as u32)
+            || !unichar_isxdigit(inb[i + 1] as u32)
+        {
             raise::raise(MpRaise::ValueError("non-hex digit"));
         }
         out.push(
-            ((unichar_xdigit_value(inb[i] as u32) << 4) | unichar_xdigit_value(inb[i + 1] as u32)) as u8,
+            ((unichar_xdigit_value(inb[i] as u32) << 4) | unichar_xdigit_value(inb[i + 1] as u32))
+                as u8,
         );
         i += 2;
     }
-    new_bytes(&out)
+    new_str_of_type(type_, &out)
+}
+
+/// Classmethod body: `type.fromhex(data)`.
+fn bytes_fromhex(type_in: Obj, data: Obj) -> Obj {
+    let type_ = unsafe { &*(obj::as_ptr(type_in) as *const ObjType) };
+    bytes_fromhex_into(type_, data)
+}
+
+/// `binascii.unhexlify` — always returns `bytes`.
+pub fn binascii_unhexlify(_n: usize, args: &[Obj]) -> Obj {
+    bytes_fromhex_into(type_bytes(), args[0])
 }
 
 fn bytes_decode(n: usize, args: &[Obj]) -> Obj {

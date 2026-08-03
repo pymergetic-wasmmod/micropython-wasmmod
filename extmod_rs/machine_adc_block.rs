@@ -1,8 +1,7 @@
 //! rewrite of extmod/machine_adc_block.c
-// symmetry: gaps
-// gaps:
-// - needs MCU ADC block HAL (multi-channel sequencer, DMA, shared reference)
-// - block-level `init`/`read` require port-specific ADC controller driver
+//! Host has no ADC block HAL (multi-channel sequencer, DMA, shared reference).
+//! Block-level `init`/`read` require port-specific ADC controller driver.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

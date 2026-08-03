@@ -6,8 +6,8 @@
 use std::sync::OnceLock;
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
@@ -42,10 +42,7 @@ pub fn set_machine_idle_hook(hook: MachineIdleFn) {
 }
 
 fn machine_idle() {
-    MACHINE_IDLE
-        .get()
-        .copied()
-        .unwrap_or(default_machine_idle)();
+    MACHINE_IDLE.get().copied().unwrap_or(default_machine_idle)();
 }
 
 #[repr(C)]
@@ -110,7 +107,13 @@ fn call0(s: Obj, n: usize, k: usize, _a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk0(f: BuiltinFn0) -> Obj {

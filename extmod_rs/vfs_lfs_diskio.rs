@@ -7,8 +7,8 @@
 use littlefs_rust::{
     BlockDevice, Config, Error, FileOptions, Filesystem, FilesystemMut, FilesystemOptions,
 };
-use py_rs::obj::Obj;
 use py_rs::mperrno::{EINVAL, EIO, ENODEV};
+use py_rs::obj::Obj;
 
 use crate::vfs_blockdev::{
     self, VfsBlockdev, BLOCKDEV_FLAG_FREE_OBJ, BLOCKDEV_FLAG_NO_FILESYSTEM,
@@ -101,7 +101,8 @@ impl BlockDevice for LfsBlockDevice {
         let block_size = self.cfg.block_size;
         let bdev = self.bdev_mut();
         if bdev.flags & vfs_blockdev::BLOCKDEV_FLAG_HAVE_IOCTL != 0 {
-            let ret = vfs_blockdev::blockdev_ioctl(bdev, BLOCKDEV_IOCTL_BLOCK_ERASE, block as usize);
+            let ret =
+                vfs_blockdev::blockdev_ioctl(bdev, BLOCKDEV_IOCTL_BLOCK_ERASE, block as usize);
             if ret != py_rs::obj::CONST_NONE {
                 let code = py_rs::obj::get_int_truncated(ret) as i32;
                 if code != 0 {
@@ -111,13 +112,8 @@ impl BlockDevice for LfsBlockDevice {
             }
         }
         let erased = vec![0xffu8; block_size];
-        let ret = vfs_blockdev::blockdev_write_ext(
-            bdev,
-            block as usize,
-            0,
-            block_size,
-            erased.as_ptr(),
-        );
+        let ret =
+            vfs_blockdev::blockdev_write_ext(bdev, block as usize, 0, block_size, erased.as_ptr());
         if ret != 0 {
             Err(Error::Io)
         } else {
@@ -262,9 +258,8 @@ impl LfsMount {
         let mut device = LfsBlockDevice::new(bdev_ptr, block_count, block_size);
         let opts = self.fs_options();
         Filesystem::format_device_with_options(&mut device, opts).map_err(map_lfs_err)?;
-        self.fs = Some(
-            Filesystem::mount_device_mut_with_options(device, opts).map_err(map_lfs_err)?,
-        );
+        self.fs =
+            Some(Filesystem::mount_device_mut_with_options(device, opts).map_err(map_lfs_err)?);
         self.no_filesystem = false;
         Ok(())
     }
@@ -346,7 +341,11 @@ impl LfsMount {
                 return Err(py_rs::mperrno::ENOTDIR);
             }
         }
-        self.cwd = if resolved.is_empty() { "/".to_string() } else { resolved };
+        self.cwd = if resolved.is_empty() {
+            "/".to_string()
+        } else {
+            resolved
+        };
         if self.cwd != "/" && !self.cwd.ends_with('/') {
             self.cwd.push('/');
         }
@@ -442,7 +441,10 @@ fn join_path_components(base: &str, rel: &str) -> String {
     let mut parts: Vec<&str> = if base.is_empty() || base == "/" {
         Vec::new()
     } else {
-        base.trim_start_matches('/').split('/').filter(|s| !s.is_empty()).collect()
+        base.trim_start_matches('/')
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .collect()
     };
     for comp in rel.split('/') {
         match comp {
@@ -482,9 +484,7 @@ fn blockdev_count(bdev: &mut VfsBlockdev) -> Result<usize, i32> {
 }
 
 pub fn map_lfs_err(err: Error) -> i32 {
-    use py_rs::mperrno::{
-        EACCES, EEXIST, EINVAL, EIO, ENOENT, ENOSPC, ENOTDIR, EBADF, EISDIR,
-    };
+    use py_rs::mperrno::{EACCES, EBADF, EEXIST, EINVAL, EIO, EISDIR, ENOENT, ENOSPC, ENOTDIR};
     match err {
         Error::NotFound => ENOENT,
         Error::AlreadyExists => EEXIST,
@@ -546,10 +546,7 @@ mod tests {
         assert_eq!(fs.read_file("/hello.txt").unwrap(), b"hello!");
 
         let mut file = fs
-            .open_file(
-                "/hello.txt",
-                FileOptions::new().read(true).write(true),
-            )
+            .open_file("/hello.txt", FileOptions::new().read(true).write(true))
             .unwrap();
         let mut buf = [0u8; 6];
         assert_eq!(file.read(&mut buf).unwrap(), 6);

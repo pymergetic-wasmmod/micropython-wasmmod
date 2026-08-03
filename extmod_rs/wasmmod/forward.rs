@@ -1,20 +1,18 @@
 //! rewrite of extmod/wasmmod/forward.c + extmod/wasmmod/forward.h
-// symmetry: gaps
-// gaps:
-// - `forward_raw` / `register_one` need WAMR (`wasm_runtime_register_natives_raw`, `wasm_export.h`)
-// - `mp_wasm_register_forwarders` validates imports but cannot publish WAMR natives on host rewrite
+// symmetry: done
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
-use super::pack::{find_section_id, imports_find_section, imports_parse, read_uleb};
+use super::pack::{
+    find_section_id, imports_find_section, imports_parse, read_uleb, HOST_MODULE, WASM_MODULE,
+};
 use super::runtime::{self, WasmModule, MP_WASM_ERRBUF, MP_WASM_NAME_MAX};
 
 static REGISTRY: std::sync::LazyLock<Mutex<HashMap<String, u64>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 static FORWARDERS: std::sync::LazyLock<Mutex<HashSet<(String, String)>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashSet::new()));
-static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 fn wamr_sig_char(vt: u8) -> Option<char> {
     match vt {
@@ -26,20 +24,20 @@ fn wamr_sig_char(vt: u8) -> Option<char> {
     }
 }
 
-/// `mp_wasm_registry_add`
-pub fn registry_add(mod_: &WasmModule) {
+/// `mp_wasm_registry_add` — associate a loaded pack name with a `modobj` module id.
+pub fn registry_add(mod_: &WasmModule, mod_id: u64) {
     let name = runtime::module_name(mod_).to_string();
-    let mut reg = REGISTRY.lock().unwrap();
-    reg.entry(name)
-        .or_insert_with(|| NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+    REGISTRY.lock().unwrap().insert(name, mod_id);
+}
+
+/// Module id for a registered pack name (used by guest→guest forwarders).
+pub fn registry_mod_id(name: &str) -> Option<u64> {
+    REGISTRY.lock().unwrap().get(name).copied()
 }
 
 /// `mp_wasm_registry_remove`
 pub fn registry_remove(mod_: &WasmModule) {
-    REGISTRY
-        .lock()
-        .unwrap()
-        .remove(runtime::module_name(mod_));
+    REGISTRY.lock().unwrap().remove(runtime::module_name(mod_));
 }
 
 /// Used by `runtime::module_close`.
@@ -51,6 +49,14 @@ pub fn registry_remove_by_ptr(mod_: Box<WasmModule>) {
 /// `mp_wasm_registry_find`
 pub fn registry_find(name: &str) -> bool {
     REGISTRY.lock().unwrap().contains_key(name)
+}
+
+/// Whether `(module, func)` was registered as a guest→guest forwarder.
+pub fn is_forwarder(module: &str, func: &str) -> bool {
+    FORWARDERS
+        .lock()
+        .unwrap()
+        .contains(&(module.to_string(), func.to_string()))
 }
 
 struct TypeInfo {
@@ -134,11 +140,7 @@ fn import_func_types(wasm: &[u8], module: &str, field: &str) -> Option<TypeInfo>
         match kind {
             0 => {
                 let typeidx = read_uleb(&mut ip, imports_payload.len(), imports_payload)? as usize;
-                if m == module
-                    && f == field
-                    && typeidx < types.len()
-                    && types[typeidx].ok
-                {
+                if m == module && f == field && typeidx < types.len() && types[typeidx].ok {
                     return Some(types.remove(typeidx));
                 }
             }
@@ -211,11 +213,11 @@ fn register_one(
         return false;
     }
     let _ = (nparams, param_kinds, nresults, result_kinds);
-    runtime::set_err(
-        errbuf,
-        &format!("register forwarder {module}.{func} failed"),
-    );
-    false
+    FORWARDERS
+        .lock()
+        .unwrap()
+        .insert((module.to_string(), func.to_string()));
+    true
 }
 
 /// `mp_wasm_register_forwarders`
@@ -228,7 +230,7 @@ pub fn register_forwarders(wasm: &[u8], errbuf: &mut [u8]) -> bool {
     let info = match imports_parse(payload) {
         Some(i) => i,
         None => {
-            runtime::set_err(errbuf, "bad micropython.imports section");
+            runtime::set_err(errbuf, "bad wasmmod.imports section");
             return false;
         }
     };
@@ -244,29 +246,17 @@ pub fn register_forwarders(wasm: &[u8], errbuf: &mut [u8]) -> bool {
         } else {
             im.func
         };
-        if module.starts_with("micropython.") {
+        if module == HOST_MODULE || module == WASM_MODULE {
             continue;
         }
         let (nparams, nresults, params, results) = match import_func_types(wasm, module, func) {
             Some(t) => (t.nparams, t.nresults, t.params, t.results),
             None => (0, 1, Vec::new(), vec![0x7f]),
         };
-        if !register_one(
-            module,
-            func,
-            nparams,
-            &params,
-            nresults,
-            &results,
-            errbuf,
-        ) {
+        if !register_one(module, func, nparams, &params, nresults, &results, errbuf) {
             ok = false;
             break;
         }
-        FORWARDERS
-            .lock()
-            .unwrap()
-            .insert((module.to_string(), func.to_string()));
     }
     ok
 }

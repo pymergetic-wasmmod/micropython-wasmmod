@@ -4,7 +4,7 @@
 use py_rs::mpprint::{self, Print, VaArg};
 
 use super::types::{
-    ANY, BOL, CHAR, CLASS, CLASS_NOT, EOL, JMP, MATCH, NAMED_CLASS, RSPLIT, SAVE, SPLIT, ByteProg,
+    ByteProg, ANY, BOL, CHAR, CLASS, CLASS_NOT, EOL, JMP, MATCH, NAMED_CLASS, RSPLIT, SAVE, SPLIT,
 };
 
 /// `re1_5_dumpcode`
@@ -69,11 +69,7 @@ pub fn dumpcode(prog: &ByteProg) {
                     print,
                     "class%s %d",
                     [
-                        VaArg::Str(if code[pc - 1] == CLASS_NOT {
-                            "not"
-                        } else {
-                            ""
-                        }),
+                        VaArg::Str(if code[pc - 1] == CLASS_NOT { "not" } else { "" }),
                         VaArg::Int(num),
                     ],
                 );

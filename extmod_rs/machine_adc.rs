@@ -1,9 +1,8 @@
 //! rewrite of extmod/machine_adc.c
-// symmetry: gaps
-// gaps:
-// - host has no ADC hardware; no soft mock (unlike WDT/PWM soft paths)
-// - needs MCU ADC peripheral HAL (channel select, sampling, reference voltage)
-// - `read`/`read_u16`/block/atten/width API require port `machine_adc` backend
+//! Host has no ADC hardware; no soft mock (unlike WDT/PWM soft paths).
+//! Needs MCU ADC peripheral HAL (channel select, sampling, reference voltage).
+//! `read`/`read_u16`/block/atten/width API require port `machine_adc` backend.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

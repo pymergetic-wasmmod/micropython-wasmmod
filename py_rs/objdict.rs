@@ -4,14 +4,15 @@
 use core::mem::size_of;
 
 use crate::argcheck;
-use crate::map::{self, LookupKind, Map, MapElem};
 use crate::malloc;
+use crate::map::{self, LookupKind, Map, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{
     self, IterNextFn, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_NULL, OBJ_SENTINEL,
     TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_ITERNEXT,
 };
+use crate::objexcept;
 use crate::objlist;
 use crate::objpolyiter;
 use crate::objtuple;
@@ -68,7 +69,9 @@ static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *con
 static mut FUN_BUILTIN_KW_SLOTS: [*const (); 1] = [fun_builtin_kw_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -87,7 +90,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -106,7 +111,9 @@ static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_KW: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -132,7 +139,13 @@ fn fun_builtin_1_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -203,7 +216,9 @@ struct ObjDictViewIter {
 static mut DICT_VIEW_IT_SLOTS: [*const (); 1] = [dict_view_it_iternext as *const ()];
 
 static TYPE_DICT_VIEW_IT: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -229,7 +244,9 @@ static mut DICT_VIEW_SLOTS: [*const (); 4] = [
 ];
 
 static TYPE_DICT_VIEW: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -259,8 +276,10 @@ static mut DICT_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -278,38 +297,126 @@ static TYPE: ObjType = ObjType {
     slots: unsafe { DICT_SLOTS.as_ptr() },
 };
 
+// OrderedDict shares dict methods; parent = dict (C `mp_type_ordereddict`).
+static mut ORDEREDDICT_SLOTS: [*const (); 8] = [
+    dict_make_new as *const (),
+    dict_print as *const (),
+    dict_unary_op as *const (),
+    dict_binary_op as *const (),
+    dict_subscr as *const (),
+    dict_getiter as *const (),
+    core::ptr::null(), // locals
+    core::ptr::null(), // parent
+];
+
+static mut TYPE_ORDEREDDICT: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: obj::TYPE_FLAG_NONE,
+    name: 0,
+    slot_index_make_new: 1,
+    slot_index_print: 2,
+    slot_index_unary_op: 3,
+    slot_index_binary_op: 4,
+    slot_index_subscr: 5,
+    slot_index_call: 0,
+    slot_index_attr: 0,
+    slot_index_iter: 6,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 8,
+    slot_index_locals_dict: 7,
+    slots: unsafe { ORDEREDDICT_SLOTS.as_ptr() },
+};
+
 static DICT_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 static EMPTY_DICT: std::sync::OnceLock<Obj> = std::sync::OnceLock::new();
 
 fn init_dict_type() {
     DICT_INIT.get_or_init(|| {
+        unsafe {
+            TYPE.name = qstr::from_str("dict");
+        }
         let mut table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("clear")), value: new_fun_builtin_1(dict_clear) },
-            MapElem { key: obj::new_qstr(qstr::from_str("copy")), value: new_fun_builtin_1(dict_copy) },
-            MapElem { key: obj::new_qstr(qstr::from_str("get")), value: new_fun_builtin_var(2, 3, dict_get_method) },
-            MapElem { key: obj::new_qstr(qstr::from_str("items")), value: new_fun_builtin_1(dict_items) },
-            MapElem { key: obj::new_qstr(qstr::from_str("keys")), value: new_fun_builtin_1(dict_keys) },
-            MapElem { key: obj::new_qstr(qstr::from_str("pop")), value: new_fun_builtin_var(2, 3, dict_pop) },
-            MapElem { key: obj::new_qstr(qstr::from_str("popitem")), value: new_fun_builtin_1(dict_popitem) },
-            MapElem { key: obj::new_qstr(qstr::from_str("setdefault")), value: new_fun_builtin_var(2, 3, dict_setdefault) },
-            MapElem { key: obj::new_qstr(qstr::from_str("update")), value: new_fun_builtin_kw(1, dict_update) },
-            MapElem { key: obj::new_qstr(qstr::from_str("values")), value: new_fun_builtin_1(dict_values) },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("clear")),
+                value: new_fun_builtin_1(dict_clear),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("copy")),
+                value: new_fun_builtin_1(dict_copy),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("get")),
+                value: new_fun_builtin_var(2, 3, dict_get_method),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("items")),
+                value: new_fun_builtin_1(dict_items),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("keys")),
+                value: new_fun_builtin_1(dict_keys),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("pop")),
+                value: new_fun_builtin_var(2, 3, dict_pop),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("popitem")),
+                value: new_fun_builtin_1(dict_popitem),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("setdefault")),
+                value: new_fun_builtin_var(2, 3, dict_setdefault),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("update")),
+                value: new_fun_builtin_kw(1, dict_update),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("values")),
+                value: new_fun_builtin_1(dict_values),
+            },
         ];
         if mpconfig::PY_BUILTINS_DICT_FROMKEYS {
-            table.insert(2, MapElem {
-                key: obj::new_qstr(qstr::from_str("fromkeys")),
-                value: new_fun_builtin_var(2, 3, dict_fromkeys),
-            });
+            table.insert(
+                2,
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("fromkeys")),
+                    value: crate::objtype::new_classmethod(new_fun_builtin_var(
+                        2,
+                        3,
+                        dict_fromkeys,
+                    )),
+                },
+            );
         }
-        let ptr = obj::malloc_helper(size_of::<ObjDict>(), &TYPE) as *mut ObjDict;
+        let ptr = obj::malloc_helper(size_of::<ObjDict>(), unsafe { &TYPE }) as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
-            DICT_SLOTS[6] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+            let locals = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+            DICT_SLOTS[6] = locals;
+            if mpconfig::PY_COLLECTIONS_ORDEREDDICT {
+                TYPE_ORDEREDDICT.name = qstr::from_str("OrderedDict");
+                ORDEREDDICT_SLOTS[6] = locals;
+                ORDEREDDICT_SLOTS[7] = &raw const TYPE as *const ObjType as *const ();
+            }
+            crate::gc::add_root(ptr as *mut u8);
+            for elem in &(*ptr).map.table {
+                if elem.key != obj::OBJ_NULL
+                    && elem.key != obj::OBJ_SENTINEL
+                    && obj::is_obj(elem.value)
+                {
+                    crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+                }
+            }
         }
         // empty fixed dict singleton
         let empty = malloc::new_obj::<ObjDict>().expect("empty dict");
         unsafe {
-            (*empty).base.type_ = &TYPE as *const ObjType;
+            (*empty).base.type_ = &raw const TYPE as *const ObjType;
             (*empty).map = Map {
                 all_keys_are_qstrs: false,
                 is_fixed: true,
@@ -319,13 +426,20 @@ fn init_dict_type() {
                 table: Vec::new(),
             };
         }
-        let _ = EMPTY_DICT.set(obj::from_ptr(empty as *const ObjDict as *const ()));
+        let empty_obj = obj::from_ptr(empty as *const ObjDict as *const ());
+        crate::gc::add_root(empty as *mut u8);
+        let _ = EMPTY_DICT.set(empty_obj);
     });
 }
 
 pub fn type_dict() -> &'static ObjType {
     init_dict_type();
-    &TYPE
+    unsafe { &TYPE }
+}
+
+pub fn type_ordereddict() -> &'static ObjType {
+    init_dict_type();
+    unsafe { &TYPE_ORDEREDDICT }
 }
 
 pub fn const_empty_dict() -> Obj {
@@ -396,7 +510,11 @@ pub fn dict_get(o: Obj, key: Obj) -> Obj {
     let dict = unsafe { &mut *dict_ptr(o) };
     match map::lookup(&mut dict.map, key, LookupKind::Lookup) {
         Some(elem) => elem.value,
-        None => raise::raise(MpRaise::RuntimeError("KeyError")),
+        None => raise::raise_obj(objexcept::new_exception_args(
+            objexcept::type_key_error(),
+            1,
+            &[key],
+        )),
     }
 }
 
@@ -436,7 +554,10 @@ pub fn dict_print(print: &Print, self_in: Obj, kind: PrintKind) {
     let mut first = true;
     let mut kind = kind;
     let (item_separator, key_separator) = if mpconfig::PY_JSON && kind == PrintKind::Json {
-        (mpprint::json_item_separator(print), mpprint::json_key_separator(print))
+        (
+            mpprint::json_item_separator(print),
+            mpprint::json_key_separator(print),
+        )
     } else {
         (", ", ": ")
     };
@@ -458,7 +579,8 @@ pub fn dict_print(print: &Print, self_in: Obj, kind: PrintKind) {
             mpprint::print_str(print, item_separator);
         }
         first = false;
-        let add_quote = mpconfig::PY_JSON && kind == PrintKind::Json && !obj::is_str_or_bytes(next.key);
+        let add_quote =
+            mpconfig::PY_JSON && kind == PrintKind::Json && !obj::is_str_or_bytes(next.key);
         if add_quote {
             mpprint::print_str(print, "\"");
         }
@@ -483,7 +605,9 @@ pub fn dict_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]
     let dict_out = new_dict(0);
     unsafe {
         (*(dict_ptr(dict_out))).base.type_ = type_in as *const ObjType;
-        if mpconfig::PY_COLLECTIONS_ORDEREDDICT && type_in as *const ObjType != type_dict() as *const ObjType {
+        if mpconfig::PY_COLLECTIONS_ORDEREDDICT
+            && type_in as *const ObjType != type_dict() as *const ObjType
+        {
             (*(dict_ptr(dict_out))).map.is_ordered = true;
         }
     }
@@ -567,7 +691,11 @@ pub fn dict_binary_op(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
             }
         }
         BinaryOp::Or | BinaryOp::InplaceOr if mpconfig::CPYTHON_COMPAT => {
-            let lhs = if op == BinaryOp::Or { dict_copy(lhs_in) } else { lhs_in };
+            let lhs = if op == BinaryOp::Or {
+                dict_copy(lhs_in)
+            } else {
+                lhs_in
+            };
             let dicts = [lhs, rhs_in];
             dict_update(2, &dicts, &Map::default());
             lhs
@@ -598,7 +726,11 @@ fn dict_get_helper(n_args: usize, args: &[Obj], lookup_kind: LookupKind) -> Obj 
     if elem.is_none() || elem.as_ref().unwrap().value == OBJ_NULL {
         let value = if n_args == 2 {
             if lookup_kind == LookupKind::RemoveIfFound {
-                raise::raise(MpRaise::RuntimeError("KeyError"));
+                raise::raise_obj(objexcept::new_exception_args(
+                    objexcept::type_key_error(),
+                    1,
+                    &[args[1]],
+                ));
             }
             obj::CONST_NONE
         } else {
@@ -676,7 +808,9 @@ pub fn dict_update(n_args: usize, args: &[Obj], kwargs: &Map) -> Obj {
                 let other = unsafe { &*dict_ptr(args[1]) };
                 let mut cur = 0;
                 while let Some(elem) = dict_iter_next(other, &mut cur) {
-                    if let Some(slot) = map::lookup(&mut self_.map, elem.key, LookupKind::AddIfNotFound) {
+                    if let Some(slot) =
+                        map::lookup(&mut self_.map, elem.key, LookupKind::AddIfNotFound)
+                    {
                         slot.value = elem.value;
                     }
                 }
@@ -800,7 +934,9 @@ fn dict_view_print(print: &Print, self_in: Obj, _kind: PrintKind) {
     mpprint::print_str(print, DICT_VIEW_NAMES[self_.kind as usize]);
     mpprint::print_str(print, "([");
     let mut iter_buf = obj::ObjIterBuf {
-        base: ObjBase { type_: core::ptr::null() },
+        base: ObjBase {
+            type_: core::ptr::null(),
+        },
         buf: [obj::OBJ_NULL; 3],
     };
     let self_iter = dict_view_getiter(self_in, &mut iter_buf as *mut ObjIterBuf);

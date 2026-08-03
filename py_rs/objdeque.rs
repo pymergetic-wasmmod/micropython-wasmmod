@@ -2,12 +2,12 @@
 // symmetry: done
 
 use crate::argcheck;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{
     self, IterNextFn, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_SENTINEL, TYPE_FLAG_BINDS_SELF,
-    TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_CUSTOM,
+    TYPE_FLAG_BUILTIN_FUN,
 };
 use crate::objdict::{self, ObjDict};
 use crate::objexcept;
@@ -50,7 +50,9 @@ static mut FUN1_SLOTS: [*const (); 1] = [fun1_call as *const ()];
 static mut FUN2_SLOTS: [*const (); 1] = [fun2_call as *const ()];
 
 static TYPE_FUN1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -69,7 +71,9 @@ static TYPE_FUN1: ObjType = ObjType {
 };
 
 static TYPE_FUN2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -252,7 +256,11 @@ fn deque_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -
         for i in 0..(*o).alloc {
             *(*o).items.add(i) = obj::OBJ_NULL;
         }
-        (*o).flags = if n_args > 2 { obj::get_int(args[2]) as u32 } else { 0 };
+        (*o).flags = if n_args > 2 {
+            obj::get_int(args[2]) as u32
+        } else {
+            0
+        };
     }
     let self_obj = obj::from_ptr(o as *const ObjDeque as *const ());
     deque_extend(self_obj, args[0]);
@@ -317,18 +325,18 @@ fn deque_it_iternext(self_in: Obj) -> Obj {
     }
 }
 
-fn new_deque_it(deque: Obj, iter_buf: &mut ObjIterBuf) -> Obj {
+fn new_deque_it(deque: Obj, iter_buf: *mut ObjIterBuf) -> Obj {
     debug_assert!(core::mem::size_of::<ObjDequeIter>() <= core::mem::size_of::<ObjIterBuf>());
     let deque_ = unsafe { &*deque_ptr(deque) };
-    let o = unsafe { &mut *(iter_buf as *mut ObjIterBuf as *mut ObjDequeIter) };
+    let o = unsafe { &mut *(iter_buf as *mut ObjDequeIter) };
     o.base.type_ = objpolyiter::type_polymorph_iter() as *const ObjType;
     o.iternext = deque_it_iternext;
     o.deque = deque;
     o.cur = deque_.i_get;
-    obj::from_ptr(iter_buf as *const ObjIterBuf as *const ObjDequeIter as *const ())
+    obj::from_ptr(iter_buf as *const ObjDequeIter as *const ())
 }
 
-fn deque_getiter(o_in: Obj, iter_buf: &mut ObjIterBuf) -> Obj {
+fn deque_getiter(o_in: Obj, iter_buf: *mut ObjIterBuf) -> Obj {
     if !mpconfig::PY_COLLECTIONS_DEQUE_ITER {
         return obj::OBJ_NULL;
     }
@@ -344,8 +352,11 @@ static mut DEQUE_SLOTS: [*const (); 5] = [
 ];
 
 static mut TYPE_DEQUE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
-    flags: TYPE_FLAG_ITER_IS_CUSTOM,
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    // C: `MP_TYPE_FLAG_ITER_IS_GETITER` (0) — iter slot is getiter, not CUSTOM.
+    flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
     slot_index_print: 0,
@@ -367,13 +378,29 @@ static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 fn init_type() {
     INIT.get_or_init(|| {
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("append")), value: new_fun2(deque_append) },
-            MapElem { key: obj::new_qstr(qstr::from_str("appendleft")), value: new_fun2(deque_appendleft) },
-            MapElem { key: obj::new_qstr(qstr::from_str("extend")), value: new_fun2(deque_extend) },
-            MapElem { key: obj::new_qstr(qstr::from_str("pop")), value: new_fun1(deque_pop) },
-            MapElem { key: obj::new_qstr(qstr::from_str("popleft")), value: new_fun1(deque_popleft) },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("append")),
+                value: new_fun2(deque_append),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("appendleft")),
+                value: new_fun2(deque_appendleft),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("extend")),
+                value: new_fun2(deque_extend),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("pop")),
+                value: new_fun1(deque_pop),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("popleft")),
+                value: new_fun1(deque_popleft),
+            },
         ];
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DEQUE_SLOTS[4] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

@@ -16,7 +16,10 @@ pub struct MapElem {
 
 impl Default for MapElem {
     fn default() -> Self {
-        Self { key: obj::OBJ_NULL, value: obj::OBJ_NULL }
+        Self {
+            key: obj::OBJ_NULL,
+            value: obj::OBJ_NULL,
+        }
     }
 }
 
@@ -61,9 +64,30 @@ pub fn slot_is_filled(map: &Map, pos: usize) -> bool {
     key != obj::OBJ_NULL && key != obj::OBJ_SENTINEL
 }
 
+/// Mark key/value objects stored in a Rust-backed map table.
+///
+/// `Map.table` lives on the Rust heap, so the GC mark scan of a dict object
+/// cannot see these pointers; callers must mark them explicitly.
+pub fn mark_table(map: &Map) {
+    use crate::gc;
+    for elem in &map.table {
+        if elem.key == obj::OBJ_NULL || elem.key == obj::OBJ_SENTINEL {
+            continue;
+        }
+        gc::collect_root(&[
+            obj::to_ptr(elem.key) as *mut u8,
+            obj::to_ptr(elem.value) as *mut u8,
+        ]);
+    }
+}
+
 pub fn init(map: &mut Map, n: usize) {
     map.alloc = if n == 0 { 0 } else { n };
-    map.table = if n == 0 { Vec::new() } else { vec![MapElem::default(); n] };
+    map.table = if n == 0 {
+        Vec::new()
+    } else {
+        vec![MapElem::default(); n]
+    };
     map.used = 0;
     map.all_keys_are_qstrs = true;
     map.is_fixed = false;
@@ -208,7 +232,12 @@ pub fn lookup(map: &mut Map, index: Obj, kind: LookupKind) -> Option<&mut MapEle
     }
 }
 
-fn lookup_ordered(map: &mut Map, index: Obj, kind: LookupKind, compare_only_ptrs: bool) -> Option<&mut MapElem> {
+fn lookup_ordered(
+    map: &mut Map,
+    index: Obj,
+    kind: LookupKind,
+    compare_only_ptrs: bool,
+) -> Option<&mut MapElem> {
     for i in 0..map.used {
         let key = map.table[i].key;
         if key == index || (!compare_only_ptrs && obj::equal(key, index)) {

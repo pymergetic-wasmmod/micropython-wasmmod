@@ -22,8 +22,10 @@ static mut CLOSURE_SLOTS: [*const (); 3] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -48,21 +50,20 @@ static TYPE: ObjType = ObjType {
 static CLOSURE_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_closure_type() {
-    CLOSURE_INIT.get_or_init(|| {
-        unsafe {
-            if mpconfig::ERROR_REPORTING == mpconfig::ERROR_REPORTING_DETAILED {
-                CLOSURE_SLOTS[1] = closure_print as *const ();
-            }
-            if mpconfig::PY_FUNCTION_ATTRS {
-                CLOSURE_SLOTS[2] = closure_attr as *const ();
-            }
+    CLOSURE_INIT.get_or_init(|| unsafe {
+        TYPE.name = qstr::from_str("closure");
+        if mpconfig::ERROR_REPORTING == mpconfig::ERROR_REPORTING_DETAILED {
+            CLOSURE_SLOTS[1] = closure_print as *const ();
+        }
+        if mpconfig::PY_FUNCTION_ATTRS {
+            CLOSURE_SLOTS[2] = closure_attr as *const ();
         }
     });
 }
 
 pub fn type_closure() -> &'static ObjType {
     init_closure_type();
-    &TYPE
+    unsafe { &*core::ptr::addr_of!(TYPE) }
 }
 
 fn closure_ptr(o: Obj) -> *mut ObjClosure {

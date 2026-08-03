@@ -100,9 +100,14 @@ fn install_gc_signal_handler() {
 fn init_signal_done_sem(main_id: pthread_t) {
     unsafe {
         let prefix = format!("micropython_sem_{}\0", main_id as u64);
-        prefix.as_bytes().iter().take(25).enumerate().for_each(|(i, b)| {
-            THREAD_SIGNAL_DONE_NAME[i] = *b;
-        });
+        prefix
+            .as_bytes()
+            .iter()
+            .take(25)
+            .enumerate()
+            .for_each(|(i, b)| {
+                THREAD_SIGNAL_DONE_NAME[i] = *b;
+            });
         THREAD_SIGNAL_DONE_P = libc::sem_open(
             THREAD_SIGNAL_DONE_NAME.as_ptr() as *const libc::c_char,
             libc::O_CREAT | libc::O_EXCL,

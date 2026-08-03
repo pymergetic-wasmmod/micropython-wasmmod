@@ -17,8 +17,8 @@ use crate::objstr;
 use crate::parse::{self, ParseInputKind};
 use crate::qstr::{self, Qstr};
 use crate::raise::{self, MpRaise};
-use crate::runtime;
 use crate::reader::READER_IS_ROM;
+use crate::runtime;
 
 type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
 
@@ -33,7 +33,9 @@ struct ObjFunBuiltinVar {
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -53,7 +55,13 @@ static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -183,7 +191,7 @@ fn eval_exec_helper(n_args: usize, args: &[Obj], parse_input_kind: ParseInputKin
     } else {
         let mut bufinfo = obj::BufferInfo::default();
         obj::get_buffer_raise(args[0], &mut bufinfo, obj::BUFFER_READ);
-        let slice = unsafe { std::slice::from_raw_parts(bufinfo.buf, bufinfo.len) };
+        let slice = bufinfo.as_bytes();
         Lexer::new_from_str_len(qstr::from_str("<string>"), slice, READER_IS_ROM)
     };
 

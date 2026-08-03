@@ -3,17 +3,17 @@
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::misc;
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintExt, PrintKind};
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
 use py_rs::objlist;
+use py_rs::objmodule;
 use py_rs::objstr;
 use py_rs::objstringio;
-use py_rs::objmodule;
 use py_rs::parsenum;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
@@ -187,7 +187,12 @@ fn set_default_separators(print_ext: &mut PrintExt) {
     print_ext.key_separator = b": \0".as_ptr();
 }
 
-fn set_separators_from_obj(print_ext: &mut PrintExt, sep_obj: Obj, item_buf: &mut Vec<u8>, key_buf: &mut Vec<u8>) {
+fn set_separators_from_obj(
+    print_ext: &mut PrintExt,
+    sep_obj: Obj,
+    item_buf: &mut Vec<u8>,
+    key_buf: &mut Vec<u8>,
+) {
     let (len, items) = obj::get_array(sep_obj);
     if len != 2 {
         raise::raise(MpRaise::TypeError("argument num/types mismatch"));
@@ -206,7 +211,14 @@ fn dump_helper_separators(n_args: usize, pos_args: &[Obj], kw_args: &Map, mode: 
     }];
     let mut vals = [ArgVal::Obj(obj::CONST_NONE)];
     let mut kw = kw_args.clone();
-    argcheck::parse_all(n_args - mode, &pos_args[mode..], &mut kw, allowed.len(), &allowed, &mut vals);
+    argcheck::parse_all(
+        n_args - mode,
+        &pos_args[mode..],
+        &mut kw,
+        allowed.len(),
+        &allowed,
+        &mut vals,
+    );
     let mut item_buf = Vec::new();
     let mut key_buf = Vec::new();
     let mut print_ext = PrintExt {
@@ -349,7 +361,10 @@ fn json_load(stream_obj: Obj) -> Obj {
         match cur {
             b',' | b':' | b' ' | b'\t' | b'\n' | b'\r' => continue,
             b'n' => {
-                if s.cur == b'u' && json_stream_next(&mut s) == b'l' && json_stream_next(&mut s) == b'l' {
+                if s.cur == b'u'
+                    && json_stream_next(&mut s) == b'l'
+                    && json_stream_next(&mut s) == b'l'
+                {
                     json_stream_next(&mut s);
                     next = obj::CONST_NONE;
                 } else {
@@ -369,7 +384,10 @@ fn json_load(stream_obj: Obj) -> Obj {
                 }
             }
             b't' => {
-                if s.cur == b'r' && json_stream_next(&mut s) == b'u' && json_stream_next(&mut s) == b'e' {
+                if s.cur == b'r'
+                    && json_stream_next(&mut s) == b'u'
+                    && json_stream_next(&mut s) == b'e'
+                {
                     json_stream_next(&mut s);
                     next = obj::CONST_TRUE;
                 } else {
@@ -465,21 +483,23 @@ fn json_load(stream_obj: Obj) -> Obj {
             if !enter {
                 break;
             }
-        } else if stack_top_is_list {
-            objlist::list_append(stack_top, next);
-        } else if stack_key == obj::OBJ_NULL {
-            stack_key = next;
-            if enter {
-                json_syntax_error();
-            }
         } else {
-            objdict::dict_store(stack_top, stack_key, next);
-            stack_key = obj::OBJ_NULL;
-        }
-        if enter {
-            stack.push(stack_top);
-            stack_top = next;
-            stack_top_is_list = obj::is_exact_type(stack_top, objlist::type_list());
+            if stack_top_is_list {
+                objlist::list_append(stack_top, next);
+            } else if stack_key == obj::OBJ_NULL {
+                stack_key = next;
+                if enter {
+                    json_syntax_error();
+                }
+            } else {
+                objdict::dict_store(stack_top, stack_key, next);
+                stack_key = obj::OBJ_NULL;
+            }
+            if enter {
+                stack.push(stack_top);
+                stack_top = next;
+                stack_top_is_list = obj::is_exact_type(stack_top, objlist::type_list());
+            }
         }
     }
     while misc::unichar_isspace(s.cur as u32) {
@@ -512,7 +532,9 @@ fn json_loads(obj_in: Obj) -> Obj {
         pos: 0,
         ref_obj: obj::OBJ_NULL,
     };
-    json_load(obj::from_ptr(&sio as *const objstringio::ObjStringio as *const ()))
+    json_load(obj::from_ptr(
+        &sio as *const objstringio::ObjStringio as *const (),
+    ))
 }
 
 /// Register built-in `json` module (`MP_REGISTER_EXTENSIBLE_MODULE`).

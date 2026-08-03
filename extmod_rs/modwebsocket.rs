@@ -3,10 +3,10 @@
 
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
-use py_rs::mperrno::{EAGAIN, EIO, EINVAL, ENOBUFS};
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
+use py_rs::mperrno::{EAGAIN, EINVAL, EIO, ENOBUFS};
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_ITER_IS_STREAM};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objmodule;
@@ -55,17 +55,16 @@ fn websocket_ptr(o: Obj) -> *mut ObjWebsocket {
 
 fn set_stream_blocking(sock: Obj, blocking: bool) {
     let mut dest = [obj::OBJ_NULL; 3];
-    runtime::load_method(sock, qstr::from_str("setblocking"), &mut dest[..2].try_into().unwrap());
+    runtime::load_method(
+        sock,
+        qstr::from_str("setblocking"),
+        &mut dest[..2].try_into().unwrap(),
+    );
     dest[2] = obj::new_bool(blocking);
     runtime::call_method_n_kw(1, 0, &dest);
 }
 
-fn websocket_write_raw(
-    self_in: Obj,
-    header: &[u8],
-    buf: &[u8],
-    errcode: &mut i32,
-) -> usize {
+fn websocket_write_raw(self_in: Obj, header: &[u8], buf: &[u8], errcode: &mut i32) -> usize {
     let self_ = unsafe { &mut *websocket_ptr(self_in) };
     if self_.opts & BLOCKING_WRITE != 0 {
         set_stream_blocking(self_.sock, true);
@@ -128,11 +127,7 @@ fn websocket_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) ->
         if self_.to_recv != 0 {
             let out_sz = read(
                 self_.sock,
-                unsafe {
-                    self_.buf
-                        .as_mut_ptr()
-                        .add(self_.buf_pos as usize)
-                },
+                unsafe { self_.buf.as_mut_ptr().add(self_.buf_pos as usize) },
                 self_.to_recv as usize,
                 errcode,
             );
@@ -194,8 +189,7 @@ fn websocket_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) ->
             FRAME_OPT => {
                 if self_.buf_pos & 2 != 0 {
                     debug_assert!(self_.buf_pos == 2 || self_.buf_pos == 6);
-                    self_.msg_sz =
-                        ((self_.buf[0] as u32) << 8) | (self_.buf[1] as u32);
+                    self_.msg_sz = ((self_.buf[0] as u32) << 8) | (self_.buf[1] as u32);
                 }
                 if self_.buf_pos & 4 != 0 {
                     self_.mask.copy_from_slice(
@@ -224,12 +218,7 @@ fn websocket_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) ->
                         if frame_type == FRAME_CLOSE {
                             let close_resp: [u8; 2] = [0x88, 0];
                             let mut err = 0;
-                            websocket_write_raw(
-                                self_in,
-                                &close_resp,
-                                &[],
-                                &mut err,
-                            );
+                            websocket_write_raw(self_in, &close_resp, &[], &mut err);
                             return 0;
                         }
                         continue;
@@ -267,12 +256,7 @@ fn websocket_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) ->
                         if frame_type == FRAME_CLOSE {
                             let close_resp: [u8; 2] = [0x88, 0];
                             let mut err = 0;
-                            websocket_write_raw(
-                                self_in,
-                                &close_resp,
-                                &[],
-                                &mut err,
-                            );
+                            websocket_write_raw(self_in, &close_resp, &[], &mut err);
                             return 0;
                         }
                         continue;
@@ -321,10 +305,7 @@ static WEBSOCKET_STREAM: StreamP = StreamP {
 
 fn websocket_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     argcheck::check_num(n_args, n_kw, 1, 2, false);
-    let _ = stream::get_stream_raise(
-        args[0],
-        STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL,
-    );
+    let _ = stream::get_stream_raise(args[0], STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL);
     let o = malloc::new_obj::<ObjWebsocket>().expect("websocket");
     unsafe {
         (*o).base.type_ = type_websocket();
@@ -376,8 +357,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream_close_obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -470,7 +451,8 @@ mod tests {
 
     fn bytesio(initial: &[u8]) -> Obj {
         objstringio::type_bytesio();
-        let make_new = obj::type_get_make_new(objstringio::type_bytesio()).expect("bytesio make_new");
+        let make_new =
+            obj::type_get_make_new(objstringio::type_bytesio()).expect("bytesio make_new");
         if initial.is_empty() {
             make_new(objstringio::type_bytesio(), 0, 0, &[])
         } else {

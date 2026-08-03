@@ -4,12 +4,12 @@
 use py_rs::cstack;
 
 use super::charclass;
-use super::types::{
-    inst_is_consumer, ANY, BOL, CHAR, CLASS, CLASS_NOT, EOL, JMP, MATCH, NAMED_CLASS, RSPLIT, SAVE,
-    SPLIT, Subject,
-};
-use super::types::ByteProg;
 use super::types::handle_anchored;
+use super::types::ByteProg;
+use super::types::{
+    inst_is_consumer, Subject, ANY, BOL, CHAR, CLASS, CLASS_NOT, EOL, JMP, MATCH, NAMED_CLASS,
+    RSPLIT, SAVE, SPLIT,
+};
 
 fn recursiveloop(
     pc: &mut usize,

@@ -59,8 +59,16 @@ fn load_pair_maybe(obj_in: Obj, attr: &str, dest: &mut [Obj; 2]) {
 
 /// `mp_vfs_blockdev_init`
 pub fn blockdev_init(self_: &mut VfsBlockdev, bdev: Obj) {
-    load_pair(bdev, "readblocks", &mut self_.readblocks[..2].try_into().unwrap());
-    load_pair_maybe(bdev, "writeblocks", &mut self_.writeblocks[..2].try_into().unwrap());
+    load_pair(
+        bdev,
+        "readblocks",
+        &mut self_.readblocks[..2].try_into().unwrap(),
+    );
+    load_pair_maybe(
+        bdev,
+        "writeblocks",
+        &mut self_.writeblocks[..2].try_into().unwrap(),
+    );
     load_pair_maybe(bdev, "ioctl", &mut self_.ioctl[..2].try_into().unwrap());
     if self_.ioctl[0] != obj::OBJ_NULL {
         self_.flags |= BLOCKDEV_FLAG_HAVE_IOCTL;
@@ -78,11 +86,7 @@ fn blockdev_call_rw(
     buf: *mut u8,
     n_args: usize,
 ) -> i32 {
-    let mv = objarray::new_memoryview(
-        b'B' | OBJ_ARRAY_TYPECODE_FLAG_RW,
-        len,
-        buf,
-    );
+    let mv = objarray::new_memoryview(b'B' | OBJ_ARRAY_TYPECODE_FLAG_RW, len, buf);
     args[2] = obj::new_small_int(block_num as isize);
     args[3] = mv;
     args[4] = obj::new_small_int(block_off as isize);
@@ -100,7 +104,12 @@ fn blockdev_call_rw(
 }
 
 /// `mp_vfs_blockdev_read`
-pub fn blockdev_read(self_: &mut VfsBlockdev, block_num: usize, num_blocks: usize, buf: *mut u8) -> i32 {
+pub fn blockdev_read(
+    self_: &mut VfsBlockdev,
+    block_num: usize,
+    num_blocks: usize,
+    buf: *mut u8,
+) -> i32 {
     blockdev_call_rw(
         &mut self_.readblocks,
         block_num,

@@ -59,7 +59,9 @@ pub fn obj_getattr_protected(
     out: &mut pm_mpy_obj_t,
 ) -> pm_mpy_status_t {
     let mut nlr_buf = NlrBuf::default();
-    match nlr::protect(&mut nlr_buf, || crate::runtime::load_attr(base.to_obj(), attr.to_qstr())) {
+    match nlr::protect(&mut nlr_buf, || {
+        crate::runtime::load_attr(base.to_obj(), attr.to_qstr())
+    }) {
         Ok(value) => {
             *out = pm_mpy_obj_t::from_obj(value);
             pm_mpy_status_t::Ok

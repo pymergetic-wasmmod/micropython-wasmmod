@@ -6,9 +6,10 @@ use std::sync::OnceLock;
 use crate::bc::ModuleContext;
 use crate::compile;
 use crate::emitglue::{self, CompiledModule, ProtoFun};
+use crate::frozenmod::{self, FrozenKind};
 use crate::lexer::Lexer;
-use crate::map::{self, LookupKind};
 use crate::malloc;
+use crate::map::{self, LookupKind};
 use crate::mpconfig;
 use crate::obj::{self, Obj};
 use crate::objdict::{self, ObjDict};
@@ -56,12 +57,26 @@ fn raise_import_error(name: Qstr) -> ! {
     if mpconfig::ERROR_REPORTING <= mpconfig::ERROR_REPORTING_NORMAL {
         raise::raise_obj(objexcept::new_exception(objexcept::type_import_error()));
     }
-    let msg = objstr::new_str(format!("no module named '{}'", qstr::str_from_qstr(name).unwrap_or_default()).as_bytes());
-    raise::raise_obj(objexcept::new_exception_args(objexcept::type_import_error(), 1, &[msg]));
+    let msg = objstr::new_str(
+        format!(
+            "no module named '{}'",
+            qstr::str_from_qstr(name).unwrap_or_default()
+        )
+        .as_bytes(),
+    );
+    raise::raise_obj(objexcept::new_exception_args(
+        objexcept::type_import_error(),
+        1,
+        &[msg],
+    ));
 }
 
 fn raise_import_error_msg(msg: &'static str) -> ! {
-    raise::raise_obj(objexcept::new_exception_args(objexcept::type_import_error(), 1, &[objstr::new_str(msg.as_bytes())]));
+    raise::raise_obj(objexcept::new_exception_args(
+        objexcept::type_import_error(),
+        1,
+        &[objstr::new_str(msg.as_bytes())],
+    ));
 }
 
 fn vstr_cstr(path: &mut Vstr) -> String {
@@ -76,8 +91,9 @@ fn vstr_cstr(path: &mut Vstr) -> String {
 fn stat_path(path: &mut Vstr) -> ImportStat {
     let s = vstr_cstr(path);
     if mpconfig::MODULE_FROZEN && s.starts_with(FROZEN_PATH_PREFIX) {
-        // Frozen modules not wired in this port yet.
-        return ImportStat::NoExist;
+        let module = &s[FROZEN_PATH_PREFIX.len()..];
+        let mut frozen_type = FrozenKind::None;
+        return frozenmod::find_frozen_module(module, Some(&mut frozen_type), None);
     }
     import_stat(&s)
 }
@@ -117,21 +133,12 @@ fn sys_path_items() -> Vec<Obj> {
     if !(mpconfig::PY_SYS && mpconfig::PY_SYS_PATH) {
         return Vec::new();
     }
-    let sys_name = obj::new_qstr(qstr::from_str("sys"));
-    let loaded = crate::mpstate::with_vm(|vm| vm.mp_loaded_modules_dict);
-    let sys_mod = objdict::dict_get(loaded, sys_name);
-    if sys_mod != obj::OBJ_NULL {
-        let path_key = obj::new_qstr(qstr::from_str("path"));
-        let path_obj = objdict::dict_get(
-            obj::from_ptr(objmodule::module_get_globals(sys_mod) as *const ObjDict as *const ()),
-            path_key,
-        );
-        if path_obj != obj::OBJ_NULL && obj::is_exact_type(path_obj, crate::objlist::type_list()) {
-            let list = unsafe { &*(obj::as_ptr(path_obj) as *const crate::objlist::ObjList) };
-            return unsafe { std::slice::from_raw_parts(list.items, list.len) }.to_vec();
-        }
+    let path = crate::mpstate::with_vm(|vm| vm.mp_sys_path);
+    if path == obj::OBJ_NULL {
+        return default_sys_path_items();
     }
-    default_sys_path_items()
+    let (_, items) = crate::objlist::list_get(path);
+    items
 }
 
 fn stat_top_level(mod_name: Qstr, dest: &mut Vstr) -> ImportStat {
@@ -159,38 +166,11 @@ fn stat_top_level(mod_name: Qstr, dest: &mut Vstr) -> ImportStat {
     stat_module(dest)
 }
 
-fn parse_compile_execute(lex: Lexer, globals: *mut ObjDict) {
-    let source_name = lex.source_name;
-    if mpconfig::MODULE___FILE__ {
-        runtime::store_attr(
-            obj::from_ptr(globals as *const ObjDict as *const ()),
-            qstr::from_str("__file__"),
-            obj::new_qstr(source_name),
-        );
-    }
-    let mut tree = parse::parse(lex, ParseInputKind::FileInput);
-    let ctx = malloc::new_obj::<ModuleContext>().expect("import module context");
-    unsafe {
-        (*ctx).module.globals = globals;
-        (*ctx).constants = Default::default();
-    }
-    let mut cm = CompiledModule {
-        context: ctx,
-        rc: core::ptr::null(),
-        has_native: false,
-        n_qstr: 0,
-        n_obj: 0,
-        arch_flags: 0,
-    };
-    compile::compile_to_raw_code(&mut tree, source_name, false, &mut cm);
-    let fun = emitglue::make_function_from_proto_fun(cm.rc as ProtoFun, ctx, None);
-    runtime::call_function_0(fun);
-}
-
 fn do_execute_proto_fun(context: *const ModuleContext, proto_fun: ProtoFun, source_name: Qstr) {
-    if mpconfig::MODULE___FILE__ {
+    if mpconfig::MODULE_FILE {
+        let module = obj::from_ptr(context as *const ());
         runtime::store_attr(
-            obj::from_ptr(unsafe { (*context).module.globals } as *const ObjDict as *const ()),
+            module,
             qstr::from_str("__file__"),
             obj::new_qstr(source_name),
         );
@@ -205,11 +185,45 @@ fn do_execute_proto_fun(context: *const ModuleContext, proto_fun: ProtoFun, sour
     });
     let module_fun = emitglue::make_function_from_proto_fun(proto_fun, context, None);
     runtime::call_function_0(module_fun);
-    crate::nlr::pop_jump_callback(false);
+    crate::nlr::pop_jump_callback(true);
+}
+
+fn do_load_from_lexer(module_obj: *mut ModuleContext, lex: Lexer) {
+    let globals =
+        obj::from_ptr(unsafe { (*module_obj).module.globals } as *const ObjDict as *const ());
+    compile::parse_compile_execute(lex, ParseInputKind::FileInput, Some(globals), Some(globals));
 }
 
 fn do_load(module_obj: *mut ModuleContext, file: &mut Vstr) {
     let file_str = vstr_cstr(file);
+
+    if mpconfig::MODULE_FROZEN && file_str.starts_with(FROZEN_PATH_PREFIX) {
+        let module = &file_str[FROZEN_PATH_PREFIX.len()..];
+        let mut frozen_type = FrozenKind::None;
+        let mut data: *mut () = core::ptr::null_mut();
+        frozenmod::find_frozen_module(module, Some(&mut frozen_type), Some(&mut data));
+        if frozen_type == FrozenKind::Str && !data.is_null() {
+            let lex = unsafe { *Box::from_raw(data as *mut Lexer) };
+            do_load_from_lexer(module_obj, lex);
+            return;
+        }
+
+        if mpconfig::MODULE_FROZEN_MPY && frozen_type == FrozenKind::Mpy && !data.is_null() {
+            let bytes = unsafe { Box::from_raw(data as *mut Vec<u8>) };
+            let file_qstr = qstr::from_str(module);
+            let mut cm = CompiledModule {
+                context: module_obj,
+                rc: core::ptr::null(),
+                has_native: false,
+                n_qstr: 0,
+                n_obj: 0,
+                arch_flags: 0,
+            };
+            persistentcode::raw_code_load_mem(&bytes, &mut cm);
+            do_execute_proto_fun(module_obj, cm.rc as ProtoFun, file_qstr);
+            return;
+        }
+    }
 
     if mpconfig::ENABLE_COMPILER || (mpconfig::PERSISTENT_CODE_LOAD && mpconfig::HAS_FILE_READER) {
         let file_qstr = qstr::from_str(&file_str);
@@ -232,7 +246,7 @@ fn do_load(module_obj: *mut ModuleContext, file: &mut Vstr) {
 
         if mpconfig::ENABLE_COMPILER {
             let lex = Lexer::new_from_file(file_qstr);
-            parse_compile_execute(lex, unsafe { (*module_obj).module.globals });
+            do_load_from_lexer(module_obj, lex);
             return;
         }
     }
@@ -288,11 +302,7 @@ fn evaluate_relative_import(level: i64, module_name: &mut String, globals: Obj) 
 fn unregister_module_from_nlr_jump_callback(name: Qstr) {
     let loaded = crate::mpstate::with_vm(|vm| vm.mp_loaded_modules_dict);
     let loaded_map = unsafe { &mut (*objdict::dict_ptr(loaded)).map };
-    map::lookup(
-        loaded_map,
-        obj::new_qstr(name),
-        LookupKind::RemoveIfFound,
-    );
+    map::lookup(loaded_map, obj::new_qstr(name), LookupKind::RemoveIfFound);
 }
 
 /// Load a module at the specified absolute path.
@@ -306,22 +316,18 @@ pub fn process_import_at_level(
         if !sys_path_items().is_empty() {
             let loaded = crate::mpstate::with_vm(|vm| vm.mp_loaded_modules_dict);
             let loaded_map = unsafe { &mut (*objdict::dict_ptr(loaded)).map };
-            if let Some(elem) = map::lookup(
-                loaded_map,
-                obj::new_qstr(full_mod_name),
-                LookupKind::Lookup,
-            ) {
+            if let Some(elem) =
+                map::lookup(loaded_map, obj::new_qstr(full_mod_name), LookupKind::Lookup)
+            {
                 return elem.value;
             }
         }
     } else {
         let loaded = crate::mpstate::with_vm(|vm| vm.mp_loaded_modules_dict);
         let loaded_map = unsafe { &mut (*objdict::dict_ptr(loaded)).map };
-        if let Some(elem) = map::lookup(
-            loaded_map,
-            obj::new_qstr(full_mod_name),
-            LookupKind::Lookup,
-        ) {
+        if let Some(elem) =
+            map::lookup(loaded_map, obj::new_qstr(full_mod_name), LookupKind::Lookup)
+        {
             return elem.value;
         }
     }
@@ -392,10 +398,7 @@ pub fn process_import_at_level(
         unregister_module_from_nlr_jump_callback(unregister_name);
     });
 
-    if mpconfig::MODULE_OVERRIDE_MAIN_IMPORT
-        && override_main
-        && stat != ImportStat::Dir
-    {
+    if mpconfig::MODULE_OVERRIDE_MAIN_IMPORT && override_main && stat != ImportStat::Dir {
         let globals = objmodule::module_get_globals(module_obj);
         objdict::dict_store(
             obj::from_ptr(globals as *const ObjDict as *const ()),
@@ -506,8 +509,7 @@ pub fn builtin___import___default(n_args: usize, args: &[Obj]) -> Obj {
         if i == module_name_len || bytes[i - 1] == b'.' {
             let end = if i == module_name_len { i } else { i - 1 };
             let full_mod_name = qstr::from_strn(&bytes[..end]);
-            let level_mod_name =
-                qstr::from_strn(&bytes[current_component_start..end]);
+            let level_mod_name = qstr::from_strn(&bytes[current_component_start..end]);
             let override_main = mpconfig::MODULE_OVERRIDE_MAIN_IMPORT
                 && i == module_name_len
                 && fromtuple == obj::CONST_FALSE;
@@ -563,7 +565,13 @@ fn import_dispatch(n_args: usize, args: &[Obj]) -> Obj {
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    crate::argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    crate::argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -605,5 +613,141 @@ pub fn builtin___import___obj() -> Obj {
             IMPORT_OBJ = Some(init_import_obj());
         }
         IMPORT_OBJ.unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compile;
+    use crate::emitglue::CompiledModule;
+    use crate::lexer::Lexer;
+    use crate::malloc;
+    use crate::mpprint::Print;
+    use crate::objmodule;
+    use crate::parse::{self, ParseInputKind};
+    use crate::persistentcode;
+    use crate::reader;
+    use crate::runtime;
+    use crate::vstr::{self, Vstr};
+
+    fn compile_source_to_mpy(source: &[u8], filename: &str) -> Vec<u8> {
+        let file_qstr = qstr::from_str(filename);
+        let lex = Lexer::new_from_str_len(file_qstr, source, reader::READER_IS_ROM);
+        let mut tree = parse::parse(lex, ParseInputKind::FileInput);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("module context");
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        compile::compile_to_raw_code(&mut tree, file_qstr, false, &mut cm);
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        let print = Print {
+            data: &mut v as *mut Vstr as *mut (),
+            print_strn: Some(vstr::vstr_add_strn_print),
+        };
+        persistentcode::raw_code_save(&cm, &print);
+        let saved = unsafe { std::slice::from_raw_parts(v.buf, v.len) }.to_vec();
+        vstr::clear(&mut v);
+        saved
+    }
+
+    fn setup() {
+        runtime::init();
+        let _ = crate::modbuiltins::init_builtins_module();
+    }
+
+    #[test]
+    fn frozen_str_load_via_lexer() {
+        setup();
+        let module_obj = objmodule::new_module(qstr::from_str("frozenstr"));
+        let module_ctx = obj::as_ptr(module_obj) as *mut ModuleContext;
+        let lex = Lexer::new_from_str_len(
+            qstr::from_str("frozenstr.py"),
+            b"y = 99\n",
+            reader::READER_IS_ROM,
+        );
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut nlr_buf, || do_load_from_lexer(module_ctx, lex)).expect("lexer");
+        let y = runtime::load_attr(module_obj, qstr::from_str("y"));
+        assert_eq!(obj::small_int_value(y), 99);
+    }
+
+    #[test]
+    fn frozen_mpy_load_and_execute() {
+        setup();
+        let blob = compile_source_to_mpy(b"y = 99\n", "frozenmpy.py");
+        assert!(blob.len() > 4);
+        assert_eq!(blob[0], b'M');
+
+        let module_obj = objmodule::new_module(qstr::from_str("frozenmpy"));
+        let module_ctx = obj::as_ptr(module_obj) as *mut ModuleContext;
+        let mut cm = CompiledModule {
+            context: module_ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut nlr_buf, || {
+            persistentcode::raw_code_load_mem(&blob, &mut cm);
+            let mod_globals = unsafe { (*module_ctx).module.globals };
+            let old_globals = runtime::globals_get();
+            let old_locals = runtime::locals_get();
+            runtime::globals_set(obj::from_ptr(
+                mod_globals as *const crate::objdict::ObjDict as *const (),
+            ));
+            runtime::locals_set(obj::from_ptr(
+                mod_globals as *const crate::objdict::ObjDict as *const (),
+            ));
+            let module_fun =
+                emitglue::make_function_from_proto_fun(cm.rc as ProtoFun, module_ctx, None);
+            runtime::call_function_0(module_fun);
+            runtime::globals_set(old_globals);
+            runtime::locals_set(old_locals);
+        })
+        .expect("load and execute");
+
+        let y = runtime::load_attr(module_obj, qstr::from_str("y"));
+        assert_eq!(obj::small_int_value(y), 99);
+    }
+
+    #[test]
+    fn frozen_mpy_import_via_path() {
+        if !(mpconfig::MODULE_FROZEN && mpconfig::MODULE_FROZEN_MPY) {
+            return;
+        }
+        setup();
+        let blob = compile_source_to_mpy(b"y = 99\n", "frozenmpy.py");
+        frozenmod::register_frozen_modules(b"frozenmpy.py\0".to_vec(), vec![], vec![], vec![blob]);
+
+        let mut path_buf = vec![0u8; mpconfig::ALLOC_PATH_MAX];
+        let mut path = Vstr {
+            alloc: path_buf.len(),
+            len: 0,
+            buf: path_buf.as_mut_ptr(),
+            fixed_buf: true,
+        };
+        vstr::add_str(&mut path, FROZEN_PATH_PREFIX);
+        vstr::add_str(&mut path, "frozenmpy.py");
+
+        let module_obj = objmodule::new_module(qstr::from_str("frozenmpy"));
+        let module_ctx = obj::as_ptr(module_obj) as *mut ModuleContext;
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut nlr_buf, || do_load(module_ctx, &mut path)).expect("do_load");
+
+        let y = runtime::load_attr(module_obj, qstr::from_str("y"));
+        assert_eq!(obj::small_int_value(y), 99);
     }
 }

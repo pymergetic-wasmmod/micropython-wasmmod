@@ -3,11 +3,13 @@
 
 use py_rs::bc::ModuleContext;
 use py_rs::binary::{self, BYTEARRAY_TYPECODE};
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, OBJ_NULL, OBJ_SENTINEL, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, BufferInfo, Obj, ObjBase, ObjType, OBJ_NULL, OBJ_SENTINEL, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objarray;
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objfloat;
@@ -57,8 +59,7 @@ const PTR: u32 = 1;
 const ARRAY: u32 = 2;
 
 const TYPE2CHAR: [u8; 16] = [
-    b'B', b'b', b'H', b'h', b'I', b'i', b'Q', b'q', b'-', b'-', b'-', b'-', b'-', b'-', b'f',
-    b'd',
+    b'B', b'b', b'H', b'h', b'I', b'i', b'Q', b'q', b'-', b'-', b'-', b'-', b'-', b'-', b'f', b'd',
 ];
 
 const fn type2smallint(x: i32, nbits: u32) -> isize {
@@ -101,8 +102,7 @@ fn is_scalar_array(tuple_desc: Obj) -> bool {
 
 fn is_scalar_array_of_bytes(tuple_desc: Obj) -> bool {
     let (_, items) = objtuple::tuple_get(tuple_desc);
-    obj::is_small_int(items[1])
-        && get_type(obj::small_int_value(items[1]), VAL_TYPE_BITS) == UINT8
+    obj::is_small_int(items[1]) && get_type(obj::small_int_value(items[1]), VAL_TYPE_BITS) == UINT8
 }
 
 fn scalar_size(val_type: u32) -> usize {
@@ -164,9 +164,7 @@ fn struct_size(desc_in: Obj, layout_type: u32, max_field_size: &mut usize) -> us
             return struct_agg_size(desc_in, layout_type, max_field_size);
         }
         if obj::is_small_int(desc_in) {
-            raise::raise(MpRaise::TypeError(
-                "can't unambiguously get sizeof scalar",
-            ));
+            raise::raise(MpRaise::TypeError("can't unambiguously get sizeof scalar"));
         }
         syntax_error();
     }
@@ -253,15 +251,9 @@ fn get_aligned(val_type: u32, p: *const u8, index: isize) -> Obj {
         match val_type {
             UINT8 => obj::new_small_int(*p.offset(index) as obj::Int),
             INT8 => obj::new_small_int(*p.offset(index) as i8 as obj::Int),
-            UINT16 => {
-                obj::new_small_int(*(p.offset(index * 2) as *const u16) as obj::Int)
-            }
-            INT16 => {
-                obj::new_small_int(*(p.offset(index * 2) as *const i16) as obj::Int)
-            }
-            UINT32 => objint::new_int_from_uint(
-                *(p.offset(index * 4) as *const u32) as obj::Uint,
-            ),
+            UINT16 => obj::new_small_int(*(p.offset(index * 2) as *const u16) as obj::Int),
+            INT16 => obj::new_small_int(*(p.offset(index * 2) as *const i16) as obj::Int),
+            UINT32 => objint::new_int_from_uint(*(p.offset(index * 4) as *const u32) as obj::Uint),
             INT32 => objint::new_int(*(p.offset(index * 4) as *const i32) as obj::Int),
             UINT64 => objint::new_int_from_ull(*(p.offset(index * 8) as *const u64)),
             INT64 => objint::new_int_from_ll(*(p.offset(index * 8) as *const i64)),
@@ -411,10 +403,9 @@ fn struct_attr_op(self_in: Obj, attr: Qstr, set_val: Obj) -> Obj {
             if is_scalar_array(deref) && is_scalar_array_of_bytes(deref) {
                 let mut dummy = 0usize;
                 let sz = struct_agg_size(deref, self_.flags, &mut dummy);
-                return objarray::new_bytearray_by_ref(
-                    sz,
-                    unsafe { self_.addr.add(offset as usize) },
-                );
+                return objarray::new_bytearray_by_ref(sz, unsafe {
+                    self_.addr.add(offset as usize)
+                });
             }
             let o = malloc::new_obj::<ObjUctypesStruct>().expect("uctypes struct");
             unsafe {
@@ -723,7 +714,13 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk1(f: BuiltinFn1) -> Obj {
@@ -786,10 +783,8 @@ static mut TYPE_STRUCT: ObjType = ObjType {
 static STRUCT_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_struct_type() -> &'static ObjType {
-    STRUCT_INIT.get_or_init(|| {
-        unsafe {
-            TYPE_STRUCT.name = qstr::from_str("struct");
-        }
+    STRUCT_INIT.get_or_init(|| unsafe {
+        TYPE_STRUCT.name = qstr::from_str("struct");
     });
     unsafe { &TYPE_STRUCT }
 }
@@ -1167,12 +1162,7 @@ mod tests {
             map::init_fixed_table(&mut (*objdict::dict_ptr(dict)).map, elems);
         }
         let addr = data.as_mut_ptr() as usize as obj::Int;
-        let s = struct_make_new(
-            init_struct_type(),
-            3,
-            0,
-            &[objint::new_int(addr), dict, le],
-        );
+        let s = struct_make_new(init_struct_type(), 3, 0, &[objint::new_int(addr), dict, le]);
         let arr = load_field(s, "arr");
         let mut info = BufferInfo::default();
         assert!(obj::get_buffer(arr, &mut info, obj::BUFFER_READ));

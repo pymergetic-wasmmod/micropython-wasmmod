@@ -359,11 +359,8 @@ impl Parser {
                 }
             }
             TokenKind::Bytes => {
-                let text = lex.token_text();
-                self.make_node_const_object(
-                    lex.tok_line as u32,
-                    obj::new_qstr(qstr::from_strn(text.as_bytes()) as usize),
-                )
+                let bytes = lex.token_bytes();
+                self.make_node_const_object(lex.tok_line as u32, crate::objstr::new_bytes(bytes))
             }
             _ => parse_node_new_leaf(PARSE_NODE_TOKEN, lex.tok_kind as usize),
         };
@@ -416,8 +413,7 @@ impl Parser {
         }
 
         let pn = self.parser_alloc(
-            core::mem::size_of::<ParseNodeStruct>()
-                + core::mem::size_of::<ParseNode>() * num_args,
+            core::mem::size_of::<ParseNodeStruct>() + core::mem::size_of::<ParseNode>() * num_args,
         ) as *mut ParseNodeStruct;
         unsafe {
             (*pn).source_line = src_line as u32;
@@ -546,9 +542,8 @@ impl Parser {
                     let mut num_not_nil = 0usize;
                     for x in (0..n).rev() {
                         if (rule_arg[x] & grammar::RULE_ARG_KIND_MASK) == grammar::RULE_ARG_TOK {
-                            if TokenKind::from_u8(
-                                (rule_arg[x] & grammar::RULE_ARG_ARG_MASK) as u8,
-                            ) == TokenKind::Name
+                            if TokenKind::from_u8((rule_arg[x] & grammar::RULE_ARG_ARG_MASK) as u8)
+                                == TokenKind::Name
                             {
                                 stack_args += 1;
                                 num_not_nil += 1;
@@ -580,7 +575,10 @@ impl Parser {
                 }
 
                 _ => {
-                    debug_assert_eq!(rule_act & grammar::RULE_ACT_KIND_MASK, grammar::RULE_ACT_LIST);
+                    debug_assert_eq!(
+                        rule_act & grammar::RULE_ACT_KIND_MASK,
+                        grammar::RULE_ACT_LIST
+                    );
                     let mut had_trailing_sep = false;
                     'list_rule: loop {
                         if backtrack {
@@ -608,9 +606,7 @@ impl Parser {
                         let arg = rule_arg[i & 1 & n];
                         if (arg & grammar::RULE_ARG_KIND_MASK) == grammar::RULE_ARG_TOK {
                             if self.lexer.tok_kind
-                                == TokenKind::from_u8(
-                                    (arg & grammar::RULE_ARG_ARG_MASK) as u8,
-                                )
+                                == TokenKind::from_u8((arg & grammar::RULE_ARG_ARG_MASK) as u8)
                             {
                                 if (i & 1 & n) == 0 {
                                     self.push_result_token(rule_id);
@@ -798,7 +794,10 @@ impl Parser {
                     || x == Rule::ShiftExpr as u8
                     || x == Rule::ArithExpr as u8
                     || x == Rule::Term as u8
-            ) => return false,
+            ) =>
+            {
+                return false
+            }
             None if rule_id == Rule::Factor2 as u8 => {
                 let Some(v) = Self::parse_node_get_number_maybe(self.peek_result(0)) else {
                     return false;
@@ -940,8 +939,14 @@ fn parse_node_is_const_bool(pn: ParseNode, value: bool) -> bool {
         Parser::parse_node_is_const(pn)
             && obj::is_true(Parser::parse_node_convert_to_obj(pn)) == value
     } else {
-        parse_node_is_token_kind(pn, if value { TokenKind::KwTrue } else { TokenKind::KwFalse })
-            || (parse_node_is_small_int(pn) && (parse_node_leaf_small_int(pn) != 0) == value)
+        parse_node_is_token_kind(
+            pn,
+            if value {
+                TokenKind::KwTrue
+            } else {
+                TokenKind::KwFalse
+            },
+        ) || (parse_node_is_small_int(pn) && (parse_node_leaf_small_int(pn) != 0) == value)
     }
 }
 
@@ -965,7 +970,11 @@ pub fn parse_node_get_int_maybe(pn: ParseNode, out: &mut Obj) -> bool {
     }
 }
 
-pub fn parse_node_extract_list(pn: &mut ParseNode, pn_kind: Rule, nodes: &mut *mut ParseNode) -> usize {
+pub fn parse_node_extract_list(
+    pn: &mut ParseNode,
+    pn_kind: Rule,
+    nodes: &mut *mut ParseNode,
+) -> usize {
     if parse_node_is_null(*pn) {
         *nodes = ptr::null_mut();
         0
@@ -985,7 +994,6 @@ pub fn parse_node_extract_list(pn: &mut ParseNode, pn_kind: Rule, nodes: &mut *m
         }
     }
 }
-
 
 /// Parse source using MicroPython's grammar (`mp_parse`).
 pub fn parse(lex: Lexer, input_kind: ParseInputKind) -> ParseTree {
@@ -1070,7 +1078,9 @@ pub fn eval_const_expr(root: ParseNode) -> Result<Obj, RuntimeError> {
         unsafe {
             let nodes = parse_node_struct_nodes(pns);
             match kind as u8 {
-                x if x == Rule::ArithExpr as u8 => eval_list_binops(nodes, n, eval_pn, arith_token_to_op),
+                x if x == Rule::ArithExpr as u8 => {
+                    eval_list_binops(nodes, n, eval_pn, arith_token_to_op)
+                }
                 x if x == Rule::Term as u8 => eval_list_binops(nodes, n, eval_pn, term_token_to_op),
                 x if x == Rule::ShiftExpr as u8 => {
                     eval_list_binops(nodes, n, eval_pn, shift_token_to_op)

@@ -7,7 +7,9 @@ use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mperrno;
-use py_rs::obj::{self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objpolyiter;
 use py_rs::objstr;
@@ -73,11 +75,7 @@ fn decode_uint_checked(ptr: &mut *const u8, ptr_max: *const u8, value_out: &mut 
     true
 }
 
-fn extract_record(
-    fs: &mut *const u8,
-    fs_next: &mut *const u8,
-    fs_max: *const u8,
-) -> RecordKind {
+fn extract_record(fs: &mut *const u8, fs_next: &mut *const u8, fs_max: *const u8) -> RecordKind {
     let mut record_kind = 0usize;
     if !decode_uint_checked(fs, fs_max, &mut record_kind) {
         return ROMFS_RECORD_KIND_UNUSED;
@@ -153,14 +151,17 @@ pub fn search_filesystem(
         let record_kind = extract_record(&mut fs, &mut fs_next, fs_top);
         if record_kind == ROMFS_RECORD_KIND_UNUSED {
             return ImportStat::NoExist;
-        } else if record_kind == ROMFS_RECORD_KIND_DIRECTORY || record_kind == ROMFS_RECORD_KIND_FILE {
+        } else if record_kind == ROMFS_RECORD_KIND_DIRECTORY
+            || record_kind == ROMFS_RECORD_KIND_FILE
+        {
             let mut name_len = 0usize;
             if !decode_uint_checked(&mut fs, fs_next, &mut name_len) {
                 return ImportStat::NoExist;
             }
             if (name_len == path_len || (name_len < path_len && path.as_bytes()[name_len] == b'/'))
                 && fs as usize + name_len <= fs_next as usize
-                && &path.as_bytes()[..name_len] == unsafe { std::slice::from_raw_parts(fs, name_len) }
+                && &path.as_bytes()[..name_len]
+                    == unsafe { std::slice::from_raw_parts(fs, name_len) }
             {
                 fs = unsafe { fs.add(name_len) };
                 fs_top = fs_next;
@@ -215,9 +216,9 @@ fn make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj
     let filesystem = bufinfo.buf as *const u8;
 
     unsafe {
-        if !((*filesystem == ROMFS_HEADER_BYTE0
+        if !(*filesystem == ROMFS_HEADER_BYTE0
             && *filesystem.add(1) == ROMFS_HEADER_BYTE1
-            && *filesystem.add(2) == ROMFS_HEADER_BYTE2))
+            && *filesystem.add(2) == ROMFS_HEADER_BYTE2)
         {
             raise::raise(MpRaise::OSError(mperrno::ENODEV));
         }
@@ -225,9 +226,7 @@ fn make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj
 
     let mut fs = filesystem;
     let mut fs_end = filesystem;
-    let record_kind = extract_record(&mut fs, &mut fs_end, unsafe {
-        filesystem.add(bufinfo.len)
-    });
+    let record_kind = extract_record(&mut fs, &mut fs_end, unsafe { filesystem.add(bufinfo.len) });
     if record_kind != ROMFS_RECORD_KIND_FILESYSTEM {
         raise::raise(MpRaise::OSError(mperrno::ENODEV));
     }
@@ -285,7 +284,9 @@ fn ilistdir_iternext(self_in: Obj) -> Obj {
         let (type_, name_len, data_len) = if record_kind == ROMFS_RECORD_KIND_UNUSED {
             self_.index = self_.index_top;
             break;
-        } else if record_kind == ROMFS_RECORD_KIND_DIRECTORY || record_kind == ROMFS_RECORD_KIND_FILE {
+        } else if record_kind == ROMFS_RECORD_KIND_DIRECTORY
+            || record_kind == ROMFS_RECORD_KIND_FILE
+        {
             let mut name_len = 0usize;
             if !decode_uint_checked(&mut self_.index, index_next, &mut name_len) {
                 self_.index = self_.index_top;
@@ -368,12 +369,7 @@ fn stat(self_in: Obj, path_in: Obj) -> Obj {
     let path = get_path_str(self_, path_in);
     let mut file_size = 0usize;
     let mut file_data = core::ptr::null();
-    let stat = search_filesystem(
-        self_,
-        &path,
-        Some(&mut file_size),
-        Some(&mut file_data),
-    );
+    let stat = search_filesystem(self_, &path, Some(&mut file_size), Some(&mut file_data));
     if stat == ImportStat::NoExist {
         raise::raise(MpRaise::OSError(mperrno::ENOENT));
     }
@@ -446,7 +442,9 @@ static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut F3: [*const (); 1] = [call3 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -464,7 +462,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static TF2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -482,7 +482,9 @@ static TF2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TF3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -542,7 +544,9 @@ static VFS_ROM_PROTO: VfsProto = VfsProto { import_stat };
 
 static mut VFS_ROM_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_VFS_ROM: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -600,8 +604,8 @@ fn init_type() {
                 value: mk2(statvfs),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             VFS_ROM_SLOTS[0] = make_new as MakeNewFn as *const ();
@@ -649,15 +653,12 @@ mod tests {
 
     fn make_test_romfs() -> Vec<u8> {
         let mut root = Vec::new();
-        root.extend_from_slice(&pack(
-            ROMFS_RECORD_KIND_FILE,
-            &{
-                let mut p = encode_uint(8);
-                p.extend_from_slice(b"test.txt");
-                p.extend_from_slice(&pack(ROMFS_RECORD_KIND_DATA_VERBATIM, b"contents"));
-                p
-            },
-        ));
+        root.extend_from_slice(&pack(ROMFS_RECORD_KIND_FILE, &{
+            let mut p = encode_uint(8);
+            p.extend_from_slice(b"test.txt");
+            p.extend_from_slice(&pack(ROMFS_RECORD_KIND_DATA_VERBATIM, b"contents"));
+            p
+        }));
         let mut image = vec![ROMFS_HEADER_BYTE0, ROMFS_HEADER_BYTE1, ROMFS_HEADER_BYTE2];
         let mut len = encode_uint(root.len() as u32);
         if (3 + len.len() + root.len()) % 2 == 1 {
@@ -671,10 +672,14 @@ mod tests {
     fn romfs_from_bytes(data: &[u8]) -> ObjVfsRom {
         let mut fs = data.as_ptr();
         let mut fs_end = fs;
-        let kind = extract_record(&mut fs, &mut fs_end, unsafe { data.as_ptr().add(data.len()) });
+        let kind = extract_record(&mut fs, &mut fs_end, unsafe {
+            data.as_ptr().add(data.len())
+        });
         assert_eq!(kind, ROMFS_RECORD_KIND_FILESYSTEM);
         ObjVfsRom {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             memory: obj::OBJ_NULL,
             filesystem: fs,
             filesystem_end: fs_end,
@@ -697,10 +702,7 @@ mod tests {
         );
         assert_eq!(size, 8);
         unsafe {
-            assert_eq!(
-                std::slice::from_raw_parts(ptr, size),
-                b"contents"
-            );
+            assert_eq!(std::slice::from_raw_parts(ptr, size), b"contents");
         }
     }
 

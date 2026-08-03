@@ -1,8 +1,11 @@
 //! rewrite of extmod/wasmmod/pack.c + extmod/wasmmod/pack.h
 // symmetry: done
 
-pub const PACK_SECTION: &str = "micropython.pack";
-pub const IMPORTS_SECTION: &str = "micropython.imports";
+pub const PACK_SECTION: &str = "wasmmod.pack";
+pub const IMPORTS_SECTION: &str = "wasmmod.imports";
+pub const SIG_SECTION: &str = "wasmmod.sig";
+pub const HOST_MODULE: &str = "wasmmod.host";
+pub const WASM_MODULE: &str = "wasmmod";
 pub const PACK_MAGIC: &[u8; 4] = b"MPWP";
 pub const IMPORTS_MAGIC: &[u8; 4] = b"MPWI";
 pub const PACK_KIND_PY: u8 = 1;
@@ -72,10 +75,7 @@ fn read_u32_le(data: &[u8]) -> u32 {
     u32::from_le_bytes([data[0], data[1], data[2], data[3]])
 }
 
-pub fn find_section_id(
-    wasm: &[u8],
-    want_id: u8,
-) -> Option<&[u8]> {
+pub fn find_section_id(wasm: &[u8], want_id: u8) -> Option<&[u8]> {
     if wasm.len() < 8 || &wasm[0..4] != b"\0asm" {
         return None;
     }
@@ -106,7 +106,6 @@ pub fn find_custom_section<'a>(wasm: &'a [u8], name: &str) -> Option<&'a [u8]> {
     while p < end {
         let id = wasm[p];
         p += 1;
-        let sec_start = p;
         let mut ip = p;
         let size = read_uleb(&mut ip, end, wasm)? as usize;
         if ip + size > end {
@@ -116,7 +115,7 @@ pub fn find_custom_section<'a>(wasm: &'a [u8], name: &str) -> Option<&'a [u8]> {
         if id != 0 {
             continue;
         }
-        let sec = &wasm[sec_start..p];
+        let sec = &wasm[ip..ip + size];
         let mut q = 0usize;
         let name_len = read_uleb(&mut q, sec.len(), sec)? as usize;
         if q + name_len > sec.len() {
@@ -289,17 +288,70 @@ mod tests {
 
     #[test]
     fn find_custom_section_roundtrip() {
+        let payload = build_pack_payload("demo", &[("x.py", PACK_KIND_PY, b"x=1")]);
+        let wasm = build_wasm_with_custom_section(PACK_SECTION, &payload);
+        let found = pack_find_section(&wasm).expect("pack section");
+        let info = pack_parse(found).expect("parse pack");
+        assert_eq!(info.name, "demo");
+        assert_eq!(info.files.len(), 1);
+    }
+
+    fn encode_uleb(mut v: u32) -> Vec<u8> {
+        let mut out = Vec::new();
+        loop {
+            let mut b = (v & 0x7f) as u8;
+            v >>= 7;
+            if v != 0 {
+                b |= 0x80;
+            }
+            out.push(b);
+            if v == 0 {
+                break;
+            }
+        }
+        out
+    }
+
+    fn build_pack_payload(name: &str, files: &[(&str, u8, &[u8])]) -> Vec<u8> {
+        let mut p = Vec::new();
+        p.extend_from_slice(PACK_MAGIC);
+        p.extend_from_slice(&1u16.to_le_bytes());
+        p.extend_from_slice(&0u16.to_le_bytes());
+        p.extend_from_slice(&(name.len() as u16).to_le_bytes());
+        p.extend_from_slice(name.as_bytes());
+        p.extend_from_slice(&(files.len() as u32).to_le_bytes());
+        for (path, kind, data) in files {
+            p.extend_from_slice(&(path.len() as u16).to_le_bytes());
+            p.extend_from_slice(path.as_bytes());
+            p.push(*kind);
+            p.extend_from_slice(&(data.len() as u32).to_le_bytes());
+            p.extend_from_slice(data);
+        }
+        p
+    }
+
+    fn build_wasm_with_custom_section(section_name: &str, payload: &[u8]) -> Vec<u8> {
         let mut wasm = vec![0u8, b'a', b's', b'm', 1, 0, 0, 0];
-        let name = PACK_SECTION;
-        let payload = b"hello";
+        let name_bytes = section_name.as_bytes();
+        let mut body = Vec::new();
+        body.extend_from_slice(&encode_uleb(name_bytes.len() as u32));
+        body.extend_from_slice(name_bytes);
+        body.extend_from_slice(payload);
         let mut sec = Vec::new();
-        sec.push(0); // custom section id
-        sec.push((name.len()) as u8); // simplified uleb size for tiny test
-        sec.extend_from_slice(name.as_bytes());
-        sec.extend_from_slice(payload);
+        sec.push(0);
+        sec.extend_from_slice(&encode_uleb(body.len() as u32));
+        sec.extend_from_slice(&body);
         wasm.extend_from_slice(&sec);
-        // Minimal test: pack_find on empty wasm returns None
-        assert!(pack_find_section(&wasm).is_none() || pack_find_section(&[0, b'a', b's', b'm']).is_none());
+        wasm
+    }
+
+    #[test]
+    fn section_names_match_upstream() {
+        assert_eq!(PACK_SECTION, "wasmmod.pack");
+        assert_eq!(IMPORTS_SECTION, "wasmmod.imports");
+        assert_eq!(SIG_SECTION, "wasmmod.sig");
+        assert_eq!(HOST_MODULE, "wasmmod.host");
+        assert_eq!(WASM_MODULE, "wasmmod");
     }
 
     #[test]

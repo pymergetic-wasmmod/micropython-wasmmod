@@ -1,9 +1,9 @@
 //! Shared helpers for `pm_mpy_cmath_*` accessors.
 // symmetry: done
 
+use super::export::module_global_export;
 use crate::modcmath;
 use crate::obj;
-use super::export::module_global_export;
 
 /// Look up `cmath` module export `name` (null if absent).
 pub(crate) fn cmath_export(name: &str) -> obj::Obj {

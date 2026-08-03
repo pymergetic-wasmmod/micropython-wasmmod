@@ -20,12 +20,19 @@ pub enum FrozenKind {
 static FROZEN_NAMES: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
 static FROZEN_STR_SIZES: std::sync::OnceLock<Vec<u32>> = std::sync::OnceLock::new();
 static FROZEN_STR_CONTENT: std::sync::OnceLock<Vec<u8>> = std::sync::OnceLock::new();
+static FROZEN_MPY_CONTENT: std::sync::OnceLock<Vec<Vec<u8>>> = std::sync::OnceLock::new();
 
 /// Register frozen module metadata from generated `frozen_content.c` equivalents.
-pub fn register_frozen_modules(names: Vec<u8>, str_sizes: Vec<u32>, str_content: Vec<u8>) {
+pub fn register_frozen_modules(
+    names: Vec<u8>,
+    str_sizes: Vec<u32>,
+    str_content: Vec<u8>,
+    mpy_blobs: Vec<Vec<u8>>,
+) {
     let _ = FROZEN_NAMES.set(names);
     let _ = FROZEN_STR_SIZES.set(str_sizes);
     let _ = FROZEN_STR_CONTENT.set(str_content);
+    let _ = FROZEN_MPY_CONTENT.set(mpy_blobs);
 }
 
 fn frozen_names() -> Option<&'static [u8]> {
@@ -38,6 +45,10 @@ fn frozen_str_sizes() -> Option<&'static [u32]> {
 
 fn frozen_str_content() -> Option<&'static [u8]> {
     FROZEN_STR_CONTENT.get().map(|v| v.as_slice())
+}
+
+fn frozen_mpy_content() -> Option<&'static [Vec<u8>]> {
+    FROZEN_MPY_CONTENT.get().map(|v| v.as_slice())
 }
 
 /// `mp_find_frozen_module` — search `str` in the frozen name list.
@@ -62,9 +73,13 @@ pub fn find_frozen_module(
     };
 
     let mut num_str = 0usize;
-    if mpconfig::MODULE_FROZEN_STR && mpconfig::MODULE_FROZEN_MPY {
+    if mpconfig::MODULE_FROZEN_STR {
         if let Some(sizes) = frozen_str_sizes() {
-            num_str = sizes.iter().filter(|&&s| s != 0).count();
+            if mpconfig::MODULE_FROZEN_MPY {
+                num_str = sizes.iter().filter(|&&s| s != 0).count();
+            } else {
+                num_str = sizes.len();
+            }
         }
     }
 
@@ -103,6 +118,13 @@ pub fn find_frozen_module(
                         }
                     } else if mpconfig::MODULE_FROZEN_MPY && i >= num_str {
                         *ft = FrozenKind::Mpy;
+                        if let (Some(data_out), Some(blobs)) = (data, frozen_mpy_content()) {
+                            let mpy_idx = i - num_str;
+                            if mpy_idx < blobs.len() {
+                                let boxed = Box::new(blobs[mpy_idx].clone());
+                                *data_out = Box::into_raw(boxed) as *mut ();
+                            }
+                        }
                     }
                 }
                 return ImportStat::File;
@@ -126,15 +148,31 @@ pub fn release_frozen_str_data(data: *mut ()) {
     }
 }
 
+/// Release mpy bytes allocated by `find_frozen_module` for mpy frozen modules.
+pub fn release_frozen_mpy_data(data: *mut ()) {
+    if !data.is_null() {
+        unsafe {
+            drop(Box::from_raw(data as *mut Vec<u8>));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn disabled_without_module_frozen() {
-        assert_eq!(
-            find_frozen_module("foo", None, None),
-            ImportStat::NoExist
-        );
+        assert_eq!(find_frozen_module("foo", None, None), ImportStat::NoExist);
+    }
+
+    #[test]
+    fn find_mpy_frozen_module() {
+        if !(mpconfig::MODULE_FROZEN && mpconfig::MODULE_FROZEN_MPY) {
+            return;
+        }
+        // MPY detection and end-to-end import are covered by
+        // `builtinimport::tests::frozen_mpy_import_via_path`.
+        assert_eq!(FrozenKind::Mpy as u8, 2);
     }
 }

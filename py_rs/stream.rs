@@ -6,7 +6,9 @@ use core::cmp::min;
 use crate::argcheck;
 use crate::malloc;
 use crate::mpconfig;
-use crate::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use crate::obj::{
+    self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use crate::objlist;
 use crate::objstr;
 use crate::raise::{self, MpRaise};
@@ -120,13 +122,19 @@ pub fn stream_rw(stream: Obj, buf: &mut [u8], errcode: &mut i32, flags: u8) -> u
     let mut size = buf.len();
     while size > 0 {
         let out_sz = if flags & STREAM_RW_WRITE != 0 {
-            stream_p
-                .write
-                .expect("write")(stream, unsafe { buf.as_ptr().add(buf_off) }, size, errcode)
+            stream_p.write.expect("write")(
+                stream,
+                unsafe { buf.as_ptr().add(buf_off) },
+                size,
+                errcode,
+            )
         } else {
-            stream_p
-                .read
-                .expect("read")(stream, unsafe { buf.as_mut_ptr().add(buf_off) }, size, errcode)
+            stream_p.read.expect("read")(
+                stream,
+                unsafe { buf.as_mut_ptr().add(buf_off) },
+                size,
+                errcode,
+            )
         };
         if out_sz == 0 {
             return done;
@@ -159,9 +167,12 @@ pub fn stream_read_exactly(stream: Obj, buf: &mut [u8], errcode: &mut i32) -> us
 pub fn stream_seek(stream: Obj, offset: i64, whence: i32, errcode: &mut i32) -> i64 {
     let mut seek_s = StreamSeek { offset, whence };
     let stream_p = get_stream(stream);
-    let res = stream_p
-        .ioctl
-        .expect("ioctl")(stream, STREAM_SEEK, &mut seek_s as *mut _ as usize, errcode);
+    let res = stream_p.ioctl.expect("ioctl")(
+        stream,
+        STREAM_SEEK,
+        &mut seek_s as *mut _ as usize,
+        errcode,
+    );
     if res == STREAM_ERROR {
         return -1;
     }
@@ -170,16 +181,42 @@ pub fn stream_seek(stream: Obj, offset: i64, whence: i32, errcode: &mut i32) -> 
 
 /// `mp_stream_write`
 pub fn stream_write(self_in: Obj, buf: &[u8], flags: u8) -> Obj {
-    let mut scratch = buf.to_vec();
+    let stream_p = get_stream(self_in);
     let mut error = 0;
-    let out_sz = stream_rw(self_in, &mut scratch, &mut error, flags | STREAM_RW_WRITE);
+    let mut done = 0usize;
+    let mut buf_off = 0usize;
+    let mut size = buf.len();
+    let flags = flags | STREAM_RW_WRITE;
+    while size > 0 {
+        let out_sz = stream_p.write.expect("write")(
+            self_in,
+            unsafe { buf.as_ptr().add(buf_off) },
+            size,
+            &mut error,
+        );
+        if out_sz == 0 {
+            break;
+        }
+        if out_sz == STREAM_ERROR {
+            if is_nonblocking_error(error) && done != 0 {
+                error = 0;
+            }
+            break;
+        }
+        if flags & STREAM_RW_ONCE != 0 {
+            return obj::new_small_int(out_sz as isize);
+        }
+        buf_off += out_sz;
+        size -= out_sz;
+        done += out_sz;
+    }
     if error != 0 {
         if is_nonblocking_error(error) {
             return obj::CONST_NONE;
         }
         stream_raise_error(self_in, error);
     }
-    obj::new_small_int(out_sz as isize)
+    obj::new_small_int(done as isize)
 }
 
 /// `mp_stream_write_adaptor`
@@ -357,9 +394,7 @@ fn stream_readinto_write_generic(n_args: usize, args: &[Obj], flags: u8) -> Obj 
         }
     }
     let avail = bufinfo.len - off;
-    let slice = unsafe {
-        std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len)
-    };
+    let slice = bufinfo.as_bytes();
     stream_write(args[0], &slice[off..min(avail, max_len)], flags)
 }
 
@@ -433,9 +468,7 @@ pub fn stream_unbuffered_iter(self_in: Obj) -> Obj {
 pub fn stream_close(stream: Obj) -> Obj {
     let stream_p = get_stream(stream);
     let mut error = 0;
-    let res = stream_p
-        .ioctl
-        .expect("ioctl")(stream, STREAM_CLOSE, 0, &mut error);
+    let res = stream_p.ioctl.expect("ioctl")(stream, STREAM_CLOSE, 0, &mut error);
     if res == STREAM_ERROR {
         stream_raise_error(stream, error);
     }
@@ -460,15 +493,20 @@ fn stream_seek_method(n_args: usize, args: &[Obj]) -> Obj {
 }
 
 fn stream_tell(self_in: Obj) -> Obj {
-    stream_seek_method(3, &[self_in, obj::new_small_int(0), obj::new_small_int(SEEK_CUR as isize)])
+    stream_seek_method(
+        3,
+        &[
+            self_in,
+            obj::new_small_int(0),
+            obj::new_small_int(SEEK_CUR as isize),
+        ],
+    )
 }
 
 fn stream_flush(self_in: Obj) -> Obj {
     let stream_p = get_stream(self_in);
     let mut error = 0;
-    let res = stream_p
-        .ioctl
-        .expect("ioctl")(self_in, STREAM_FLUSH, 0, &mut error);
+    let res = stream_p.ioctl.expect("ioctl")(self_in, STREAM_FLUSH, 0, &mut error);
     if res == STREAM_ERROR {
         stream_raise_error(self_in, error);
     }
@@ -492,9 +530,7 @@ fn stream_ioctl(n_args: usize, args: &[Obj]) -> Obj {
     let stream_p = get_stream(args[0]);
     let mut error = 0;
     let request = obj::get_int_truncated(args[1]) as u32;
-    let res = stream_p
-        .ioctl
-        .expect("ioctl")(args[0], request, val, &mut error);
+    let res = stream_p.ioctl.expect("ioctl")(args[0], request, val, &mut error);
     if res == STREAM_ERROR {
         stream_raise_error(args[0], error);
     }
@@ -524,7 +560,9 @@ static mut FUN_BUILTIN_1_SLOTS: [*const (); 1] = [fun_builtin_1_call as *const (
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -543,7 +581,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -569,7 +609,13 @@ fn fun_builtin_1_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -695,9 +741,7 @@ pub fn stream_posix_write(stream: *mut (), buf: &[u8]) -> isize {
     let o = obj::from_ptr(stream as *const ());
     let stream_p = get_stream(o);
     let mut errno = 0;
-    let out_sz = stream_p
-        .write
-        .expect("write")(o, buf.as_ptr(), buf.len(), &mut errno);
+    let out_sz = stream_p.write.expect("write")(o, buf.as_ptr(), buf.len(), &mut errno);
     if out_sz == STREAM_ERROR {
         -1
     } else {
@@ -723,7 +767,11 @@ pub fn stream_posix_lseek(stream: *mut (), offset: i64, whence: i32) -> i64 {
     let o = obj::from_ptr(stream as *const ());
     let mut errno = 0;
     let res = stream_seek(o, offset, whence, &mut errno);
-    if res == -1 { -1 } else { res }
+    if res == -1 {
+        -1
+    } else {
+        res
+    }
 }
 
 #[cfg(unix)]
@@ -731,8 +779,10 @@ pub fn stream_posix_fsync(stream: *mut ()) -> i32 {
     let o = obj::from_ptr(stream as *const ());
     let stream_p = get_stream(o);
     let mut errno = 0;
-    let res = stream_p
-        .ioctl
-        .expect("ioctl")(o, STREAM_FLUSH, 0, &mut errno);
-    if res == STREAM_ERROR { -1 } else { res as i32 }
+    let res = stream_p.ioctl.expect("ioctl")(o, STREAM_FLUSH, 0, &mut errno);
+    if res == STREAM_ERROR {
+        -1
+    } else {
+        res as i32
+    }
 }

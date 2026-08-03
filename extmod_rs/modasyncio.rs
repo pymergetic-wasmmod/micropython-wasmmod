@@ -3,20 +3,20 @@
 
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
-use py_rs::mphal;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
+use py_rs::mphal;
 use py_rs::obj::{
     self, GetIterFn, GetiterIternextCustom, IterNextFn, Obj, ObjBase, ObjIterBuf, ObjType,
-    TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_CUSTOM,
+    TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_CUSTOM,
 };
 use py_rs::objdict;
+use py_rs::objexcept;
 use py_rs::objmodule;
+use py_rs::objstr;
 use py_rs::objtype;
 use py_rs::pairheap::{self, PairHeap, PairHeapLt};
-use py_rs::objexcept;
-use py_rs::objstr;
 use py_rs::qstr::{self, Qstr};
 use py_rs::raise::{self, MpRaise};
 use py_rs::runtime;
@@ -45,7 +45,7 @@ static T1: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
     },
-    flags: TYPE_FLAG_BUILTIN_FUN,
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
     slot_index_print: 0,
@@ -66,7 +66,7 @@ static TV: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
     },
-    flags: TYPE_FLAG_BUILTIN_FUN,
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
     slot_index_print: 0,
@@ -91,7 +91,13 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -200,9 +206,7 @@ fn task_queue_push(n_args: usize, args: &[Obj]) -> Obj {
 
 fn task_queue_pop(self_in: Obj) -> Obj {
     let self_ = unsafe { &mut *task_queue_ptr(self_in) };
-    let head = unsafe {
-        pairheap::peek(TASK_LT, self_.heap as *mut PairHeap) as *mut ObjTask
-    };
+    let head = unsafe { pairheap::peek(TASK_LT, self_.heap as *mut PairHeap) as *mut ObjTask };
     if head.is_null() {
         raise::raise_obj(objexcept::new_exception_args(
             objexcept::type_index_error(),
@@ -275,7 +279,10 @@ fn task_cancel(self_in: Obj) -> Obj {
         dest[1] = obj::from_ptr(self_ as *const ObjTask as *const ());
         task_queue_push(2, &dest);
     } else if ticks_diff(self_.ph_key, ticks()) > 0 {
-        task_queue_remove(task_queue, obj::from_ptr(self_ as *const ObjTask as *const ()));
+        task_queue_remove(
+            task_queue,
+            obj::from_ptr(self_ as *const ObjTask as *const ()),
+        );
         dest[0] = task_queue;
         dest[1] = obj::from_ptr(self_ as *const ObjTask as *const ());
         task_queue_push(2, &dest);
@@ -459,12 +466,10 @@ fn task_queue_remove_call(n: usize, args: &[Obj]) -> Obj {
 }
 
 pub fn type_task() -> &'static ObjType {
-    TASK_INIT.get_or_init(|| {
-        unsafe {
-            TASK_DONE_FUN = mk1(task_done);
-            TASK_CANCEL_FUN = mk1(task_cancel);
-            TYPE_TASK.name = qstr::from_str("Task");
-        }
+    TASK_INIT.get_or_init(|| unsafe {
+        TASK_DONE_FUN = mk1(task_done);
+        TASK_CANCEL_FUN = mk1(task_cancel);
+        TYPE_TASK.name = qstr::from_str("Task");
     });
     unsafe { &TYPE_TASK }
 }

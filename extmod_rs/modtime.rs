@@ -2,8 +2,8 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mphal;
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
@@ -11,12 +11,14 @@ use py_rs::objdict;
 use py_rs::objfloat::{self, MpFloat};
 use py_rs::objint;
 use py_rs::objmodule;
+use py_rs::objtuple;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 
 type BuiltinFn0 = fn() -> Obj;
 type BuiltinFn1 = fn(Obj) -> Obj;
 type BuiltinFn2 = fn(Obj, Obj) -> Obj;
+type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
 
 #[repr(C)]
 struct ObjFunBuiltin0 {
@@ -33,10 +35,18 @@ struct ObjFunBuiltin2 {
     base: ObjBase,
     fun: BuiltinFn2,
 }
+#[repr(C)]
+struct ObjFunBuiltinVar {
+    base: ObjBase,
+    min_args: u8,
+    max_args: u8,
+    fun: BuiltinFnVar,
+}
 
 static mut F0: [*const (); 1] = [call0 as *const ()];
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
+static mut FV: [*const (); 1] = [callv as *const ()];
 static T0: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
@@ -97,6 +107,26 @@ static T2: ObjType = ObjType {
     slot_index_locals_dict: 0,
     slots: unsafe { F2.as_ptr() },
 };
+static TV: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FV.as_ptr() },
+};
 
 fn call0(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     py_rs::argcheck::check_num(n, k, 0, 0, false);
@@ -109,6 +139,11 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     py_rs::argcheck::check_num(n, k, 2, 2, false);
     unsafe { ((*(obj::as_ptr(s) as *const ObjFunBuiltin2)).fun)(a[0], a[1]) }
+}
+fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
+    let f = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
+    py_rs::argcheck::check_num(n, k, f.min_args as usize, f.max_args as usize, false);
+    (f.fun)(n, a)
 }
 fn mk0(f: BuiltinFn0) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin0>().expect("time fn0");
@@ -132,6 +167,16 @@ fn mk2(f: BuiltinFn2) -> Obj {
         (*o).base.type_ = &T2;
         (*o).fun = f;
         obj::from_ptr(o as *const ObjFunBuiltin2 as *const ())
+    }
+}
+fn mkv(min: u8, max: u8, f: BuiltinFnVar) -> Obj {
+    let o = malloc::new_obj::<ObjFunBuiltinVar>().expect("time fnv");
+    unsafe {
+        (*o).base.type_ = &TV;
+        (*o).min_args = min;
+        (*o).max_args = max;
+        (*o).fun = f;
+        obj::from_ptr(o as *const ObjFunBuiltinVar as *const ())
     }
 }
 
@@ -218,6 +263,97 @@ fn time_ticks_add(ticks_in: Obj, delta_in: Obj) -> Obj {
     ticks_mask(ticks.wrapping_add(delta))
 }
 
+// --- Unix port extras (`MICROPY_PY_TIME_EXTRA_GLOBALS`) -------------------------
+
+fn current_unix_time() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
+
+fn break_down_time(t: libc::time_t, local: bool) -> Obj {
+    let tm = unsafe {
+        let tp = &t as *const libc::time_t;
+        if local {
+            *libc::localtime(tp)
+        } else {
+            *libc::gmtime(tp)
+        }
+    };
+    let wday = if tm.tm_wday - 1 < 0 {
+        6
+    } else {
+        tm.tm_wday - 1
+    };
+    let items = [
+        obj::new_small_int((tm.tm_year + 1900) as isize),
+        obj::new_small_int((tm.tm_mon + 1) as isize),
+        obj::new_small_int(tm.tm_mday as isize),
+        obj::new_small_int(tm.tm_hour as isize),
+        obj::new_small_int(tm.tm_min as isize),
+        obj::new_small_int(tm.tm_sec as isize),
+        obj::new_small_int(wday as isize),
+        obj::new_small_int((tm.tm_yday + 1) as isize),
+        obj::new_small_int(tm.tm_isdst as isize),
+    ];
+    objtuple::new_tuple(items.len(), Some(&items))
+}
+
+fn time_gm_local(n: usize, args: &[Obj], local: bool) -> Obj {
+    let t = if n == 0 {
+        current_unix_time()
+    } else if mpconfig::PY_BUILTINS_FLOAT && objfloat::is_float(args[0]) {
+        objfloat::float_get(args[0]) as i64
+    } else {
+        obj::get_int(args[0]) as i64
+    };
+    break_down_time(t as libc::time_t, local)
+}
+
+fn time_gmtime(n: usize, args: &[Obj]) -> Obj {
+    time_gm_local(n, args, false)
+}
+
+fn time_localtime(n: usize, args: &[Obj]) -> Obj {
+    time_gm_local(n, args, true)
+}
+
+fn time_mktime(tuple: Obj) -> Obj {
+    let (len, items) = objtuple::tuple_get(tuple);
+    if !(8..=9).contains(&len) {
+        raise::raise(MpRaise::TypeError("mktime needs a tuple of length 8 or 9"));
+    }
+    let int_at = |i: usize| obj::get_int(items[i]) as i32;
+    let mut tm = libc::tm {
+        tm_year: int_at(0) - 1900,
+        tm_mon: int_at(1) - 1,
+        tm_mday: int_at(2),
+        tm_hour: int_at(3),
+        tm_min: int_at(4),
+        tm_sec: int_at(5),
+        tm_isdst: if len == 9 { int_at(8) } else { -1 },
+        ..unsafe { std::mem::zeroed() }
+    };
+    let ret = unsafe { libc::mktime(&mut tm) };
+    if ret == -1 {
+        raise::raise(MpRaise::OverflowError("invalid mktime usage"));
+    }
+    obj::new_small_int(ret as isize)
+}
+
+fn time_clock() -> Obj {
+    // Deprecated `time.clock()` — process CPU time approximation.
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let elapsed = START.get_or_init(std::time::Instant::now).elapsed();
+    let ticks = (elapsed.as_secs_f64() * 1000.0) as u64;
+    if mpconfig::PY_BUILTINS_FLOAT {
+        objfloat::new_float((ticks as f64 / 1000.0) / 1000.0)
+    } else {
+        obj::new_small_int(ticks as isize)
+    }
+}
+
 /// Register built-in `time` module (`MP_REGISTER_EXTENSIBLE_MODULE`).
 pub fn init_module() -> Obj {
     if !mpconfig::PY_TIME {
@@ -259,6 +395,23 @@ pub fn init_module() -> Obj {
         MapElem {
             key: obj::new_qstr(qstr::from_str("ticks_diff")),
             value: mk2(time_ticks_diff),
+        },
+        // Unix extras (`MICROPY_PY_TIME_EXTRA_GLOBALS`).
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("clock")),
+            value: mk0(time_clock),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("gmtime")),
+            value: mkv(0, 1, time_gmtime),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("localtime")),
+            value: mkv(0, 1, time_localtime),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("mktime")),
+            value: mk1(time_mktime),
         },
     ];
     if mpconfig::PY_TIME_TIME_TIME_NS {

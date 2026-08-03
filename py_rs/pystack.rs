@@ -59,12 +59,10 @@ pub fn pystack_free(ptr: *mut u8) {
         #[cfg(debug_assertions)]
         if PYSTACK_DEBUG {
             let n_bytes_to_free = st.pystack_cur as usize - ptr as usize;
-            let mut n_bytes =
-                unsafe { *(st.pystack_cur.sub(PYSTACK_ALIGN) as *const usize) };
+            let mut n_bytes = unsafe { *(st.pystack_cur.sub(PYSTACK_ALIGN) as *const usize) };
             while n_bytes < n_bytes_to_free {
-                n_bytes += unsafe {
-                    *(st.pystack_cur.sub(n_bytes + PYSTACK_ALIGN) as *const usize)
-                };
+                n_bytes +=
+                    unsafe { *(st.pystack_cur.sub(n_bytes + PYSTACK_ALIGN) as *const usize) };
             }
             assert_eq!(n_bytes, n_bytes_to_free);
         }
@@ -99,7 +97,8 @@ pub fn local_alloc(n_bytes: usize) -> *mut u8 {
     if mpconfig::ENABLE_PYSTACK {
         return pystack_alloc(n_bytes);
     }
-    malloc::new::<u8>(n_bytes).unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("alloc failed")))
+    malloc::new::<u8>(n_bytes)
+        .unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("alloc failed")))
 }
 
 /// Stack-local free when pystack disabled (`mp_local_free`).
@@ -110,7 +109,8 @@ pub fn nonlocal_alloc(n_bytes: usize) -> *mut u8 {
     if mpconfig::ENABLE_PYSTACK {
         pystack_alloc(n_bytes)
     } else {
-        malloc::new::<u8>(n_bytes).unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("alloc failed")))
+        malloc::new::<u8>(n_bytes)
+            .unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("alloc failed")))
     }
 }
 

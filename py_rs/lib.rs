@@ -144,6 +144,7 @@ pub mod parse;
 pub mod parsenum;
 pub mod parsenumbase;
 pub mod persistentcode;
+pub mod pm;
 pub mod profile;
 pub mod pystack;
 pub mod qstr;
@@ -168,4 +169,43 @@ pub mod vm_test;
 pub mod vmentrytable;
 pub mod vstr;
 pub mod warning;
-pub mod pm;
+
+/// Register core `py/` built-in modules for host import (`math`, `gc`, …).
+pub fn init_builtin_modules() {
+    let _ = modsys::init_module();
+    if mpconfig::PY_GC {
+        let _ = modgc::init_module();
+    }
+    if mpconfig::PY_MATH {
+        let _ = modmath::init_module();
+    }
+    if mpconfig::PY_CMATH {
+        let _ = modcmath::init_module();
+    }
+    if mpconfig::PY_ERRNO {
+        let _ = moderrno::init_module();
+    }
+    if mpconfig::PY_ARRAY {
+        let _ = modarray::init_module();
+    }
+    if mpconfig::PY_COLLECTIONS {
+        let _ = modcollections::init_module();
+    }
+    if mpconfig::PY_IO {
+        let _ = modio::init_module();
+    }
+    if mpconfig::PY_STRUCT {
+        let _ = modstruct::init_module();
+    }
+    if mpconfig::PY_MICROPYTHON {
+        let _ = modmicropython::init_module();
+    }
+    // `ustring` / `string` helpers when enabled.
+    let _ = modstring::init_module();
+    if mpconfig::PY_WEAKREF {
+        let _ = modweakref::init_module();
+    }
+    if mpconfig::PY_THREAD {
+        let _ = modthread::init_module();
+    }
+}

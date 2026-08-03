@@ -47,8 +47,10 @@ static mut TYPE_TYPE_SLOTS: [*const (); 4] = [
     type_attr as *const (),
 ];
 
-static TYPE_TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -66,7 +68,7 @@ static TYPE_TYPE: ObjType = ObjType {
     slots: unsafe { TYPE_TYPE_SLOTS.as_ptr() },
 };
 
-static TYPE_OBJECT: ObjType = TYPE_TYPE;
+// `object` type lives in `objobject.rs` (`objobject::type_object`).
 
 static mut SUPER_SLOTS: [*const (); 3] = [
     super_make_new as *const (),
@@ -74,8 +76,10 @@ static mut SUPER_SLOTS: [*const (); 3] = [
     super_attr as *const (),
 ];
 
-static TYPE_SUPER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_SUPER: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -94,8 +98,10 @@ static TYPE_SUPER: ObjType = ObjType {
 };
 
 static mut STATICMETHOD_SLOTS: [*const (); 1] = [static_class_method_make_new as *const ()];
-static TYPE_STATICMETHOD: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_STATICMETHOD: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -114,8 +120,10 @@ static TYPE_STATICMETHOD: ObjType = ObjType {
 };
 
 static mut CLASSMETHOD_SLOTS: [*const (); 1] = [static_class_method_make_new as *const ()];
-static TYPE_CLASSMETHOD: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_CLASSMETHOD: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -133,11 +141,37 @@ static TYPE_CLASSMETHOD: ObjType = ObjType {
     slots: unsafe { CLASSMETHOD_SLOTS.as_ptr() },
 };
 
-pub fn type_type() -> &'static ObjType { unsafe { &TYPE_TYPE } }
-pub fn type_object() -> &'static ObjType { &TYPE_OBJECT }
-pub fn type_super() -> &'static ObjType { &TYPE_SUPER }
-pub fn type_staticmethod() -> &'static ObjType { &TYPE_STATICMETHOD }
-pub fn type_classmethod() -> &'static ObjType { &TYPE_CLASSMETHOD }
+pub fn type_type() -> &'static ObjType {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE_TYPE.name = qstr::from_str("type");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE_TYPE) }
+}
+pub fn type_object() -> &'static ObjType {
+    crate::objobject::type_object()
+}
+pub fn type_super() -> &'static ObjType {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE_SUPER.name = qstr::from_str("super");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE_SUPER) }
+}
+pub fn type_staticmethod() -> &'static ObjType {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE_STATICMETHOD.name = qstr::from_str("staticmethod");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE_STATICMETHOD) }
+}
+pub fn type_classmethod() -> &'static ObjType {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE_CLASSMETHOD.name = qstr::from_str("classmethod");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE_CLASSMETHOD) }
+}
 
 #[repr(C)]
 pub struct ObjInstance {
@@ -164,7 +198,10 @@ struct ClassLookupData {
     is_type: bool,
 }
 
-fn instance_count_native_bases(type_: &'static ObjType, last_native_base: &mut Option<&'static ObjType>) -> usize {
+fn instance_count_native_bases(
+    type_: &'static ObjType,
+    last_native_base: &mut Option<&'static ObjType>,
+) -> usize {
     let mut count = 0usize;
     let mut cur = type_;
     loop {
@@ -183,7 +220,9 @@ fn instance_count_native_bases(type_: &'static ObjType, last_native_base: &mut O
                 if obj::is_exact_type(parent, obj::type_tuple()) {
                     let (_, items) = objtuple::tuple_get(parent);
                     for item in items {
-                        if !obj::is_exact_type(item, type_type()) { continue; }
+                        if !obj::is_exact_type(item, type_type()) {
+                            continue;
+                        }
                         let bt = unsafe { &*(obj::as_ptr(item) as *const ObjType) };
                         count += instance_count_native_bases(bt, last_native_base);
                     }
@@ -191,7 +230,9 @@ fn instance_count_native_bases(type_: &'static ObjType, last_native_base: &mut O
                 }
             }
         }
-        cur = obj::type_get_slot_parent(cur).map(|p| obj::get_type(p)).unwrap_or(type_object());
+        cur = obj::type_get_slot_parent(cur)
+            .map(|p| unsafe { &*(obj::as_ptr(p) as *const ObjType) })
+            .unwrap_or(type_object());
     }
 }
 
@@ -213,7 +254,11 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
             if let Some(dict_o) = obj::type_get_slot_locals_dict(type_) {
                 let dict = unsafe { &*(obj::as_ptr(dict_o) as *const ObjDict) };
                 let mut map_copy = dict.map.clone();
-                if let Some(elem) = map::lookup(&mut map_copy, obj::new_qstr(lookup.attr), map::LookupKind::Lookup) {
+                if let Some(elem) = map::lookup(
+                    &mut map_copy,
+                    obj::new_qstr(lookup.attr),
+                    map::LookupKind::Lookup,
+                ) {
                     if lookup.is_type {
                         let org = unsafe { &*(obj::as_ptr(lookup.obj.unwrap()) as *const ObjType) };
                         let v = elem.value;
@@ -223,11 +268,12 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
                         dest[1] = pair[1];
                     } else {
                         let inst = obj::as_ptr(lookup.obj.unwrap()) as *mut ObjInstance;
-                        let obj_obj = if obj::is_native_type(type_) && !core::ptr::eq(type_, type_object()) {
-                            unsafe { subobj_get(inst, 0) }
-                        } else {
-                            obj::from_ptr(inst as *const ())
-                        };
+                        let obj_obj =
+                            if obj::is_native_type(type_) && !core::ptr::eq(type_, type_object()) {
+                                unsafe { subobj_get(inst, 0) }
+                            } else {
+                                obj::from_ptr(inst as *const ())
+                            };
                         let v = elem.value;
                         let mut pair = [obj::OBJ_NULL; 2];
                         runtime::convert_member_lookup(obj_obj, type_, v, &mut pair);
@@ -239,7 +285,8 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
             }
         }
         if let Some(inst) = lookup.obj {
-            if !lookup.is_type && obj::is_native_type(type_) && !core::ptr::eq(type_, type_object()) {
+            if !lookup.is_type && obj::is_native_type(type_) && !core::ptr::eq(type_, type_object())
+            {
                 let inst_ptr = obj::as_ptr(inst) as *mut ObjInstance;
                 let sub = unsafe { subobj_get(inst_ptr, 0) };
                 runtime::load_method_maybe(sub, lookup.attr, dest);
@@ -257,11 +304,17 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
                     let (len, items) = objtuple::tuple_get(parent);
                     for i in 0..len.saturating_sub(1) {
                         let item = items[i];
-                        if !obj::is_exact_type(item, type_type()) { continue; }
+                        if !obj::is_exact_type(item, type_type()) {
+                            continue;
+                        }
                         let bt = unsafe { &mut *(obj::as_ptr(item) as *mut ObjType) };
-                        if core::ptr::eq(bt, type_object()) { continue; }
+                        if core::ptr::eq(bt, type_object()) {
+                            continue;
+                        }
                         class_lookup(lookup, dest, bt);
-                        if dest[0] != obj::OBJ_NULL { return; }
+                        if dest[0] != obj::OBJ_NULL {
+                            return;
+                        }
                     }
                     if len > 0 {
                         let item = items[len - 1];
@@ -272,7 +325,7 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
             }
         }
         type_ = obj::type_get_slot_parent(type_)
-            .map(|p| obj::get_type(p))
+            .map(|p| unsafe { &*(obj::as_ptr(p) as *const ObjType) })
             .unwrap_or(type_object());
         if core::ptr::eq(type_, type_object()) {
             return;
@@ -280,14 +333,25 @@ fn class_lookup(lookup: &ClassLookupData, dest: &mut [Obj], mut type_: &'static 
     }
 }
 
-pub fn new_instance(class: &'static ObjType, native_base: &mut Option<&'static ObjType>) -> *mut ObjInstance {
+pub fn new_instance(
+    class: &'static ObjType,
+    native_base: &mut Option<&'static ObjType>,
+) -> *mut ObjInstance {
     let count = instance_count_native_bases(class, native_base);
     assert!(count < 2);
     let o = obj::malloc_var::<ObjInstance>(count * size_of::<Obj>(), class) as *mut ObjInstance;
     unsafe {
         map::init(&mut (*o).members, 0);
         for i in 0..count {
-            subobj_set(o, i, if count != 0 { NATIVE_BASE_INIT_WRAPPER } else { obj::OBJ_NULL });
+            subobj_set(
+                o,
+                i,
+                if count != 0 {
+                    NATIVE_BASE_INIT_WRAPPER
+                } else {
+                    obj::OBJ_NULL
+                },
+            );
         }
     }
     o
@@ -295,7 +359,11 @@ pub fn new_instance(class: &'static ObjType, native_base: &mut Option<&'static O
 
 fn instance_print(print: &Print, self_in: Obj, kind: PrintKind) {
     let self_ptr = unsafe { &*(obj::as_ptr(self_in) as *const ObjInstance) };
-    let meth = if kind == PrintKind::Str { qstr::from_str("__str__") } else { qstr::from_str("__repr__") };
+    let meth = if kind == PrintKind::Str {
+        qstr::from_str("__str__")
+    } else {
+        qstr::from_str("__repr__")
+    };
     let mut member = [obj::OBJ_NULL; 2];
     let mut lookup = ClassLookupData {
         obj: Some(self_in),
@@ -427,7 +495,9 @@ fn instance_unary_op(op: UnaryOp, self_in: Obj) -> Obj {
         return match op {
             UnaryOp::Hash => obj::new_small_int(obj::get_int_truncated(val)),
             UnaryOp::IntMaybe => {
-                if !obj::is_int(val) { raise::raise(MpRaise::TypeError("bad int")); }
+                if !obj::is_int(val) {
+                    raise::raise(MpRaise::TypeError("bad int"));
+                }
                 val
             }
             _ => val,
@@ -471,7 +541,11 @@ fn instance_binary_op(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
 
 fn instance_load_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
     let self_ptr = unsafe { &mut *(obj::as_ptr(self_in) as *mut ObjInstance) };
-    if let Some(elem) = map::lookup(&mut self_ptr.members, obj::new_qstr(attr), map::LookupKind::Lookup) {
+    if let Some(elem) = map::lookup(
+        &mut self_ptr.members,
+        obj::new_qstr(attr),
+        map::LookupKind::Lookup,
+    ) {
         dest[0] = elem.value;
         return;
     }
@@ -533,20 +607,35 @@ fn instance_store_attr(self_in: Obj, attr: Qstr, value: Obj) -> bool {
                 let proxy = objproperty::get(member[0]);
                 let dest = [self_in, value];
                 if value == obj::OBJ_NULL {
-                    if proxy[2] == obj::CONST_NONE { return false; }
+                    if proxy[2] == obj::CONST_NONE {
+                        return false;
+                    }
                     runtime::call_function_n_kw(proxy[2], 1, 0, &dest[..1]);
                     return true;
                 }
-                if proxy[1] == obj::CONST_NONE { return false; }
+                if proxy[1] == obj::CONST_NONE {
+                    return false;
+                }
                 runtime::call_function_n_kw(proxy[1], 2, 0, &dest);
                 return true;
             }
         }
     }
     if value == obj::OBJ_NULL {
-        map::lookup(&mut self_ptr.members, obj::new_qstr(attr), map::LookupKind::RemoveIfFound).is_some()
+        map::lookup(
+            &mut self_ptr.members,
+            obj::new_qstr(attr),
+            map::LookupKind::RemoveIfFound,
+        )
+        .is_some()
     } else {
-        map::lookup(&mut self_ptr.members, obj::new_qstr(attr), map::LookupKind::AddIfNotFound).unwrap().value = value;
+        map::lookup(
+            &mut self_ptr.members,
+            obj::new_qstr(attr),
+            map::LookupKind::AddIfNotFound,
+        )
+        .unwrap()
+        .value = value;
         true
     }
 }
@@ -582,9 +671,17 @@ fn instance_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     if member[0] != obj::OBJ_NULL {
         member[2] = index;
         member[3] = value;
-        let n = if value == obj::OBJ_NULL || value == OBJ_SENTINEL { 1 } else { 2 };
+        let n = if value == obj::OBJ_NULL || value == OBJ_SENTINEL {
+            1
+        } else {
+            2
+        };
         let ret = runtime::call_method_n_kw(n, 0, &member);
-        return if value == OBJ_SENTINEL { ret } else { obj::CONST_NONE };
+        return if value == OBJ_SENTINEL {
+            ret
+        } else {
+            obj::CONST_NONE
+        };
     }
     obj::OBJ_NULL
 }
@@ -665,7 +762,11 @@ fn instance_get_buffer(self_in: Obj, bufinfo: &mut BufferInfo, flags: u32) -> In
 
 fn type_print(print: &Print, self_in: Obj, _kind: PrintKind) {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjType) };
-    let _ = mpprint::printf(print, "<class '%q'>", std::iter::once(VaArg::Qstr(self_.name)));
+    let _ = mpprint::printf(
+        print,
+        "<class '%q'>",
+        std::iter::once(VaArg::Qstr(self_.name)),
+    );
 }
 
 fn type_make_new(_type_in: &'static ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
@@ -689,9 +790,47 @@ fn type_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
 fn type_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
     let self_ = unsafe { &mut *(obj::as_ptr(self_in) as *mut ObjType) };
     if dest[0] == obj::OBJ_NULL {
-        if mpconfig::CPYTHON_COMPAT && attr == qstr::from_str("__name__") {
-            dest[0] = obj::new_qstr(self_.name);
-            return;
+        if mpconfig::CPYTHON_COMPAT {
+            if attr == qstr::from_str("__name__") {
+                dest[0] = obj::new_qstr(self_.name);
+                return;
+            }
+            if attr == qstr::from_str("__dict__") {
+                // Read-only view of class attributes (C `type_attr`).
+                let dict = obj::type_get_slot_locals_dict(self_).unwrap_or_else(objdict::const_empty_dict);
+                let dptr = unsafe { &*(obj::as_ptr(dict) as *const ObjDict) };
+                if dptr.map.is_fixed {
+                    dest[0] = dict;
+                } else {
+                    let copy = objdict::dict_copy(dict);
+                    unsafe {
+                        (*(obj::as_ptr(copy) as *mut ObjDict)).map.is_fixed = true;
+                    }
+                    dest[0] = copy;
+                }
+                return;
+            }
+            if attr == qstr::from_str("__bases__") {
+                if core::ptr::eq(self_ as *const ObjType, type_object() as *const ObjType) {
+                    dest[0] = objtuple::const_empty_tuple();
+                    return;
+                }
+                let parent_obj = if obj::type_has_slot(self_, self_.slot_index_parent) {
+                    obj::type_get_slot_parent(self_).unwrap_or_else(|| {
+                        obj::from_ptr(type_object() as *const ObjType as *const ())
+                    })
+                } else {
+                    obj::from_ptr(type_object() as *const ObjType as *const ())
+                };
+                if mpconfig::MULTIPLE_INHERITANCE
+                    && obj::is_exact_type(parent_obj, obj::type_tuple())
+                {
+                    dest[0] = parent_obj;
+                    return;
+                }
+                dest[0] = objtuple::new_tuple(1, Some(&[parent_obj]));
+                return;
+            }
         }
         let lookup = ClassLookupData {
             obj: Some(self_in),
@@ -707,19 +846,60 @@ fn type_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
                 return;
             }
             if dest[1] == obj::OBJ_NULL {
-                if map::lookup(&mut dict.map, obj::new_qstr(attr), map::LookupKind::RemoveIfFound).is_some() {
+                if map::lookup(
+                    &mut dict.map,
+                    obj::new_qstr(attr),
+                    map::LookupKind::RemoveIfFound,
+                )
+                .is_some()
+                {
                     dest[0] = obj::OBJ_NULL;
                 }
             } else {
-                map::lookup(&mut dict.map, obj::new_qstr(attr), map::LookupKind::AddIfNotFound).unwrap().value = dest[1];
+                map::lookup(
+                    &mut dict.map,
+                    obj::new_qstr(attr),
+                    map::LookupKind::AddIfNotFound,
+                )
+                .unwrap()
+                .value = dest[1];
                 dest[0] = obj::OBJ_NULL;
             }
         }
     }
 }
 
+/// `check_for_special_accessors` (py/objtype.c).
+fn check_for_special_accessors(key: Obj, value: Obj) -> bool {
+    if mpconfig::PY_DELATTR_SETATTR
+        && (key == obj::new_qstr(qstr::from_str("__setattr__"))
+            || key == obj::new_qstr(qstr::from_str("__delattr__")))
+    {
+        return true;
+    }
+    if mpconfig::PY_BUILTINS_PROPERTY && objproperty::is_property(value) {
+        return true;
+    }
+    if mpconfig::PY_DESCRIPTORS {
+        for name in [
+            qstr::from_str("__get__"),
+            qstr::from_str("__set__"),
+            qstr::from_str("__delete__"),
+        ] {
+            let mut dest_temp = [obj::OBJ_NULL; 2];
+            runtime::load_method_protected(value, name, &mut dest_temp, true);
+            if dest_temp[0] != obj::OBJ_NULL {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn new_type(name: Qstr, bases_tuple: Obj, locals_dict: Obj) -> Obj {
-    if !obj::is_exact_type(bases_tuple, obj::type_tuple()) || !objdict::is_dict_or_ordereddict(locals_dict) {
+    if !obj::is_exact_type(bases_tuple, obj::type_tuple())
+        || !objdict::is_dict_or_ordereddict(locals_dict)
+    {
         raise::raise(MpRaise::TypeError("bad type() args"));
     }
     let (bases_len, bases_items) = objtuple::tuple_get(bases_tuple);
@@ -744,20 +924,73 @@ fn new_type(name: Qstr, bases_tuple: Obj, locals_dict: Obj) -> Obj {
         (*o).flags = base_flags;
         (*o).name = name;
         (*o).slots = (o as *mut u8).add(size_of::<ObjType>()) as *const *const ();
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::MakeNew, instance_make_new as *const (), 0);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::Print, instance_print as *const (), 1);
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::MakeNew,
+            instance_make_new as *const (),
+            0,
+        );
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::Print,
+            instance_print as *const (),
+            1,
+        );
         obj::type_set_slot_fn(&mut *o, obj::SlotKind::Call, instance_call as *const (), 2);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::UnaryOp, instance_unary_op as *const (), 3);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::BinaryOp, instance_binary_op as *const (), 4);
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::UnaryOp,
+            instance_unary_op as *const (),
+            3,
+        );
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::BinaryOp,
+            instance_binary_op as *const (),
+            4,
+        );
         obj::type_set_slot_fn(&mut *o, obj::SlotKind::Attr, instance_attr as *const (), 5);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::Subscr, instance_subscr as *const (), 6);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::Iter, instance_getiter as *const (), 7);
-        obj::type_set_slot_fn(&mut *o, obj::SlotKind::Buffer, instance_get_buffer as *const (), 8);
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::Subscr,
+            instance_subscr as *const (),
+            6,
+        );
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::Iter,
+            instance_getiter as *const (),
+            7,
+        );
+        obj::type_set_slot_fn(
+            &mut *o,
+            obj::SlotKind::Buffer,
+            instance_get_buffer as *const (),
+            8,
+        );
         obj::type_set_slot(&mut *o, obj::SlotKind::LocalsDict, locals_dict, 9);
         if bases_len >= 2 && mpconfig::MULTIPLE_INHERITANCE {
             obj::type_set_slot(&mut *o, obj::SlotKind::Parent, bases_tuple, 10);
         } else if bases_len == 1 {
             obj::type_set_slot(&mut *o, obj::SlotKind::Parent, bases_items[0], 10);
+        }
+    }
+    // Scan the class body for property objects / descriptor / __setattr__ /
+    // __delattr__ definitions (py/objtype.c's ENABLE_SPECIAL_ACCESSORS scan
+    // in mp_obj_new_type), so instance attribute load/store knows to go
+    // through the slower special-accessor path instead of a plain dict get.
+    if ENABLE_SPECIAL_ACCESSORS && (base_flags & TYPE_FLAG_HAS_SPECIAL_ACCESSORS) == 0 {
+        let dict = unsafe { &(*objdict::dict_ptr(locals_dict)).map };
+        for pos in 0..dict.alloc {
+            if map::slot_is_filled(dict, pos) {
+                let elem = dict.table[pos];
+                if check_for_special_accessors(elem.key, elem.value) {
+                    unsafe {
+                        (*o).flags |= TYPE_FLAG_HAS_SPECIAL_ACCESSORS;
+                    }
+                    break;
+                }
+            }
         }
     }
     obj::from_ptr(o as *const ObjType as *const ())
@@ -782,7 +1015,11 @@ fn super_print(print: &Print, self_in: Obj, _kind: PrintKind) {
 fn super_make_new(_type_in: &'static ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     argcheck::check_num(n_args, n_kw, 2, 2, false);
     let second_type = obj::get_type(args[1]);
-    let second_obj = if core::ptr::eq(second_type, type_type()) { args[1] } else { obj::from_ptr(second_type as *const ObjType as *const ()) };
+    let second_obj = if core::ptr::eq(second_type, type_type()) {
+        args[1]
+    } else {
+        obj::from_ptr(second_type as *const ObjType as *const ())
+    };
     if !is_subclass_fast(second_obj, args[0]) {
         raise::raise(MpRaise::TypeError("super(): bad args"));
     }
@@ -804,24 +1041,36 @@ fn super_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
     let mut lookup = ClassLookupData {
         obj: Some(obj::from_ptr(inst as *const ())),
         attr,
-        slot_offset: if attr == qstr::from_str("__init__") { OFFSETOF_SLOT_MAKE_NEW } else { 0 },
+        slot_offset: if attr == qstr::from_str("__init__") {
+            OFFSETOF_SLOT_MAKE_NEW
+        } else {
+            0
+        },
         is_type: false,
     };
     if obj::type_has_slot(type_, type_.slot_index_parent) {
-        if mpconfig::MULTIPLE_INHERITANCE {
-            if let Some(parent) = obj::type_get_slot_parent(type_) {
-                if obj::is_exact_type(parent, obj::type_tuple()) {
-                    let (len, items) = objtuple::tuple_get(parent);
-                    for i in 0..len {
-                        let bt = unsafe { &*(obj::as_ptr(items[i]) as *const ObjType) };
-                        if core::ptr::eq(bt, type_object()) { continue; }
-                        class_lookup(&lookup, dest, bt);
-                        if dest[0] != obj::OBJ_NULL { break; }
-                    }
+        let parent = obj::type_get_slot_parent(type_);
+        // Mirrors py/objtype.c's super_attr: the tuple (multiple-inheritance)
+        // branch is only compiled in under MICROPY_MULTIPLE_INHERITANCE, but
+        // the single-parent `else if` fallback is unconditional in C, so a
+        // non-tuple parent must still be searched even when
+        // mpconfig::MULTIPLE_INHERITANCE is true.
+        let is_tuple_parent = mpconfig::MULTIPLE_INHERITANCE
+            && parent.is_some_and(|p| obj::is_exact_type(p, obj::type_tuple()));
+        if is_tuple_parent {
+            let (len, items) = objtuple::tuple_get(parent.unwrap());
+            for i in 0..len {
+                let bt = unsafe { &*(obj::as_ptr(items[i]) as *const ObjType) };
+                if core::ptr::eq(bt, type_object()) {
+                    continue;
+                }
+                class_lookup(&lookup, dest, bt);
+                if dest[0] != obj::OBJ_NULL {
+                    break;
                 }
             }
-        } else if let Some(parent) = obj::type_get_slot_parent(type_) {
-            let pt = obj::get_type(parent);
+        } else if let Some(parent) = parent {
+            let pt = unsafe { &*(obj::as_ptr(parent) as *const ObjType) };
             if !core::ptr::eq(pt, type_object()) {
                 class_lookup(&lookup, dest, pt);
             }
@@ -839,14 +1088,29 @@ fn super_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
 
 pub fn load_super_method(attr: Qstr, dest: &mut [Obj; 3]) {
     let super_obj = ObjSuper {
-        base: ObjBase { type_: type_super() as *const ObjType },
+        base: ObjBase {
+            type_: type_super() as *const ObjType,
+        },
         type_: dest[1],
         obj: dest[2],
     };
     let mut d2 = [obj::OBJ_NULL; 2];
-    super_attr(obj::from_ptr(&super_obj as *const ObjSuper as *const ()), attr, &mut d2);
+    super_attr(
+        obj::from_ptr(&super_obj as *const ObjSuper as *const ()),
+        attr,
+        &mut d2,
+    );
     dest[0] = d2[0];
     dest[1] = d2[1];
+}
+
+/// Like `obj::is_exact_type(o, type_type())`, but goes through `get_type`
+/// (which treats a null `base.type` as `type_type()`) since many native
+/// type objects (e.g. `int`, `bool`, `list`) never have `base.type` set to
+/// anything but null — only dynamically-created classes and a few lazily-
+/// initialised native types (e.g. exceptions) set it explicitly.
+fn is_class_obj(o: Obj) -> bool {
+    obj::is_obj(o) && core::ptr::eq(obj::get_type(o), type_type())
 }
 
 pub fn is_subclass_fast(object: Obj, classinfo: Obj) -> bool {
@@ -855,7 +1119,7 @@ pub fn is_subclass_fast(object: Obj, classinfo: Obj) -> bool {
         if cur == classinfo {
             return true;
         }
-        if !obj::is_exact_type(cur, type_type()) {
+        if !is_class_obj(cur) {
             return false;
         }
         let self_ = unsafe { &*(obj::as_ptr(cur) as *const ObjType) };
@@ -878,12 +1142,13 @@ pub fn is_subclass_fast(object: Obj, classinfo: Obj) -> bool {
                 }
             }
         }
-        cur = obj::type_get_slot_parent(self_).unwrap_or(obj::from_ptr(type_object() as *const ObjType as *const ()));
+        cur = obj::type_get_slot_parent(self_)
+            .unwrap_or(obj::from_ptr(type_object() as *const ObjType as *const ()));
     }
 }
 
 fn is_subclass(object: Obj, classinfo: Obj) -> Obj {
-    let (len, items) = if obj::is_exact_type(classinfo, type_type()) {
+    let (len, items) = if is_class_obj(classinfo) {
         (1usize, vec![classinfo])
     } else if obj::is_exact_type(classinfo, obj::type_tuple()) {
         objtuple::tuple_get(classinfo)
@@ -891,7 +1156,9 @@ fn is_subclass(object: Obj, classinfo: Obj) -> Obj {
         raise::raise(MpRaise::TypeError("issubclass() arg 2 must be a class"));
     };
     for i in 0..len {
-        if items[i] == obj::from_ptr(type_object() as *const ObjType as *const ()) || is_subclass_fast(object, items[i]) {
+        if items[i] == obj::from_ptr(type_object() as *const ObjType as *const ())
+            || is_subclass_fast(object, items[i])
+        {
             return obj::CONST_TRUE;
         }
     }
@@ -899,11 +1166,14 @@ fn is_subclass(object: Obj, classinfo: Obj) -> Obj {
 }
 
 pub fn isinstance(object: Obj, classinfo: Obj) -> Obj {
-    is_subclass(obj::from_ptr(obj::get_type(object) as *const ObjType as *const ()), classinfo)
+    is_subclass(
+        obj::from_ptr(obj::get_type(object) as *const ObjType as *const ()),
+        classinfo,
+    )
 }
 
 pub fn issubclass(object: Obj, classinfo: Obj) -> Obj {
-    if !obj::is_exact_type(object, type_type()) {
+    if !is_class_obj(object) {
         raise::raise(MpRaise::TypeError("issubclass() arg 1 must be a class"));
     }
     is_subclass(object, classinfo)
@@ -914,7 +1184,10 @@ pub fn cast_to_native_base(self_in: Obj, native_type: Obj) -> Obj {
     if obj::from_ptr(self_type as *const ObjType as *const ()) == native_type {
         return self_in;
     }
-    if !is_subclass_fast(obj::from_ptr(self_type as *const ObjType as *const ()), native_type) {
+    if !is_subclass_fast(
+        obj::from_ptr(self_type as *const ObjType as *const ()),
+        native_type,
+    ) {
         return obj::OBJ_NULL;
     }
     let self_ptr = unsafe { &*(obj::as_ptr(self_in) as *const ObjInstance) };
@@ -927,16 +1200,38 @@ pub struct ObjStaticClassMethod {
     pub fun: Obj,
 }
 
-fn static_class_method_make_new(self_: &'static ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
+/// Wrap `fun` as a `classmethod` descriptor (`mp_obj_new_classmethod`-ish).
+pub fn new_classmethod(fun: Obj) -> Obj {
+    let o = obj::malloc_helper(size_of::<ObjStaticClassMethod>(), type_classmethod())
+        as *mut ObjStaticClassMethod;
+    unsafe {
+        (*o).fun = fun;
+    }
+    obj::from_ptr(o as *const ())
+}
+
+fn static_class_method_make_new(
+    self_: &'static ObjType,
+    n_args: usize,
+    n_kw: usize,
+    args: &[Obj],
+) -> Obj {
     argcheck::check_num(n_args, n_kw, 1, 1, false);
-    let o = obj::malloc_helper(size_of::<ObjStaticClassMethod>(), self_) as *mut ObjStaticClassMethod;
-    unsafe { (*o).fun = args[0]; }
+    // C sets `o->base.type = self` so `@staticmethod` vs `@classmethod` differ.
+    let o =
+        obj::malloc_helper(size_of::<ObjStaticClassMethod>(), self_) as *mut ObjStaticClassMethod;
+    unsafe {
+        (*o).fun = args[0];
+    }
     obj::from_ptr(o as *const ())
 }
 
 pub fn instance_get_call_pub(self_in: Obj) -> Option<Obj> {
     let mut m = [obj::OBJ_NULL; 2];
     let c = instance_get_call(self_in, &mut m);
-    if c == obj::OBJ_NULL { None } else { Some(c) }
+    if c == obj::OBJ_NULL {
+        None
+    } else {
+        Some(c)
+    }
 }
-

@@ -5,14 +5,17 @@ use py_rs::gc::{self, ALLOC_FLAG_HAS_FINALISER};
 use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::stream::{
-    self, StreamP, StreamSeek, STREAM_ERROR, STREAM_FLUSH, STREAM_SEEK, STREAM_CLOSE, SEEK_SET,
-    SEEK_CUR, SEEK_END,
+    self, StreamP, StreamSeek, SEEK_CUR, SEEK_END, SEEK_SET, STREAM_CLOSE, STREAM_ERROR,
+    STREAM_FLUSH, STREAM_SEEK,
 };
 
 use shared_rs::timeutils::timeutils;
@@ -45,7 +48,10 @@ fn file_buffer_ptr(f: *mut ObjVfsLfs2File) -> *mut u8 {
     unsafe { (f as *mut u8).add(core::mem::size_of::<ObjVfsLfs2File>()) }
 }
 
-fn alloc_file_obj(type_out: &'static py_rs::obj::ObjType, cache_size: usize) -> *mut ObjVfsLfs2File {
+fn alloc_file_obj(
+    type_out: &'static py_rs::obj::ObjType,
+    cache_size: usize,
+) -> *mut ObjVfsLfs2File {
     let size = core::mem::size_of::<ObjVfsLfs2File>() + cache_size;
     let ptr = gc::gc_alloc(size, ALLOC_FLAG_HAS_FINALISER).expect("VfsLfs2 file");
     unsafe {
@@ -85,14 +91,19 @@ fn with_open_file<R>(
     path: &str,
     mode: &str,
     offset: u64,
-    f: impl FnOnce(&mut littlefs_rust::FileHandle<'_, crate::vfs_lfs_diskio::LfsBlockDevice>) -> Result<R, i32>,
+    f: impl FnOnce(
+        &mut littlefs_rust::FileHandle<'_, crate::vfs_lfs_diskio::LfsBlockDevice>,
+    ) -> Result<R, i32>,
 ) -> Result<R, i32> {
     let options = LfsMount::file_options_from_mode(mode)?;
     let lfs_path = LfsMount::lfs_path(path);
     let fs = mount.fs_mut()?;
-    let mut file = fs.open_file(&lfs_path, options).map_err(vfs_lfs_diskio::map_lfs_err)?;
+    let mut file = fs
+        .open_file(&lfs_path, options)
+        .map_err(vfs_lfs_diskio::map_lfs_err)?;
     if offset > 0 && !mode.contains('a') {
-        file.seek(offset as usize).map_err(vfs_lfs_diskio::map_lfs_err)?;
+        file.seek(offset as usize)
+            .map_err(vfs_lfs_diskio::map_lfs_err)?;
     }
     let result = f(&mut file);
     let _ = file.sync();
@@ -311,7 +322,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -360,7 +373,9 @@ static TEXTIO_STREAM_P: StreamP = StreamP {
 static mut FILEIO_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TEXTIO_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_FILEIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -378,7 +393,9 @@ static mut TYPE_FILEIO: ObjType = ObjType {
     slots: unsafe { FILEIO_SLOTS.as_ptr() },
 };
 static mut TYPE_TEXTIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -450,8 +467,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream___exit___obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = ptr as *const ();
@@ -505,8 +522,8 @@ mod tests {
     use py_rs::stream::{self, SEEK_SET};
 
     use crate::vfs_blockdev::{
-        BLOCKDEV_IOCTL_BLOCK_COUNT, BLOCKDEV_IOCTL_BLOCK_ERASE, BLOCKDEV_IOCTL_BLOCK_SIZE,
-        BLOCKDEV_IOCTL_INIT, BLOCKDEV_FLAG_HAVE_IOCTL, VfsBlockdev,
+        VfsBlockdev, BLOCKDEV_FLAG_HAVE_IOCTL, BLOCKDEV_IOCTL_BLOCK_COUNT,
+        BLOCKDEV_IOCTL_BLOCK_ERASE, BLOCKDEV_IOCTL_BLOCK_SIZE, BLOCKDEV_IOCTL_INIT,
     };
     use crate::vfs_lfs::{type_vfs_lfs2, ObjVfsLfs2};
     use crate::vfs_lfs_diskio::{LfsBlockDevice, LfsMount};
@@ -538,7 +555,7 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let ram = TEST_RAM.lock().expect("ram lock");
-        let dst = unsafe { std::slice::from_raw_parts_mut(bufinfo.buf as *mut u8, bufinfo.len) };
+        let dst = bufinfo.as_bytes_mut();
         dst.copy_from_slice(&ram[base..base + dst.len()]);
         obj::CONST_NONE
     }
@@ -558,7 +575,7 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let mut ram = TEST_RAM.lock().expect("ram lock");
-        let src = unsafe { std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+        let src = bufinfo.as_bytes();
         ram[base..base + src.len()].copy_from_slice(src);
         obj::CONST_NONE
     }
@@ -621,9 +638,7 @@ mod tests {
         let mut device = LfsBlockDevice::new(bdev_ptr, BLOCK_COUNT, BLOCK_SIZE);
         let opts = mount.fs_options();
         Filesystem::format_device_with_options(&mut device, opts).expect("format");
-        mount.fs = Some(
-            Filesystem::mount_device_mut_with_options(device, opts).expect("mount"),
-        );
+        mount.fs = Some(Filesystem::mount_device_mut_with_options(device, opts).expect("mount"));
         mount
     }
 
@@ -667,7 +682,10 @@ mod tests {
 
         let payload = b"hello!";
         let mut err = 0;
-        assert_eq!(file_write(file, payload.as_ptr(), payload.len(), &mut err), payload.len());
+        assert_eq!(
+            file_write(file, payload.as_ptr(), payload.len(), &mut err),
+            payload.len()
+        );
         assert_eq!(err, 0);
 
         assert_eq!(stream::stream_seek(file, 0, SEEK_SET, &mut err), 0);

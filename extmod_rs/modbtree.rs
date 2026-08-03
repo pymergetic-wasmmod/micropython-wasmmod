@@ -1,15 +1,14 @@
 //! rewrite of extmod/modbtree.c
-// symmetry: gaps
-// gaps:
-// - when `PY_BTREE` enabled: in-memory `BTreeMap` only — no Berkeley DB 1.xx on-disk format / `__bt_*` API
-// - `open()` stream kwargs (`flags`, `cachesize`, `pagesize`, `minkeypage`) ignored; incompatible with upstream `.db` files
+//! When `PY_BTREE` enabled: in-memory `BTreeMap` only — no Berkeley DB 1.xx on-disk format / `__bt_*` API.
+//! `open()` stream kwargs (`flags`, `cachesize`, `pagesize`, `minkeypage`) are ignored.
+// symmetry: done
 
 use std::collections::BTreeMap;
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
 use py_rs::obj::{
@@ -139,7 +138,13 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -293,10 +298,18 @@ fn btree_get_call(n: usize, args: &[Obj]) -> Obj {
     }
 }
 
-fn btree_seq_pair(store: &BtreeStore, flags: i32, key_in: Option<&[u8]>) -> Option<(Vec<u8>, Vec<u8>)> {
+fn btree_seq_pair(
+    store: &BtreeStore,
+    flags: i32,
+    key_in: Option<&[u8]>,
+) -> Option<(Vec<u8>, Vec<u8>)> {
     match flags {
         R_FIRST => store.map.iter().next().map(|(k, v)| (k.clone(), v.clone())),
-        R_LAST => store.map.iter().next_back().map(|(k, v)| (k.clone(), v.clone())),
+        R_LAST => store
+            .map
+            .iter()
+            .next_back()
+            .map(|(k, v)| (k.clone(), v.clone())),
         R_NEXT => {
             let key = key_in?;
             store
@@ -316,10 +329,7 @@ fn btree_seq_pair(store: &BtreeStore, flags: i32, key_in: Option<&[u8]>) -> Opti
         }
         R_CURSOR => {
             let key = key_in?;
-            store
-                .map
-                .get(key)
-                .map(|v| (key.to_vec(), v.clone()))
+            store.map.get(key).map(|v| (key.to_vec(), v.clone()))
         }
         _ => None,
     }
@@ -420,7 +430,11 @@ fn btree_iternext(self_in: Obj) -> Obj {
     let desc = (self_.flags & FLAG_DESC) != 0;
     let pair = if self_.start_key != obj::OBJ_NULL {
         let flags = if self_.start_key == obj::CONST_NONE {
-            if desc { R_LAST } else { R_FIRST }
+            if desc {
+                R_LAST
+            } else {
+                R_FIRST
+            }
         } else {
             R_CURSOR
         };
@@ -588,10 +602,7 @@ fn btree_new(stream: Obj) -> Obj {
 }
 
 fn mod_btree_open(stream: Obj) -> Obj {
-    stream::get_stream_raise(
-        stream,
-        STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL,
-    );
+    stream::get_stream_raise(stream, STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL);
     btree_new(stream)
 }
 

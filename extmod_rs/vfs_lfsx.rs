@@ -87,7 +87,11 @@ fn ilistdir_it_del(self_in: Obj) -> Obj {
 }
 
 pub fn ilistdir(self_in: Obj, n: usize, args: &[Obj]) -> Obj {
-    let path_in = if n >= 1 { args[0] } else { objstr::new_str(b"") };
+    let path_in = if n >= 1 {
+        args[0]
+    } else {
+        objstr::new_str(b"")
+    };
     let mount = mount_mut(self_in);
     let path = objstr::str_get_str(path_in);
     let lfs_path = LfsMount::lfs_path(&mount.resolve_path(&path));
@@ -99,7 +103,8 @@ pub fn ilistdir(self_in: Obj, n: usize, args: &[Obj]) -> Obj {
         .unwrap_or_else(|e| raise::raise(MpRaise::OSError(vfs_lfs_diskio::map_lfs_err(e))));
     // SAFETY: iterator outlives only while the owning VfsLfs2 (and its mount) remain
     // reachable, matching upstream's `ilistdir_it_t` holding `MP_OBJ_VFS_LFSx *vfs`.
-    let dir = unsafe { core::mem::transmute::<DirHandle<'_, 'static>, DirHandle<'static, 'static>>(dir) };
+    let dir =
+        unsafe { core::mem::transmute::<DirHandle<'_, 'static>, DirHandle<'static, 'static>>(dir) };
     let o = malloc::new_obj::<IlistdirIter>().expect("VfsLfs2 ilistdir");
     unsafe {
         (*o).base.type_ = objpolyiter::type_polymorph_iter_with_finaliser();
@@ -216,8 +221,8 @@ mod tests {
     use py_rs::qstr;
 
     use crate::vfs_blockdev::{
-        BLOCKDEV_IOCTL_BLOCK_COUNT, BLOCKDEV_IOCTL_BLOCK_ERASE, BLOCKDEV_IOCTL_BLOCK_SIZE,
-        BLOCKDEV_IOCTL_INIT, BLOCKDEV_FLAG_HAVE_IOCTL, VfsBlockdev,
+        VfsBlockdev, BLOCKDEV_FLAG_HAVE_IOCTL, BLOCKDEV_IOCTL_BLOCK_COUNT,
+        BLOCKDEV_IOCTL_BLOCK_ERASE, BLOCKDEV_IOCTL_BLOCK_SIZE, BLOCKDEV_IOCTL_INIT,
     };
     use crate::vfs_lfs::{type_vfs_lfs2, ObjVfsLfs2};
     use crate::vfs_lfs_diskio::{LfsBlockDevice, LfsMount};
@@ -248,7 +253,7 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let ram = TEST_RAM.lock().expect("ram lock");
-        let dst = unsafe { std::slice::from_raw_parts_mut(bufinfo.buf as *mut u8, bufinfo.len) };
+        let dst = bufinfo.as_bytes_mut();
         dst.copy_from_slice(&ram[base..base + dst.len()]);
         obj::CONST_NONE
     }
@@ -268,7 +273,7 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let mut ram = TEST_RAM.lock().expect("ram lock");
-        let src = unsafe { std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+        let src = bufinfo.as_bytes();
         ram[base..base + src.len()].copy_from_slice(src);
         obj::CONST_NONE
     }
@@ -331,9 +336,7 @@ mod tests {
         let mut device = LfsBlockDevice::new(bdev_ptr, BLOCK_COUNT, BLOCK_SIZE);
         let opts = mount.fs_options();
         Filesystem::format_device_with_options(&mut device, opts).expect("format");
-        mount.fs = Some(
-            Filesystem::mount_device_mut_with_options(device, opts).expect("mount"),
-        );
+        mount.fs = Some(Filesystem::mount_device_mut_with_options(device, opts).expect("mount"));
         mount
     }
 

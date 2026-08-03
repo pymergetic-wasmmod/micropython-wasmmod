@@ -3,16 +3,21 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
-use py_rs::stream::{self, StreamP, STREAM_ERROR, STREAM_FLUSH, STREAM_POLL, STREAM_POLL_RD, STREAM_POLL_WR};
+use py_rs::stream::{
+    self, StreamP, STREAM_ERROR, STREAM_FLUSH, STREAM_POLL, STREAM_POLL_RD, STREAM_POLL_WR,
+};
 
 const UART_RTS: i32 = 1;
 const UART_CTS: i32 = 2;
@@ -388,7 +393,11 @@ fn uart_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -
     let mut kw = Map::default();
     map::init(&mut kw, n_kw);
     for i in 0..n_kw {
-        if let Some(slot) = map::lookup(&mut kw, args[n_args + i * 2], map::LookupKind::AddIfNotFound) {
+        if let Some(slot) = map::lookup(
+            &mut kw,
+            args[n_args + i * 2],
+            map::LookupKind::AddIfNotFound,
+        ) {
             slot.value = args[n_args + i * 2 + 1];
         }
     }
@@ -424,7 +433,11 @@ fn poll_readable(fd: i32, timeout_ms: u16) -> bool {
         events: libc::POLLIN,
         revents: 0,
     };
-    let ms = if timeout_ms == 0 { 0 } else { timeout_ms as i32 };
+    let ms = if timeout_ms == 0 {
+        0
+    } else {
+        timeout_ms as i32
+    };
     unsafe { libc::poll(&mut pfd, 1, ms) > 0 && (pfd.revents & libc::POLLIN) != 0 }
 }
 
@@ -608,7 +621,9 @@ static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut FK: [*const (); 1] = [call_kw as *const ()];
 
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -626,7 +641,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -644,7 +661,9 @@ static T2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TK: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -786,8 +805,8 @@ fn locals_dict() -> *const () {
                 value: mk2(uart_writechar),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -798,7 +817,9 @@ fn locals_dict() -> *const () {
 
 static mut UART_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 static mut UART_TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,

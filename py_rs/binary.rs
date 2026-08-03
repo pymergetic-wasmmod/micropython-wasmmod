@@ -135,9 +135,13 @@ pub fn get_val_array(typecode: u8, p: &[u8], index: usize) -> Obj {
         b'h' => obj::new_small_int(i16::from_ne_bytes(bytes[..2].try_into().unwrap()) as Int),
         b'H' => obj::new_small_int(u16::from_ne_bytes(bytes[..2].try_into().unwrap()) as Int),
         b'i' => objint::new_int(i32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Int),
-        b'I' => objint::new_int_from_uint(u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Uint),
+        b'I' => {
+            objint::new_int_from_uint(u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Uint)
+        }
         b'l' => objint::new_int(i32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Int),
-        b'L' => objint::new_int_from_uint(u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Uint),
+        b'L' => {
+            objint::new_int_from_uint(u32::from_ne_bytes(bytes[..4].try_into().unwrap()) as Uint)
+        }
         b'q' => objint::new_int_from_ll(i64::from_ne_bytes(bytes[..8].try_into().unwrap())),
         b'Q' => objint::new_int_from_ull(u64::from_ne_bytes(bytes[..8].try_into().unwrap())),
         b'f' if mpconfig::PY_BUILTINS_FLOAT => {
@@ -146,12 +150,12 @@ pub fn get_val_array(typecode: u8, p: &[u8], index: usize) -> Obj {
         b'd' if mpconfig::PY_BUILTINS_FLOAT => {
             objfloat::new_float_from_d(f64::from_ne_bytes(bytes[..8].try_into().unwrap()))
         }
-        b'O' if mpconfig::PY_STRUCT_UNSAFE_TYPECODES != 0 => {
-            obj::Obj(usize::from_ne_bytes(bytes[..std::mem::size_of::<usize>()].try_into().unwrap()))
-        }
-        b'P' if mpconfig::PY_STRUCT_UNSAFE_TYPECODES != 0 => {
-            objint::new_int(usize::from_ne_bytes(bytes[..std::mem::size_of::<usize>()].try_into().unwrap()) as Int)
-        }
+        b'O' if mpconfig::PY_STRUCT_UNSAFE_TYPECODES != 0 => obj::Obj(usize::from_ne_bytes(
+            bytes[..std::mem::size_of::<usize>()].try_into().unwrap(),
+        )),
+        b'P' if mpconfig::PY_STRUCT_UNSAFE_TYPECODES != 0 => objint::new_int(usize::from_ne_bytes(
+            bytes[..std::mem::size_of::<usize>()].try_into().unwrap(),
+        ) as Int),
         _ => obj::new_small_int(0),
     }
 }
@@ -185,7 +189,11 @@ pub fn get_val(struct_type: u8, val_type: u8, buf: &[Byte], ptr: &mut usize) -> 
     let size = get_size(struct_type, val_type, Some(&mut align));
     if struct_type == b'@' {
         p = misc::align_up(p, align);
-        struct_type = if mpconfig::ENDIANNESS_LITTLE { b'<' } else { b'>' };
+        struct_type = if mpconfig::ENDIANNESS_LITTLE {
+            b'<'
+        } else {
+            b'>'
+        };
     }
     *ptr = p + size;
     let p_bytes = &buf[p..p + size];
@@ -268,7 +276,13 @@ fn write_val(dest: &mut [Byte], val: Uint, val_sz: usize, big_endian: bool) {
 
 /// Convenience wrapper matching C call sites that pass `mp_int_t`.
 pub fn set_int_signed(dest_sz: usize, dest: &mut [Byte], val: Int, big_endian: bool) {
-    set_int(dest_sz, dest, std::mem::size_of::<Int>(), val as Uint, big_endian);
+    set_int(
+        dest_sz,
+        dest,
+        std::mem::size_of::<Int>(),
+        val as Uint,
+        big_endian,
+    );
 }
 
 /// `mp_binary_set_val`
@@ -279,7 +293,11 @@ pub fn set_val(struct_type: u8, val_type: u8, val_in: Obj, buf: &mut [Byte], ptr
     let size = get_size(struct_type, val_type, Some(&mut align));
     if struct_type == b'@' {
         p = misc::align_up(p, align);
-        struct_type = if mpconfig::ENDIANNESS_LITTLE { b'<' } else { b'>' };
+        struct_type = if mpconfig::ENDIANNESS_LITTLE {
+            b'<'
+        } else {
+            b'>'
+        };
     }
     *ptr = p + size;
     let p_slice = &mut buf[p..p + size];
@@ -306,7 +324,13 @@ pub fn set_val(struct_type: u8, val_type: u8, val_in: Obj, buf: &mut [Byte], ptr
             {
                 if size <= std::mem::size_of::<Uint>() {
                     val = objint::int_get_truncated(val_in) as Uint;
-                    set_int(size, p_slice, std::mem::size_of::<Uint>(), val, struct_type == b'>');
+                    set_int(
+                        size,
+                        p_slice,
+                        std::mem::size_of::<Uint>(),
+                        val,
+                        struct_type == b'>',
+                    );
                     return;
                 }
                 objint::int_to_bytes(
@@ -322,7 +346,13 @@ pub fn set_val(struct_type: u8, val_type: u8, val_in: Obj, buf: &mut [Byte], ptr
             val = obj::get_int(val_in) as Uint;
         }
     }
-    set_int(size, p_slice, std::mem::size_of::<Uint>(), val, struct_type == b'>');
+    set_int(
+        size,
+        p_slice,
+        std::mem::size_of::<Uint>(),
+        val,
+        struct_type == b'>',
+    );
 }
 
 /// `mp_binary_set_val_array`
@@ -367,7 +397,7 @@ pub fn set_val_array(typecode: u8, p: &mut [u8], index: usize, val_in: Obj) {
     }
 }
 
-    fn set_val_array_from_int(typecode: u8, p: &mut [u8], index: usize, val: Int) {
+fn set_val_array_from_int(typecode: u8, p: &mut [u8], index: usize, val: Int) {
     let elem_size = get_size(b'@', typecode, None);
     let offset = index * elem_size;
     let dest = &mut p[offset..offset + elem_size];

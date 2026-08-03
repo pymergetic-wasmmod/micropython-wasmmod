@@ -3,11 +3,13 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
@@ -133,7 +135,13 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -185,9 +193,7 @@ fn mk_kw(min: u8, f: BuiltinFnKw) -> Obj {
 }
 
 fn pwm_from_timer(entry: *mut SoftTimerEntry) -> *mut MachinePwm {
-    unsafe {
-        (entry as *mut u8).sub(core::mem::offset_of!(MachinePwm, timer)) as *mut MachinePwm
-    }
+    unsafe { (entry as *mut u8).sub(core::mem::offset_of!(MachinePwm, timer)) as *mut MachinePwm }
 }
 
 fn period_ms(freq: u32) -> u32 {
@@ -201,9 +207,7 @@ fn duty_width(duty_mode: u8, duty: u32, freq: u32) -> u32 {
     match duty_mode {
         DUTY => duty * DUTY_FULL_SCALE / 100,
         DUTY_U16 => ((duty as u64) * DUTY_FULL_SCALE as u64 / 65536) as u32,
-        DUTY_NS => {
-            ((duty as u64) * freq as u64 * DUTY_FULL_SCALE as u64 / 1_000_000_000) as u32
-        }
+        DUTY_NS => ((duty as u64) * freq as u64 * DUTY_FULL_SCALE as u64 / 1_000_000_000) as u32,
         _ => 0,
     }
 }
@@ -236,7 +240,8 @@ fn pwm_timer_cb(entry: *mut SoftTimerEntry) {
         if pwm.phase_high {
             virtpin::virtual_pin_write(pwm.pin, 0);
             pwm.phase_high = false;
-            let low = period_ms(pwm.freq).saturating_sub(high_ms(pwm.freq, pwm.duty_mode, pwm.duty));
+            let low =
+                period_ms(pwm.freq).saturating_sub(high_ms(pwm.freq, pwm.duty_mode, pwm.duty));
             (*entry).delta_ms = low.max(1);
         } else {
             virtpin::virtual_pin_write(pwm.pin, 1);
@@ -585,8 +590,8 @@ fn init_pwm_type() -> &'static ObjType {
                 },
             );
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             PWM_SLOTS[2] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

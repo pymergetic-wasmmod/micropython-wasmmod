@@ -15,4 +15,5 @@ path = "main.rs"
 
 [dependencies]
 py_rs = { workspace = true }
+shared_rs = { workspace = true }
 libc = "0.2"

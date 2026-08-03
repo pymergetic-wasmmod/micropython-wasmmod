@@ -1,7 +1,7 @@
 //! rewrite of ports/qemu/uart.c + ports/qemu/uart.h
 // symmetry: done
 
-use crate::mpconfigport::{QemuSoc, qemu_soc};
+use crate::mpconfigport::{qemu_soc, QemuSoc};
 
 pub const UART_RX_NO_CHAR: i32 = -1;
 

@@ -5,8 +5,8 @@
 
 use crate::asmbase::{self, MpAsmBase};
 use crate::asmx64::{
-    self, AsmX64, ASM_X64_REG_RAX, ASM_X64_REG_RBP, ASM_X64_REG_RBX, ASM_X64_REG_RCX, ASM_X64_REG_RDI,
-    ASM_X64_REG_RDX, ASM_X64_REG_R12, ASM_X64_REG_R13, ASM_X64_REG_RSI,
+    self, AsmX64, ASM_X64_REG_R12, ASM_X64_REG_R13, ASM_X64_REG_RAX, ASM_X64_REG_RBP,
+    ASM_X64_REG_RBX, ASM_X64_REG_RCX, ASM_X64_REG_RDI, ASM_X64_REG_RDX, ASM_X64_REG_RSI,
 };
 use crate::emitnative::{self, AsmContext, NativeBackend};
 use crate::mpconfig;
@@ -45,7 +45,11 @@ impl NativeBackend for BackendX64 {
     const REG_FUN_TABLE: i32 = ASM_X64_REG_RBP;
     const REG_GENERATOR_STATE: i32 = ASM_X64_REG_R12;
     const REG_QSTR_TABLE: i32 = ASM_X64_REG_R13;
-    const REG_LOCAL_LAST: i32 = ASM_X64_REG_R13;
+    // `REG_LOCAL_LAST` is `reg_local_table[MAX_REGS_FOR_LOCAL_VARS - 1]` in upstream C.
+    // With `PERSISTENT_CODE_SAVE` (always on in this port), `MAX_REGS_FOR_LOCAL_VARS == 2`,
+    // so this must be `REG_LOCAL_2`, not `REG_LOCAL_3` (which aliases `REG_QSTR_TABLE` and
+    // would otherwise get clobbered by the incoming args pointer in viper prologues).
+    const REG_LOCAL_LAST: i32 = ASM_X64_REG_R12;
     const NLR_BUF_IDX_LOCAL_1: usize = 5;
     const N_X86: bool = false;
     const N_X64: bool = true;
@@ -76,7 +80,8 @@ impl NativeBackend for BackendX64 {
     const HAS_ASM_STORE16_REG_REG_REG: bool = false;
     const HAS_ASM_STORE32_REG_REG_REG: bool = false;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn new_asm(max_labels: usize) -> Self::Asm {
         let mut asm = AsmX64 {
@@ -276,12 +281,24 @@ mod tests {
     fn binary_op_setcc_emits_compare_sequence() {
         let mut asm = BackendX64::new_asm(4);
         asm.base_mut().pass = MP_ASM_PASS_COMPUTE;
-        BackendX64::binary_op_setcc(&mut asm, 0, BackendX64::REG_RET, BackendX64::REG_ARG_2, BackendX64::REG_ARG_3);
+        BackendX64::binary_op_setcc(
+            &mut asm,
+            0,
+            BackendX64::REG_RET,
+            BackendX64::REG_ARG_2,
+            BackendX64::REG_ARG_3,
+        );
         assert!(asm.base_mut().get_code_pos() > 0);
         BackendX64::end_pass(&mut asm);
         asm.base_mut().pass = MP_ASM_PASS_EMIT;
         asmbase::start_pass(asm.base_mut(), MP_ASM_PASS_EMIT as i32);
-        BackendX64::binary_op_setcc(&mut asm, 6, BackendX64::REG_RET, BackendX64::REG_ARG_2, BackendX64::REG_ARG_3);
+        BackendX64::binary_op_setcc(
+            &mut asm,
+            6,
+            BackendX64::REG_RET,
+            BackendX64::REG_ARG_2,
+            BackendX64::REG_ARG_3,
+        );
         BackendX64::end_pass(&mut asm);
         assert!(asm.base_mut().get_code_size() > 0);
     }
@@ -290,11 +307,21 @@ mod tests {
     fn binary_op_shift_uses_sar_for_rshift() {
         let mut asm = BackendX64::new_asm(2);
         asm.base_mut().pass = MP_ASM_PASS_COMPUTE;
-        BackendX64::binary_op_shift(&mut asm, BinaryOp::Rshift, BackendX64::REG_RET, BackendX64::REG_ARG_4);
+        BackendX64::binary_op_shift(
+            &mut asm,
+            BinaryOp::Rshift,
+            BackendX64::REG_RET,
+            BackendX64::REG_ARG_4,
+        );
         BackendX64::end_pass(&mut asm);
         asm.base_mut().pass = MP_ASM_PASS_EMIT;
         asmbase::start_pass(asm.base_mut(), MP_ASM_PASS_EMIT as i32);
-        BackendX64::binary_op_shift(&mut asm, BinaryOp::Rshift, BackendX64::REG_RET, BackendX64::REG_ARG_4);
+        BackendX64::binary_op_shift(
+            &mut asm,
+            BinaryOp::Rshift,
+            BackendX64::REG_RET,
+            BackendX64::REG_ARG_4,
+        );
         BackendX64::end_pass(&mut asm);
         assert!(asm.base_mut().get_code_size() > 0);
     }

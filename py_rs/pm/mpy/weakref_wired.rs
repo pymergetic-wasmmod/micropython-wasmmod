@@ -1,8 +1,8 @@
 //! Wired `pm_mpy_weakref_*` accessors.
 // symmetry: done
 
-use super::weakref::weakref_export;
 use super::types::pm_mpy_obj_t;
+use super::weakref::weakref_export;
 
 /// `pm_mpy_weakref_ref` — return the `ref` export from `weakref`.
 #[no_mangle]

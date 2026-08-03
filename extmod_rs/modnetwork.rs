@@ -4,8 +4,8 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
@@ -68,7 +68,13 @@ static TV: ObjType = ObjType {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -138,7 +144,7 @@ pub fn init_module() -> Obj {
         return obj::OBJ_NULL;
     }
     init_storage();
-    let table = [
+    let mut table = vec![
         MapElem {
             key: obj::new_qstr(qstr::from_str("__name__")),
             value: obj::new_qstr(qstr::from_str("network")),
@@ -160,10 +166,15 @@ pub fn init_module() -> Obj {
             value: obj::new_small_int(MOD_NETWORK_AP_IF),
         },
     ];
+    // Metal guest wired NIC façade (status/DHCP via pm_metal_net_ip_*).
+    table.push(MapElem {
+        key: obj::new_qstr(qstr::from_str("LAN")),
+        value: crate::network_metal::lan_type_obj(),
+    });
     let ctx = malloc::new_obj::<ModuleContext>().expect("network module");
     let dict = objdict::new_dict(table.len());
     unsafe {
-        map::init_fixed_table(&mut (*objdict::dict_ptr(dict)).map, table.to_vec());
+        map::init_fixed_table(&mut (*objdict::dict_ptr(dict)).map, table);
         (*ctx).module.base.type_ = objmodule::type_module();
         (*ctx).module.globals = objdict::dict_ptr(dict);
         (*ctx).constants = Default::default();

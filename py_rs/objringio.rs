@@ -2,8 +2,8 @@
 // symmetry: done
 
 use crate::argcheck;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
 use crate::objdict::{self, ObjDict};
@@ -28,7 +28,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1S: [*const (); 1] = [f1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -134,7 +136,7 @@ fn ringio_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) 
             (*o).ringbuffer = Ringbuf::new(size);
         } else {
             let mut rb = Ringbuf::new(size);
-            rb.buf = std::slice::from_raw_parts(bufinfo.buf, bufinfo.len).to_vec();
+            rb.buf = bufinfo.as_bytes().to_vec();
             (*o).ringbuffer = rb;
         }
         obj::from_ptr(o as *const ObjRingio as *const ())
@@ -155,7 +157,9 @@ static mut RINGIO_SLOTS: [*const (); 3] = [
 ];
 
 static mut TYPE_RINGIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: 0,
     name: 0,
     slot_index_make_new: 1,
@@ -178,18 +182,46 @@ static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 fn init_type() {
     INIT.get_or_init(|| {
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("any")), value: mk1(ringio_any) },
-            MapElem { key: obj::new_qstr(qstr::from_str("read")), value: stream::stream_read_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("readline")), value: stream::stream_unbuffered_readline_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("readinto")), value: stream::stream_readinto_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("write")), value: stream::stream_write_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("close")), value: stream::stream_close_obj() },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("any")),
+                value: mk1(ringio_any),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("read")),
+                value: stream::stream_read_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("readline")),
+                value: stream::stream_unbuffered_readline_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("readinto")),
+                value: stream::stream_readinto_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("write")),
+                value: stream::stream_write_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("close")),
+                value: stream::stream_close_obj(),
+            },
         ];
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             RINGIO_SLOTS[2] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
             TYPE_RINGIO.name = qstr::from_str("RingIO");
+            crate::gc::add_root(ptr as *mut u8);
+            for elem in &(*ptr).map.table {
+                if elem.key != obj::OBJ_NULL
+                    && elem.key != obj::OBJ_SENTINEL
+                    && obj::is_obj(elem.value)
+                {
+                    crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+                }
+            }
         }
     });
 }

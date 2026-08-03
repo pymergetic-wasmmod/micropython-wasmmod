@@ -41,7 +41,10 @@ fn parsed_int_fits(n: ParsedInt) -> bool {
 /// `mp_parse_num_integer`
 pub fn parse_num_integer(str: &[u8], mut base: i32, lex: Option<&ParseLexer>) -> Obj {
     if (base != 0 && base < 2) || base > 36 {
-        raise_exc(MpRaise::ValueError("int() arg 2 must be >= 2 and <= 36"), lex);
+        raise_exc(
+            MpRaise::ValueError("int() arg 2 must be >= 2 and <= 36"),
+            lex,
+        );
     }
 
     let mut pos = 0usize;
@@ -110,9 +113,19 @@ pub fn parse_num_integer(str: &[u8], mut base: i32, lex: Option<&ParseLexer>) ->
     ret_val
 }
 
-fn parse_overflow(str: &[u8], start: usize, top: usize, neg: bool, base: i32, lex: Option<&ParseLexer>) -> Obj {
+fn parse_overflow(
+    str: &[u8],
+    start: usize,
+    top: usize,
+    neg: bool,
+    base: i32,
+    lex: Option<&ParseLexer>,
+) -> Obj {
     if mpconfig::LONGINT_IMPL == mpconfig::LONGINT_IMPL_LONGLONG {
-        raise_exc(MpRaise::OverflowError("result overflows long long storage"), lex);
+        raise_exc(
+            MpRaise::OverflowError("result overflows long long storage"),
+            lex,
+        );
     }
     let digits = std::str::from_utf8(&str[start..top]).unwrap_or("");
     let (val, consumed) = objint::new_int_from_str(digits, neg, base as u32);
@@ -127,9 +140,15 @@ fn raise_value_error(base: i32, _fragment: &[u8], lex: Option<&ParseLexer>) -> !
         raise_exc(MpRaise::ValueError("invalid syntax for integer"), lex);
     } else if mpconfig::ERROR_REPORTING == mpconfig::ERROR_REPORTING_NORMAL as u8 {
         let _ = base;
-        raise_exc(MpRaise::ValueError("invalid syntax for integer with base"), lex);
+        raise_exc(
+            MpRaise::ValueError("invalid syntax for integer with base"),
+            lex,
+        );
     } else {
-        raise_exc(MpRaise::ValueError("invalid syntax for integer with base"), lex);
+        raise_exc(
+            MpRaise::ValueError("invalid syntax for integer with base"),
+            lex,
+        );
     }
 }
 
@@ -194,12 +213,7 @@ mod float_parse {
         }
     }
 
-    fn accept_digit(
-        mantissa: u64,
-        dig: u32,
-        exp_extra: &mut i32,
-        in_: ParseDecIn,
-    ) -> u64 {
+    fn accept_digit(mantissa: u64, dig: u32, exp_extra: &mut i32, in_: ParseDecIn) -> u64 {
         if mantissa < MANTISSA_MAX {
             if in_ == ParseDecIn::Frac {
                 *exp_extra -= 1;
@@ -382,9 +396,7 @@ pub fn parse_num_decimal(
         }
 
         if pos != top {
-            if mpconfig::PY_BUILTINS_COMPLEX
-                && force_complex
-                && real_imag_state == RealImag::Start
+            if mpconfig::PY_BUILTINS_COMPLEX && force_complex && real_imag_state == RealImag::Start
             {
                 dec_real = dec_val;
                 dec_val = 0.0;

@@ -2,8 +2,8 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
@@ -17,26 +17,56 @@ type BuiltinFn1 = fn(Obj) -> Obj;
 type BuiltinFn2 = fn(Obj, Obj) -> Obj;
 
 #[repr(C)]
-struct ObjFunBuiltin1 { base: ObjBase, fun: BuiltinFn1 }
+struct ObjFunBuiltin1 {
+    base: ObjBase,
+    fun: BuiltinFn1,
+}
 #[repr(C)]
-struct ObjFunBuiltin2 { base: ObjBase, fun: BuiltinFn2 }
+struct ObjFunBuiltin2 {
+    base: ObjBase,
+    fun: BuiltinFn2,
+}
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BUILTIN_FUN, name: 0,
-    slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0,
-    slot_index_subscr: 0, slot_index_iter: 0, slot_index_buffer: 0,
-    slot_index_protocol: 0, slot_index_parent: 0, slot_index_locals_dict: 0,
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BUILTIN_FUN, name: 0,
-    slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0,
-    slot_index_subscr: 0, slot_index_iter: 0, slot_index_buffer: 0,
-    slot_index_protocol: 0, slot_index_parent: 0, slot_index_locals_dict: 0,
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
     slots: unsafe { F2.as_ptr() },
 };
 
@@ -52,11 +82,19 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn mk1(f: BuiltinFn1) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin1>().expect("heapq fn1");
-    unsafe { (*o).base.type_ = &T1; (*o).fun = f; obj::from_ptr(o as *const ObjFunBuiltin1 as *const ()) }
+    unsafe {
+        (*o).base.type_ = &T1;
+        (*o).fun = f;
+        obj::from_ptr(o as *const ObjFunBuiltin1 as *const ())
+    }
 }
 fn mk2(f: BuiltinFn2) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin2>().expect("heapq fn2");
-    unsafe { (*o).base.type_ = &T2; (*o).fun = f; obj::from_ptr(o as *const ObjFunBuiltin2 as *const ()) }
+    unsafe {
+        (*o).base.type_ = &T2;
+        (*o).fun = f;
+        obj::from_ptr(o as *const ObjFunBuiltin2 as *const ())
+    }
 }
 
 fn get_heap(heap_in: Obj) -> *mut py_rs::objlist::ObjList {
@@ -102,7 +140,12 @@ fn siftup(heap: *mut py_rs::objlist::ObjList, mut pos: usize) {
         let item = item_at((*heap).items, pos);
         let mut child = 2 * pos + 1;
         while child < end {
-            if child + 1 < end && !less(item_at((*heap).items, child), item_at((*heap).items, child + 1)) {
+            if child + 1 < end
+                && !less(
+                    item_at((*heap).items, child),
+                    item_at((*heap).items, child + 1),
+                )
+            {
                 child += 1;
             }
             set_item_at((*heap).items, pos, item_at((*heap).items, child));
@@ -117,7 +160,9 @@ fn siftup(heap: *mut py_rs::objlist::ObjList, mut pos: usize) {
 fn heappush(heap_in: Obj, item: Obj) -> Obj {
     let heap = get_heap(heap_in);
     objlist::list_append(heap_in, item);
-    unsafe { siftdown(heap, 0, (*heap).len - 1); }
+    unsafe {
+        siftdown(heap, 0, (*heap).len - 1);
+    }
     obj::CONST_NONE
 }
 
@@ -155,10 +200,22 @@ pub fn init_module() -> Obj {
         return obj::OBJ_NULL;
     }
     let table = [
-        MapElem { key: obj::new_qstr(qstr::from_str("__name__")), value: obj::new_qstr(qstr::from_str("heapq")) },
-        MapElem { key: obj::new_qstr(qstr::from_str("heappush")), value: mk2(heappush) },
-        MapElem { key: obj::new_qstr(qstr::from_str("heappop")), value: mk1(heappop) },
-        MapElem { key: obj::new_qstr(qstr::from_str("heapify")), value: mk1(heapify) },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("__name__")),
+            value: obj::new_qstr(qstr::from_str("heapq")),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("heappush")),
+            value: mk2(heappush),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("heappop")),
+            value: mk1(heappop),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("heapify")),
+            value: mk1(heapify),
+        },
     ];
     let ctx = malloc::new_obj::<ModuleContext>().expect("heapq");
     let dict = objdict::new_dict(table.len());

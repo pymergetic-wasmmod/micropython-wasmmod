@@ -482,10 +482,7 @@ impl Lexer {
             }
         }
 
-        while !self.is_end()
-            && (num_quotes > 1 || !self.is_char(b'\n'))
-            && n_closing < num_quotes
-        {
+        while !self.is_end() && (num_quotes > 1 || !self.is_char(b'\n')) && n_closing < num_quotes {
             if self.is_char(quote_char) {
                 n_closing += 1;
                 let c = self.cur_char();
@@ -521,19 +518,17 @@ impl Lexer {
                                 self.next_char();
                             }
                             if unsafe {
-                                *vstr::str_ptr(&self.fstring_args).add(vstr::len(&self.fstring_args) - 1)
+                                *vstr::str_ptr(&self.fstring_args)
+                                    .add(vstr::len(&self.fstring_args) - 1)
                             } == b'='
                             {
                                 let arg_len = vstr::len(&self.fstring_args) - i;
-                                vstr::add_strn(
-                                    &mut self.vstr,
-                                    unsafe {
-                                        std::slice::from_raw_parts(
-                                            vstr::str_ptr(&self.fstring_args).add(i),
-                                            arg_len,
-                                        )
-                                    },
-                                );
+                                vstr::add_strn(&mut self.vstr, unsafe {
+                                    std::slice::from_raw_parts(
+                                        vstr::str_ptr(&self.fstring_args).add(i),
+                                        arg_len,
+                                    )
+                                });
                                 self.fstring_args.len -= 1;
                             }
                             if vstr::len(&self.fstring_args) == i {
@@ -731,7 +726,9 @@ impl Lexer {
                 TokenKind::DelParenOpen | TokenKind::DelBracketOpen | TokenKind::DelBraceOpen => {
                     self.nested_bracket_level += 1;
                 }
-                TokenKind::DelParenClose | TokenKind::DelBracketClose | TokenKind::DelBraceClose => {
+                TokenKind::DelParenClose
+                | TokenKind::DelBracketClose
+                | TokenKind::DelBraceClose => {
                     self.nested_bracket_level -= 1;
                 }
                 _ => {}
@@ -848,28 +845,19 @@ impl Lexer {
                     debug_assert!(self.inject_chrs_idx >= 3);
                     self.inject_chrs_idx -= 3;
                 }
-                vstr::ins_strn(
-                    &mut self.inject_chrs,
-                    self.inject_chrs_idx,
-                    unsafe {
-                        std::slice::from_raw_parts(
-                            vstr::str_ptr(&self.fstring_args),
-                            vstr::len(&self.fstring_args),
-                        )
-                    },
-                );
+                vstr::ins_strn(&mut self.inject_chrs, self.inject_chrs_idx, unsafe {
+                    std::slice::from_raw_parts(
+                        vstr::str_ptr(&self.fstring_args),
+                        vstr::len(&self.fstring_args),
+                    )
+                });
                 vstr::reset(&mut self.fstring_args);
-                self.chr0 = unsafe {
-                    *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx)
-                } as u32;
+                self.chr0 =
+                    unsafe { *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx) } as u32;
                 self.inject_chrs_idx += 1;
-                self.chr1 = unsafe {
-                    *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx)
-                };
+                self.chr1 = unsafe { *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx) };
                 self.inject_chrs_idx += 1;
-                self.chr2 = unsafe {
-                    *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx)
-                };
+                self.chr2 = unsafe { *vstr::str_ptr(&self.inject_chrs).add(self.inject_chrs_idx) };
                 self.inject_chrs_idx += 1;
             }
         } else if self.is_head_of_identifier() {
@@ -1024,6 +1012,15 @@ impl Lexer {
         String::from_utf8_lossy(bytes).into_owned()
     }
 
+    /// Raw token bytes, without any UTF-8 validation/lossy conversion. Use this
+    /// for `bytes` literals, which may contain arbitrary (non-UTF-8) byte values.
+    pub fn token_bytes(&self) -> &[u8] {
+        if vstr::len(&self.vstr) == 0 {
+            return &[];
+        }
+        unsafe { std::slice::from_raw_parts(vstr::str_ptr(&self.vstr), vstr::len(&self.vstr)) }
+    }
+
     fn is_error_kind(kind: TokenKind) -> bool {
         matches!(
             kind,
@@ -1169,7 +1166,8 @@ mod tests {
     fn tokenizes_keywords_and_strings() {
         init_host();
         let src_name = qstr::from_str("<t>");
-        let mut lex = Lexer::new_from_str_len(src_name, b"def foo():\n    return 'hi'\n", READER_IS_ROM);
+        let mut lex =
+            Lexer::new_from_str_len(src_name, b"def foo():\n    return 'hi'\n", READER_IS_ROM);
         assert_eq!(lex.tok_kind, TokenKind::KwDef);
         lex.to_next();
         assert_eq!(lex.tok_kind, TokenKind::Name);

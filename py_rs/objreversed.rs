@@ -17,10 +17,15 @@ pub struct ObjReversed {
     pub cur_index: usize,
 }
 
-static mut REV_SLOTS: [*const (); 2] = [reversed_make_new as *const (), reversed_iternext as *const ()];
+static mut REV_SLOTS: [*const (); 2] = [
+    reversed_make_new as *const (),
+    reversed_iternext as *const (),
+];
 
 static mut TYPE_REVERSED: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 1,
@@ -76,7 +81,11 @@ fn reversed_iternext(self_in: Obj) -> Obj {
         return obj::OBJ_STOP_ITERATION;
     }
     self_.cur_index -= 1;
-    obj::subscr(self_.seq, obj::new_small_int(self_.cur_index as isize), OBJ_SENTINEL)
+    obj::subscr(
+        self_.seq,
+        obj::new_small_int(self_.cur_index as isize),
+        OBJ_SENTINEL,
+    )
 }
 
 #[cfg(test)]
@@ -94,11 +103,14 @@ mod tests {
     #[test]
     fn reversed_list() {
         setup();
-        let lst = objlist::new_list(3, Some(&[
-            obj::new_small_int(1),
-            obj::new_small_int(2),
-            obj::new_small_int(3),
-        ]));
+        let lst = objlist::new_list(
+            3,
+            Some(&[
+                obj::new_small_int(1),
+                obj::new_small_int(2),
+                obj::new_small_int(3),
+            ]),
+        );
         let r = reversed_make_new(type_reversed(), 1, 0, &[lst]);
         assert_eq!(obj::small_int_value(reversed_iternext(r)), 3);
         assert_eq!(obj::small_int_value(reversed_iternext(r)), 2);

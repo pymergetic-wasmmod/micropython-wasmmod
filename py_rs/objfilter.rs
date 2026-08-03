@@ -15,10 +15,13 @@ pub struct ObjFilter {
     pub iter: Obj,
 }
 
-static mut FILTER_SLOTS: [*const (); 2] = [filter_make_new as *const (), filter_iternext as *const ()];
+static mut FILTER_SLOTS: [*const (); 2] =
+    [filter_make_new as *const (), filter_iternext as *const ()];
 
 static mut TYPE_FILTER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 1,
@@ -99,11 +102,14 @@ mod tests {
     #[test]
     fn filter_none_keeps_truthy() {
         setup();
-        let lst = objlist::new_list(3, Some(&[
-            obj::new_small_int(0),
-            obj::new_small_int(1),
-            obj::new_small_int(2),
-        ]));
+        let lst = objlist::new_list(
+            3,
+            Some(&[
+                obj::new_small_int(0),
+                obj::new_small_int(1),
+                obj::new_small_int(2),
+            ]),
+        );
         let f = filter_make_new(type_filter(), 2, 0, &[obj::CONST_NONE, lst]);
         let v = filter_iternext(f);
         assert_eq!(obj::small_int_value(v), 1);

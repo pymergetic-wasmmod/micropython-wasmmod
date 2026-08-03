@@ -3,12 +3,14 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mphal;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
@@ -89,7 +91,9 @@ static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut F3: [*const (); 1] = [call3 as *const ()];
 
 static TK: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -107,7 +111,9 @@ static TK: ObjType = ObjType {
     slots: unsafe { FK.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -125,7 +131,9 @@ static TV: ObjType = ObjType {
     slots: unsafe { FV.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -143,7 +151,9 @@ static T2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static T3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -178,7 +188,13 @@ fn call_kw(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -248,7 +264,11 @@ fn spi_deinit(self_in: Obj) -> Obj {
 
 fn spi_read(n: usize, args: &[Obj]) -> Obj {
     let len = obj::get_int(args[1]) as usize;
-    let fill = if n == 3 { obj::get_int(args[2]) as u8 } else { 0 };
+    let fill = if n == 3 {
+        obj::get_int(args[2]) as u8
+    } else {
+        0
+    };
     let mut v = Vstr {
         alloc: 0,
         len: 0,
@@ -266,7 +286,11 @@ fn spi_read(n: usize, args: &[Obj]) -> Obj {
 fn spi_readinto(n: usize, args: &[Obj]) -> Obj {
     let mut bufinfo = BufferInfo::default();
     obj::get_buffer_raise(args[1], &mut bufinfo, obj::BUFFER_WRITE);
-    let fill = if n == 3 { obj::get_int(args[2]) as u8 } else { 0 };
+    let fill = if n == 3 {
+        obj::get_int(args[2]) as u8
+    } else {
+        0
+    };
     unsafe {
         core::ptr::write_bytes(bufinfo.buf, fill, bufinfo.len);
         spi_transfer(args[0], bufinfo.len, bufinfo.buf, bufinfo.buf);
@@ -278,7 +302,12 @@ fn spi_write(self_in: Obj, wr_buf: Obj) -> Obj {
     let mut src = BufferInfo::default();
     obj::get_buffer_raise(wr_buf, &mut src, obj::BUFFER_READ);
     unsafe {
-        spi_transfer(self_in, src.len, src.buf as *const u8, core::ptr::null_mut());
+        spi_transfer(
+            self_in,
+            src.len,
+            src.buf as *const u8,
+            core::ptr::null_mut(),
+        );
     }
     obj::CONST_NONE
 }
@@ -335,8 +364,8 @@ fn spi_locals_dict() -> Obj {
                 value: obj::new_small_int(SPI_LSB),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = Some(obj::from_ptr(ptr as *const ObjDict as *const ()));
@@ -665,11 +694,9 @@ static mut SOFT_SPI_TYPE: ObjType = ObjType {
 static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_soft_spi_type() -> &'static ObjType {
-    INIT.get_or_init(|| {
-        unsafe {
-            SOFT_SPI_SLOTS[3] = spi_locals_dict().0 as *const ();
-            SOFT_SPI_TYPE.name = qstr::from_str("SoftSPI");
-        }
+    INIT.get_or_init(|| unsafe {
+        SOFT_SPI_SLOTS[3] = spi_locals_dict().0 as *const ();
+        SOFT_SPI_TYPE.name = qstr::from_str("SoftSPI");
     });
     unsafe { &SOFT_SPI_TYPE }
 }

@@ -12,9 +12,9 @@ use crate::argcheck;
 use crate::bc::{self, ModuleContext};
 use crate::binary;
 use crate::emitglue;
+use crate::emitnative;
 use crate::gc;
 use crate::map::Map;
-use crate::emitnative;
 use crate::mpconfig;
 use crate::mpprint::{self, Print};
 use crate::nlr;
@@ -119,15 +119,15 @@ extern "C" fn shim_native_swap_globals(new_globals: *mut ObjDict) -> *mut ObjDic
     objdict::dict_ptr(old)
 }
 
-extern "C" fn shim_load_name(qst: Qstr) -> Obj {
+extern "C-unwind" fn shim_load_name(qst: Qstr) -> Obj {
     runtime::load_name(qst)
 }
 
-extern "C" fn shim_load_global(qst: Qstr) -> Obj {
+extern "C-unwind" fn shim_load_global(qst: Qstr) -> Obj {
     runtime::load_global(qst)
 }
 
-extern "C" fn shim_load_build_class() -> Obj {
+extern "C-unwind" fn shim_load_build_class() -> Obj {
     runtime::load_build_class()
 }
 
@@ -140,36 +140,36 @@ extern "C-unwind" fn shim_load_method(base: Obj, attr: Qstr, dest: *mut Obj) {
     runtime::load_method(base, attr, dest);
 }
 
-extern "C" fn shim_load_super_method(attr: Qstr, dest: *mut Obj) {
+extern "C-unwind" fn shim_load_super_method(attr: Qstr, dest: *mut Obj) {
     let dest = unsafe { &mut *(dest as *mut [Obj; 3]) };
     objtype::load_super_method(attr, dest);
 }
 
-extern "C" fn shim_store_name(qst: Qstr, value: Obj) {
+extern "C-unwind" fn shim_store_name(qst: Qstr, value: Obj) {
     runtime::store_name(qst, value);
 }
 
-extern "C" fn shim_store_global(qst: Qstr, value: Obj) {
+extern "C-unwind" fn shim_store_global(qst: Qstr, value: Obj) {
     runtime::store_global(qst, value);
 }
 
-extern "C" fn shim_store_attr(base: Obj, attr: Qstr, value: Obj) {
+extern "C-unwind" fn shim_store_attr(base: Obj, attr: Qstr, value: Obj) {
     runtime::store_attr(base, attr, value);
 }
 
-extern "C" fn shim_obj_subscr(base: Obj, index: Obj, value: Obj) -> Obj {
+extern "C-unwind" fn shim_obj_subscr(base: Obj, index: Obj, value: Obj) -> Obj {
     obj::subscr(base, index, value)
 }
 
-extern "C" fn shim_obj_is_true(arg: Obj) -> bool {
+extern "C-unwind" fn shim_obj_is_true(arg: Obj) -> bool {
     obj::is_true(arg)
 }
 
-extern "C" fn shim_unary_op(op: UnaryOp, arg: Obj) -> Obj {
+extern "C-unwind" fn shim_unary_op(op: UnaryOp, arg: Obj) -> Obj {
     runtime::unary_op_obj(op, arg)
 }
 
-extern "C" fn shim_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
+extern "C-unwind" fn shim_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
     runtime::binary_op_obj(op, lhs, rhs)
 }
 
@@ -204,15 +204,15 @@ extern "C" fn shim_new_set(n_args: usize, items: *mut Obj) -> Obj {
     objset::new_set(n_args, items)
 }
 
-extern "C" fn shim_set_store(self_in: Obj, item: Obj) {
+extern "C-unwind" fn shim_set_store(self_in: Obj, item: Obj) {
     objset::set_store(self_in, item);
 }
 
-extern "C" fn shim_list_append(self_in: Obj, arg: Obj) -> Obj {
+extern "C-unwind" fn shim_list_append(self_in: Obj, arg: Obj) -> Obj {
     objlist::list_append(self_in, arg)
 }
 
-extern "C" fn shim_dict_store(self_in: Obj, key: Obj, value: Obj) -> Obj {
+extern "C-unwind" fn shim_dict_store(self_in: Obj, key: Obj, value: Obj) -> Obj {
     objdict::dict_store(self_in, key, value)
 }
 
@@ -237,7 +237,11 @@ fn shim_args_slice<'a>(args: *const Obj, len: usize) -> &'a [Obj] {
     }
 }
 
-extern "C-unwind" fn shim_native_call_function_n_kw(fun_in: Obj, n_args_kw: usize, args: *const Obj) -> Obj {
+extern "C-unwind" fn shim_native_call_function_n_kw(
+    fun_in: Obj,
+    n_args_kw: usize,
+    args: *const Obj,
+) -> Obj {
     let n_args = n_args_kw & 0xff;
     let n_kw = (n_args_kw >> 8) & 0xff;
     let args = shim_args_slice(args, n_args + n_kw * 2);
@@ -249,12 +253,16 @@ extern "C-unwind" fn shim_call_method_n_kw(n_args: usize, n_kw: usize, args: *co
     runtime::call_method_n_kw(n_args, n_kw, args)
 }
 
-extern "C-unwind" fn shim_call_method_n_kw_var(have_self: bool, n_args_n_kw: usize, args: *const Obj) -> Obj {
+extern "C-unwind" fn shim_call_method_n_kw_var(
+    have_self: bool,
+    n_args_n_kw: usize,
+    args: *const Obj,
+) -> Obj {
     let args = shim_args_slice(args, n_args_n_kw + 2);
     runtime::call_method_n_kw_var(have_self, n_args_n_kw, args)
 }
 
-extern "C" fn shim_native_getiter(obj_in: Obj, iter: *mut obj::ObjIterBuf) -> Obj {
+extern "C-unwind" fn shim_native_getiter(obj_in: Obj, iter: *mut obj::ObjIterBuf) -> Obj {
     if iter.is_null() {
         return runtime::getiter(obj_in, None);
     }
@@ -267,7 +275,7 @@ extern "C" fn shim_native_getiter(obj_in: Obj, iter: *mut obj::ObjIterBuf) -> Ob
     obj::OBJ_NULL
 }
 
-extern "C" fn shim_native_iternext(iter: *mut obj::ObjIterBuf) -> Obj {
+extern "C-unwind" fn shim_native_iternext(iter: *mut obj::ObjIterBuf) -> Obj {
     let iter = unsafe { &*iter };
     let obj_in = if iter.base.type_.is_null() {
         iter.buf[0]
@@ -291,15 +299,15 @@ extern "C-unwind" fn shim_native_raise(o: Obj) {
     }
 }
 
-extern "C" fn shim_import_name(name: Qstr, fromlist: Obj, level: Obj) -> Obj {
+extern "C-unwind" fn shim_import_name(name: Qstr, fromlist: Obj, level: Obj) -> Obj {
     runtime::import_name(name, fromlist, level)
 }
 
-extern "C" fn shim_import_from(module: Obj, name: Qstr) -> Obj {
+extern "C-unwind" fn shim_import_from(module: Obj, name: Qstr) -> Obj {
     runtime::import_from(module, name)
 }
 
-extern "C" fn shim_import_all(module: Obj) {
+extern "C-unwind" fn shim_import_all(module: Obj) {
     runtime::import_all(module);
 }
 
@@ -307,21 +315,21 @@ extern "C" fn shim_new_slice(start: Obj, stop: Obj, step: Obj) -> Obj {
     objslice::new_slice(start, stop, step)
 }
 
-extern "C" fn shim_unpack_sequence(seq: Obj, num: usize, items: *mut Obj) {
+extern "C-unwind" fn shim_unpack_sequence(seq: Obj, num: usize, items: *mut Obj) {
     let items = unsafe { core::slice::from_raw_parts_mut(items, num) };
     runtime::unpack_sequence(seq, num, items);
 }
 
-extern "C" fn shim_unpack_ex(seq: Obj, num: usize, items: *mut Obj) {
+extern "C-unwind" fn shim_unpack_ex(seq: Obj, num: usize, items: *mut Obj) {
     let items = unsafe { core::slice::from_raw_parts_mut(items, num + 1) };
     runtime::unpack_ex(seq, num, items);
 }
 
-extern "C" fn shim_delete_name(qst: Qstr) {
+extern "C-unwind" fn shim_delete_name(qst: Qstr) {
     runtime::delete_name(qst);
 }
 
-extern "C" fn shim_delete_global(qst: Qstr) {
+extern "C-unwind" fn shim_delete_global(qst: Qstr) {
     runtime::delete_global(qst);
 }
 
@@ -334,7 +342,7 @@ extern "C" fn shim_new_closure(fun: Obj, n_closed_over: usize, closed: *const Ob
     objclosure::new_closure(fun, n_closed_over, closed)
 }
 
-extern "C" fn shim_arg_check_num_sig(n_args: usize, n_kw: usize, sig: u32) {
+extern "C-unwind" fn shim_arg_check_num_sig(n_args: usize, n_kw: usize, sig: u32) {
     argcheck::check_num_sig(n_args, n_kw, sig);
 }
 
@@ -348,11 +356,17 @@ extern "C" fn shim_setup_code_state_native(
     bc::setup_code_state_native(unsafe { &mut *code_state }, n_args, n_kw, args);
 }
 
-extern "C" fn shim_small_int_floor_divide(num: crate::obj::Int, denom: crate::obj::Int) -> crate::obj::Int {
+extern "C" fn shim_small_int_floor_divide(
+    num: crate::obj::Int,
+    denom: crate::obj::Int,
+) -> crate::obj::Int {
     smallint::floor_divide(num, denom)
 }
 
-extern "C" fn shim_small_int_modulo(dividend: crate::obj::Int, divisor: crate::obj::Int) -> crate::obj::Int {
+extern "C" fn shim_small_int_modulo(
+    dividend: crate::obj::Int,
+    divisor: crate::obj::Int,
+) -> crate::obj::Int {
     smallint::modulo(dividend, divisor)
 }
 
@@ -467,7 +481,7 @@ extern "C" fn shim_gc_realloc(ptr: *mut u8, n_bytes: usize, allow_move: bool) ->
     gc::realloc(ptr, n_bytes, allow_move).unwrap_or(core::ptr::null_mut())
 }
 
-extern "C" fn shim_raise_msg(exc_type: *const ObjType, msg: *const u8) {
+extern "C-unwind" fn shim_raise_msg(exc_type: *const ObjType, msg: *const u8) {
     let msg = if msg.is_null() {
         ""
     } else {
@@ -500,7 +514,7 @@ extern "C" fn shim_obj_new_bytearray_by_ref(n: usize, items: *mut u8) -> Obj {
     objarray::new_bytearray_by_ref(n, items)
 }
 
-extern "C" fn shim_load_method_maybe(base: Obj, attr: Qstr, dest: *mut Obj) {
+extern "C-unwind" fn shim_load_method_maybe(base: Obj, attr: Qstr, dest: *mut Obj) {
     let dest = unsafe { &mut *(dest as *mut [Obj; 2]) };
     runtime::load_method_maybe(base, attr, dest);
 }
@@ -509,11 +523,11 @@ extern "C" fn shim_get_buffer(obj_in: Obj, bufinfo: *mut BufferInfo, flags: u32)
     obj::get_buffer(obj_in, unsafe { &mut *bufinfo }, flags)
 }
 
-extern "C" fn shim_get_stream_raise(self_in: Obj, flags: i32) -> *const stream::StreamP {
+extern "C-unwind" fn shim_get_stream_raise(self_in: Obj, flags: i32) -> *const stream::StreamP {
     stream::get_stream_raise(self_in, flags) as *const stream::StreamP
 }
 
-extern "C" fn shim_arg_parse_all(
+extern "C-unwind" fn shim_arg_parse_all(
     n_pos: usize,
     pos: *const Obj,
     kws: *mut Map,
@@ -534,7 +548,7 @@ extern "C" fn shim_arg_parse_all(
     );
 }
 
-extern "C" fn shim_arg_parse_all_kw_array(
+extern "C-unwind" fn shim_arg_parse_all_kw_array(
     n_pos: usize,
     n_kw: usize,
     args: *const Obj,
@@ -560,15 +574,24 @@ extern "C" fn shim_binary_get_size(struct_type: u8, val_type: u8, palign: *mut u
     )
 }
 
-extern "C" fn shim_binary_get_val_array(typecode: u8, p: *const u8, index: usize) -> Obj {
+extern "C-unwind" fn shim_binary_get_val_array(typecode: u8, p: *const u8, index: usize) -> Obj {
     if p.is_null() {
         return obj::OBJ_NULL;
     }
     let len = index + binary::get_size(b'@', typecode, None);
-    binary::get_val_array(typecode, unsafe { core::slice::from_raw_parts(p, len) }, index)
+    binary::get_val_array(
+        typecode,
+        unsafe { core::slice::from_raw_parts(p, len) },
+        index,
+    )
 }
 
-extern "C" fn shim_binary_set_val_array(typecode: u8, p: *mut u8, index: usize, val_in: Obj) {
+extern "C-unwind" fn shim_binary_set_val_array(
+    typecode: u8,
+    p: *mut u8,
+    index: usize,
+    val_in: Obj,
+) {
     if p.is_null() {
         return;
     }
@@ -719,16 +742,16 @@ mod tests {
     use super::*;
     use crate::asmbase;
     use crate::compile;
+    use crate::emitnative;
     use crate::lexer;
-    use crate::nlr;
     use crate::mpstate;
+    use crate::nlr;
     use crate::obj;
     use crate::objdict;
     use crate::objexcept;
     use crate::objgenerator;
     use crate::parse;
     use crate::qstr;
-    use crate::emitnative;
     use crate::reader::READER_IS_ROM;
     use crate::runtime::{self, VmReturnKind};
 
@@ -775,15 +798,15 @@ def inner():
         let shim: YieldFromFn = unsafe {
             core::mem::transmute(MP_FUN_TABLE[emitnative::mp_f::NATIVE_YIELD_FROM as usize])
         };
-        let ret_kind = unsafe { shim(inner_gen, obj::CONST_NONE, &mut slot, core::ptr::null_mut()) };
+        let ret_kind =
+            unsafe { shim(inner_gen, obj::CONST_NONE, &mut slot, core::ptr::null_mut()) };
         assert_eq!(
             ret_kind,
             emitnative::MP_VM_RETURN_EXCEPTION as u32,
             "native yield_from shim must re-raise GeneratorExit after delegate swallows it",
         );
         assert!(
-            objexcept::is_exception_instance(slot)
-                || objexcept::is_native_exception_instance(slot),
+            objexcept::is_exception_instance(slot) || objexcept::is_native_exception_instance(slot),
             "expected exception object, got {slot:?}",
         );
     }

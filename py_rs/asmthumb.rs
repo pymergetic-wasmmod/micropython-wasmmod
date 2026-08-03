@@ -511,7 +511,10 @@ pub fn lsl_rlo_rlo_i5(asm: &mut AsmThumb, rlo_dest: u32, rlo_src: u32, shift: u3
 pub fn sxth_rlo_rlo(asm: &mut AsmThumb, rlo_dest: u32, rlo_src: u32) {
     assert!(rlo_dest < ASM_THUMB_REG_R8);
     assert!(rlo_src < ASM_THUMB_REG_R8);
-    op16(asm, op_format_11_encode(ASM_THUMB_FORMAT_11_SXTH, rlo_dest, rlo_src));
+    op16(
+        asm,
+        op_format_11_encode(ASM_THUMB_FORMAT_11_SXTH, rlo_dest, rlo_src),
+    );
 }
 
 pub fn mov_reg_reg(asm: &mut AsmThumb, reg_dest: u32, reg_src: u32) {
@@ -532,12 +535,9 @@ pub fn mov_reg_i16(asm: &mut AsmThumb, mov_op: u16, reg_dest: u32, i16_src: i32)
     assert!(reg_dest < ASM_THUMB_REG_R15);
     op32(
         asm,
-        (mov_op as u32)
-            | (((i16_src >> 1) & 0x0400) as u32)
-            | (((i16_src >> 12) & 0xf) as u32),
-        ((((i16_src as u16 as u32) << 4) & 0x7000)
-            | (reg_dest << 8)
-            | ((i16_src & 0xff) as u32)) as u32,
+        (mov_op as u32) | (((i16_src >> 1) & 0x0400) as u32) | (((i16_src >> 12) & 0xf) as u32),
+        ((((i16_src as u16 as u32) << 4) & 0x7000) | (reg_dest << 8) | ((i16_src & 0xff) as u32))
+            as u32,
     );
 }
 
@@ -710,9 +710,7 @@ fn mov_local_check(asm: &AsmThumb, word_offset: i32) {
     if asm.base.pass >= MP_ASM_PASS_EMIT {
         assert!(word_offset >= 0);
         if !unsigned_fit8(word_offset) {
-            raise::raise(MpRaise::RuntimeError(
-                "too many locals for native method",
-            ));
+            raise::raise(MpRaise::RuntimeError("too many locals for native method"));
         }
     }
 }
@@ -794,10 +792,7 @@ pub fn load_reg_reg_offset(
     operation_size: u32,
 ) {
     assert!(operation_size <= 2);
-    if misc::fit_unsigned(5, offset)
-        && reg_dest < ASM_THUMB_REG_R8
-        && reg_base < ASM_THUMB_REG_R8
-    {
+    if misc::fit_unsigned(5, offset) && reg_dest < ASM_THUMB_REG_R8 && reg_base < ASM_THUMB_REG_R8 {
         op16(
             asm,
             ((OP_LDR_STR_TABLE[operation_size as usize] | OP_LDR) << 11) as u16
@@ -831,10 +826,7 @@ pub fn store_reg_reg_offset(
     operation_size: u32,
 ) {
     assert!(operation_size <= 2);
-    if misc::fit_unsigned(5, offset)
-        && reg_src < ASM_THUMB_REG_R8
-        && reg_base < ASM_THUMB_REG_R8
-    {
+    if misc::fit_unsigned(5, offset) && reg_src < ASM_THUMB_REG_R8 && reg_base < ASM_THUMB_REG_R8 {
         op16(
             asm,
             ((OP_LDR_STR_TABLE[operation_size as usize] | OP_STR) << 11) as u16

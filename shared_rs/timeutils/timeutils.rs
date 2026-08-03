@@ -72,21 +72,20 @@ pub fn seconds_since_1970_to_struct_time(seconds: Timestamp, tm: &mut StructTime
 
     days += PREV_LEAP_DAY;
 
-    let (base_year, qc_cycles, c_cycles, mut days) = if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND
-        || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE
-    {
-        let mut days = days + QC_BASE_DAY;
-        let qc_cycles = days / DAYS_PER_400Y;
-        days %= DAYS_PER_400Y;
-        let mut c_cycles = days / DAYS_PER_100Y;
-        if c_cycles == 4 {
-            c_cycles -= 1;
-        }
-        days -= c_cycles * DAYS_PER_100Y;
-        (QC_LEAP_YEAR, qc_cycles, c_cycles, days)
-    } else {
-        (PREV_LEAP_YEAR, 0, 0, days)
-    };
+    let (base_year, qc_cycles, c_cycles, mut days) =
+        if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE {
+            let mut days = days + QC_BASE_DAY;
+            let qc_cycles = days / DAYS_PER_400Y;
+            days %= DAYS_PER_400Y;
+            let mut c_cycles = days / DAYS_PER_100Y;
+            if c_cycles == 4 {
+                c_cycles -= 1;
+            }
+            days -= c_cycles * DAYS_PER_100Y;
+            (QC_LEAP_YEAR, qc_cycles, c_cycles, days)
+        } else {
+            (PREV_LEAP_YEAR, 0, 0, days)
+        };
 
     let mut q_cycles = days / DAYS_PER_4Y;
     if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE {
@@ -130,11 +129,12 @@ pub fn seconds_since_1970(
     minute: Uint,
     second: Uint,
 ) -> Timestamp {
-    let ref_year = if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE {
-        QC_LEAP_YEAR
-    } else {
-        PREV_LEAP_YEAR
-    };
+    let ref_year =
+        if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE {
+            QC_LEAP_YEAR
+        } else {
+            PREV_LEAP_YEAR
+        };
     let mut res = (year as i64 - 1970) * 365;
     res += (year.saturating_sub(ref_year + 1) / 4) as i64;
     if mpconfig::TIME_SUPPORT_Y2100_AND_BEYOND || mpconfig::TIME_SUPPORT_Y1969_AND_BEFORE {

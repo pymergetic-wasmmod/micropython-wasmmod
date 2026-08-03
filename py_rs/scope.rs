@@ -112,7 +112,8 @@ pub fn new(kind: ScopeKind, pn: ParseNode, emit_options: u16) -> *mut Scope {
         if matches!(kind, ScopeKind::Function | ScopeKind::Class) {
             debug_assert!(parse::parse_node_is_struct(pn));
             let pns = pn as *const ParseNodeStruct;
-            (*scope).simple_name = parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0));
+            (*scope).simple_name =
+                parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0));
         } else {
             (*scope).simple_name = scope_simple_name_table(kind);
         }
@@ -155,9 +156,7 @@ pub fn find_or_add_id(scope: &mut Scope, qst: Qstr, kind: IdInfoKind) -> &mut Id
     }
 
     if scope.id_info.len() >= scope.id_info.capacity() {
-        scope
-            .id_info
-            .reserve(mpconfig::ALLOC_SCOPE_ID_INC as usize);
+        scope.id_info.reserve(mpconfig::ALLOC_SCOPE_ID_INC as usize);
     }
 
     scope.id_info.push(IdInfo::new(kind, qst));

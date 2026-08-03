@@ -21,7 +21,9 @@ pub struct ObjInterpolation {
 }
 
 static mut TYPE_TEMPLATE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: 0,
     name: 0,
     slot_index_make_new: 0,
@@ -40,7 +42,9 @@ static mut TYPE_TEMPLATE: ObjType = ObjType {
 };
 
 static mut TYPE_INTERPOLATION: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: 0,
     name: 0,
     slot_index_make_new: 0,

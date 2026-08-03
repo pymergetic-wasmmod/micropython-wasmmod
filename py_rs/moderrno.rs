@@ -2,10 +2,10 @@
 // symmetry: done
 
 use crate::bc::ModuleContext;
-use crate::map::{self, LookupKind, MapElem};
 use crate::malloc;
-use crate::mperrno;
+use crate::map::{self, LookupKind, MapElem};
 use crate::mpconfig;
+use crate::mperrno;
 use crate::obj::{self, Obj, ObjType};
 use crate::objdict::{self, ObjDict};
 use crate::objmodule;

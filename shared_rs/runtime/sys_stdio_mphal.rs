@@ -1,8 +1,8 @@
 //! rewrite of shared/runtime/sys_stdio_mphal.c
 // symmetry: done
 
+use py_rs::mperrno::{self, EINVAL, EPERM};
 use py_rs::mphal;
-use py_rs::mperrno::{self, EPERM, EINVAL};
 use py_rs::obj::{self, Obj, ObjBase};
 use py_rs::stream::{STREAM_CLOSE, STREAM_POLL, STREAM_POLL_RD, STREAM_POLL_WR};
 
@@ -17,15 +17,21 @@ pub struct SysStdioObj {
 }
 
 pub static MP_SYS_STDIN_OBJ: SysStdioObj = SysStdioObj {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     fd: STDIO_FD_IN,
 };
 pub static MP_SYS_STDOUT_OBJ: SysStdioObj = SysStdioObj {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     fd: STDIO_FD_OUT,
 };
 pub static MP_SYS_STDERR_OBJ: SysStdioObj = SysStdioObj {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     fd: STDIO_FD_ERR,
 };
 

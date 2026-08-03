@@ -34,7 +34,10 @@ pub fn get_regs_and_sp(regs: &mut GcHelperRegs) -> usize {
 }
 
 #[cfg(not(any(
-    all(target_arch = "arm", any(target_feature = "thumb-mode", not(target_feature = "thumb-mode"))),
+    all(
+        target_arch = "arm",
+        any(target_feature = "thumb-mode", not(target_feature = "thumb-mode"))
+    ),
     target_arch = "riscv32",
     target_arch = "riscv64",
     target_arch = "loongarch64"
@@ -57,11 +60,9 @@ pub fn collect_regs_and_stack() {
         let stack_top = t.stack_top as usize;
         if stack_top > sp {
             let count = (stack_top - sp) / core::mem::size_of::<usize>();
-            let mut ptrs = Vec::with_capacity(count);
-            for i in 0..count {
-                ptrs.push(unsafe { (sp as *mut u8).add(i * core::mem::size_of::<usize>()) });
-            }
-            gc::collect_root(&ptrs);
+            // `collect_root_words` reads the *contents* of each slot (the saved
+            // register / stack values) as a candidate pointer.
+            gc::collect_root_words(sp as *const u8, count);
         }
     });
 }

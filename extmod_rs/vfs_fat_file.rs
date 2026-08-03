@@ -6,14 +6,17 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::stream::{
-    self, StreamP, StreamSeek, STREAM_ERROR, STREAM_FLUSH, STREAM_SEEK, STREAM_CLOSE, SEEK_SET,
-    SEEK_CUR, SEEK_END,
+    self, StreamP, StreamSeek, SEEK_CUR, SEEK_END, SEEK_SET, STREAM_CLOSE, STREAM_ERROR,
+    STREAM_FLUSH, STREAM_SEEK,
 };
 
 use crate::vfs_fat::ObjVfsFat;
@@ -288,7 +291,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -337,7 +342,9 @@ static TEXTIO_STREAM_P: StreamP = StreamP {
 static mut FILEIO_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TEXTIO_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_FILEIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -355,7 +362,9 @@ static mut TYPE_FILEIO: ObjType = ObjType {
     slots: unsafe { FILEIO_SLOTS.as_ptr() },
 };
 static mut TYPE_TEXTIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -427,8 +436,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream___exit___obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = ptr as *const ();
@@ -506,8 +515,7 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let ram = TEST_RAM.lock().expect("ram lock");
-        let dst =
-            unsafe { std::slice::from_raw_parts_mut(bufinfo.buf as *mut u8, bufinfo.len) };
+        let dst = bufinfo.as_bytes_mut();
         dst.copy_from_slice(&ram[base..base + dst.len()]);
         obj::CONST_NONE
     }
@@ -527,14 +535,18 @@ mod tests {
         };
         let base = block * BLOCK_SIZE + off;
         let mut ram = TEST_RAM.lock().expect("ram lock");
-        let src = unsafe { std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+        let src = bufinfo.as_bytes();
         ram[base..base + src.len()].copy_from_slice(src);
         obj::CONST_NONE
     }
 
     fn ram_ioctl(n_args: usize, args: &[Obj]) -> Obj {
         let op = obj::get_int_truncated(args[0]) as usize;
-        let _arg = if n_args >= 2 { args[1] } else { obj::CONST_NONE };
+        let _arg = if n_args >= 2 {
+            args[1]
+        } else {
+            obj::CONST_NONE
+        };
         match op {
             BLOCKDEV_IOCTL_BLOCK_COUNT => {
                 let ram = TEST_RAM.lock().expect("ram lock");
@@ -562,7 +574,7 @@ mod tests {
     fn test_mount(blocks: usize) -> Box<FatMount> {
         use fatfs::{FileSystem, FormatVolumeOptions, FsOptions};
 
-        use crate::vfs_blockdev::{BLOCKDEV_FLAG_HAVE_IOCTL, VfsBlockdev};
+        use crate::vfs_blockdev::{VfsBlockdev, BLOCKDEV_FLAG_HAVE_IOCTL};
 
         *TEST_RAM.lock().expect("ram lock") = vec![0u8; blocks * BLOCK_SIZE];
         let mut mount = Box::new(FatMount {
@@ -580,12 +592,9 @@ mod tests {
         let block_count = blocks;
         let bdev_ptr = &mut mount.blockdev as *mut VfsBlockdev;
         let mut stream = FatBlockStream::new(bdev_ptr, block_count);
-        fatfs::format_volume(&mut stream, FormatVolumeOptions::new())
-            .expect("format");
+        fatfs::format_volume(&mut stream, FormatVolumeOptions::new()).expect("format");
         stream.seek(std::io::SeekFrom::Start(0)).expect("rewind");
-        mount.fs = Some(
-            FileSystem::new(stream, FsOptions::new()).expect("open fs"),
-        );
+        mount.fs = Some(FileSystem::new(stream, FsOptions::new()).expect("open fs"));
         mount
     }
 
@@ -650,8 +659,14 @@ mod tests {
         assert_eq!(file_read(file, line_buf.as_mut_ptr(), 6, &mut err), 6);
         assert_eq!(&line_buf[..6], b"line2\n");
 
-        assert_eq!(stream::stream_seek(file, 0, SEEK_END, &mut err), payload.len() as i64);
-        assert_eq!(stream::stream_seek(file, 0, SEEK_CUR, &mut err), payload.len() as i64);
+        assert_eq!(
+            stream::stream_seek(file, 0, SEEK_END, &mut err),
+            payload.len() as i64
+        );
+        assert_eq!(
+            stream::stream_seek(file, 0, SEEK_CUR, &mut err),
+            payload.len() as i64
+        );
 
         let mut nlr_buf = py_rs::nlr::NlrBuf::default();
         py_rs::nlr::protect(&mut nlr_buf, || {

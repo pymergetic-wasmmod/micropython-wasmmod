@@ -3,13 +3,15 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, Map, MapElem};
 use py_rs::malloc;
-use py_rs::mperrno;
+use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
+use py_rs::mperrno;
 use py_rs::mphal;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, BufferInfo, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objlist;
 use py_rs::objstr;
@@ -361,7 +363,9 @@ static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 
 static TK: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -379,7 +383,9 @@ static TK: ObjType = ObjType {
     slots: unsafe { FK.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -397,7 +403,9 @@ static TV: ObjType = ObjType {
     slots: unsafe { FV.as_ptr() },
 };
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -415,7 +423,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -450,7 +460,13 @@ fn call_kw(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -720,7 +736,14 @@ fn i2c_readfrom_mem(n: usize, args: &[Obj], kw: &Map) -> Obj {
     ];
     let mut vals = [ArgVal::default(); 4];
     let mut kw_copy = kw.clone();
-    argcheck::parse_all(n - 1, &args[1..n], &mut kw_copy, allowed.len(), &allowed, &mut vals);
+    argcheck::parse_all(
+        n - 1,
+        &args[1..n],
+        &mut kw_copy,
+        allowed.len(),
+        &allowed,
+        &mut vals,
+    );
     let addr = match vals[0] {
         ArgVal::Int(v) => v as u16,
         _ => 0,
@@ -777,7 +800,14 @@ fn i2c_readfrom_mem_into(n: usize, args: &[Obj], kw: &Map) -> Obj {
     ];
     let mut vals = [ArgVal::default(); 4];
     let mut kw_copy = kw.clone();
-    argcheck::parse_all(n - 1, &args[1..n], &mut kw_copy, allowed.len(), &allowed, &mut vals);
+    argcheck::parse_all(
+        n - 1,
+        &args[1..n],
+        &mut kw_copy,
+        allowed.len(),
+        &allowed,
+        &mut vals,
+    );
     let addr = match vals[0] {
         ArgVal::Int(v) => v as u16,
         _ => 0,
@@ -796,14 +826,7 @@ fn i2c_readfrom_mem_into(n: usize, args: &[Obj], kw: &Map) -> Obj {
     };
     let mut bufinfo = BufferInfo::default();
     obj::get_buffer_raise(buf_obj, &mut bufinfo, obj::BUFFER_WRITE);
-    let ret = read_mem(
-        args[0],
-        addr,
-        memaddr,
-        addrsize,
-        bufinfo.buf,
-        bufinfo.len,
-    );
+    let ret = read_mem(args[0], addr, memaddr, addrsize, bufinfo.buf, bufinfo.len);
     if ret < 0 {
         raise_os_error(ret);
     }
@@ -835,7 +858,14 @@ fn i2c_writeto_mem(n: usize, args: &[Obj], kw: &Map) -> Obj {
     ];
     let mut vals = [ArgVal::default(); 4];
     let mut kw_copy = kw.clone();
-    argcheck::parse_all(n - 1, &args[1..n], &mut kw_copy, allowed.len(), &allowed, &mut vals);
+    argcheck::parse_all(
+        n - 1,
+        &args[1..n],
+        &mut kw_copy,
+        allowed.len(),
+        &allowed,
+        &mut vals,
+    );
     let addr = match vals[0] {
         ArgVal::Int(v) => v as u16,
         _ => 0,
@@ -930,8 +960,8 @@ fn i2c_locals_dict() -> Obj {
                 value: mk_kw(1, i2c_writeto_mem),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = Some(obj::from_ptr(ptr as *const ObjDict as *const ()));
@@ -997,7 +1027,11 @@ fn soft_i2c_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]
     let mut kw = Map::default();
     map::init(&mut kw, n_kw);
     for i in 0..n_kw {
-        if let Some(slot) = map::lookup(&mut kw, args[n_args + i * 2], map::LookupKind::AddIfNotFound) {
+        if let Some(slot) = map::lookup(
+            &mut kw,
+            args[n_args + i * 2],
+            map::LookupKind::AddIfNotFound,
+        ) {
             slot.value = args[n_args + i * 2 + 1];
         }
     }
@@ -1064,11 +1098,9 @@ static mut SOFT_I2C_TYPE: ObjType = ObjType {
 static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_soft_i2c_type() -> &'static ObjType {
-    INIT.get_or_init(|| {
-        unsafe {
-            SOFT_I2C_SLOTS[3] = i2c_locals_dict().0 as *const ();
-            SOFT_I2C_TYPE.name = qstr::from_str("SoftI2C");
-        }
+    INIT.get_or_init(|| unsafe {
+        SOFT_I2C_SLOTS[3] = i2c_locals_dict().0 as *const ();
+        SOFT_I2C_TYPE.name = qstr::from_str("SoftI2C");
     });
     unsafe { &SOFT_I2C_TYPE }
 }

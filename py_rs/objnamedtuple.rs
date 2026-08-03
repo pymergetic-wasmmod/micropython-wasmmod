@@ -4,11 +4,14 @@
 use core::mem::size_of;
 
 use crate::argcheck;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind, VaArg};
-use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_EQ_CHECKS_OTHER_TYPE};
+use crate::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
+};
 use crate::objattrtuple;
 use crate::objdict;
 use crate::objstr;
@@ -37,7 +40,9 @@ struct ObjFunBuiltin1 {
 
 static mut ASDICT_SLOTS: [*const (); 1] = [fun1_call as *const ()];
 static TYPE_FUN1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -106,11 +111,7 @@ fn namedtuple_asdict(self_in: Obj) -> Obj {
 fn namedtuple_print(print: &Print, o_in: Obj, _kind: PrintKind) {
     let o = unsafe { &*(obj::as_ptr(o_in) as *const ObjNamedtuple) };
     let t = obj::get_type(o_in);
-    mpprint::printf(
-        print,
-        "{}",
-        [VaArg::Str(qstr::str_from_qstr(t.name).unwrap_or_default().as_str())],
-    );
+    mpprint::printf(print, "%q", [VaArg::Qstr(t.name)]);
     let type_ = unsafe { &*(t as *const ObjType as *const ObjNamedtupleType) };
     let fields = unsafe { std::slice::from_raw_parts(fields_ptr(type_), type_.n_fields) };
     let items = unsafe { std::slice::from_raw_parts(tuple_items(&o.tuple), o.tuple.len) };
@@ -217,7 +218,11 @@ fn new_namedtuple_type(name: Qstr, n_fields: usize, fields: &[Obj]) -> Obj {
 
 fn new_namedtuple_type_fn(name_in: Obj, fields_in: Obj) -> Obj {
     let name = objstr::str_get_qstr(name_in);
-    let (n_fields, fields) = obj::get_array(fields_in);
+    let mut fields_obj = fields_in;
+    if mpconfig::CPYTHON_COMPAT && obj::is_str(fields_in) {
+        fields_obj = objstr::str_split(1, &[fields_in]);
+    }
+    let (n_fields, fields) = obj::get_array(fields_obj);
     new_namedtuple_type(name, n_fields, &fields)
 }
 
@@ -231,7 +236,9 @@ struct ObjFunBuiltin2 {
 
 static mut NT_SLOTS: [*const (); 1] = [nt_call as *const ()];
 static TYPE_NT: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,

@@ -52,7 +52,7 @@ pub fn connect(sock: &mut Socket, addr: Obj) -> Obj {
             data.as_ptr() as *const libc::sockaddr,
             len as libc::socklen_t,
         )
-    }) ;
+    });
     if ret == -1 {
         raise_errno();
     }
@@ -67,7 +67,7 @@ pub fn bind(sock: &Socket, addr: Obj) -> Obj {
             data.as_ptr() as *const libc::sockaddr,
             len as libc::socklen_t,
         )
-    }) ;
+    });
     if ret == -1 {
         raise_errno();
     }
@@ -92,7 +92,7 @@ pub fn accept(sock: &Socket) -> (Obj, Obj) {
             &mut addr as *mut _ as *mut libc::sockaddr,
             &mut addrlen,
         )
-    }) ;
+    });
     if fd == -1 {
         raise_errno();
     }
@@ -103,12 +103,7 @@ pub fn accept(sock: &Socket) -> (Obj, Obj) {
 pub fn recv(sock: &Socket, max_len: usize) -> Obj {
     let mut buf = vec![0u8; max_len];
     let n = retry_syscall(|| unsafe {
-        libc::recv(
-            sock.fd,
-            buf.as_mut_ptr() as *mut _,
-            max_len,
-            0,
-        ) as i32
+        libc::recv(sock.fd, buf.as_mut_ptr() as *mut _, max_len, 0) as i32
     });
     if n == -1 {
         raise_errno();
@@ -118,9 +113,8 @@ pub fn recv(sock: &Socket, max_len: usize) -> Obj {
 
 pub fn send(sock: &Socket, data: Obj) -> Obj {
     let (len, bytes) = get_buffer(data);
-    let n = retry_syscall(|| unsafe {
-        libc::send(sock.fd, bytes.as_ptr() as *const _, len, 0) as i32
-    });
+    let n =
+        retry_syscall(|| unsafe { libc::send(sock.fd, bytes.as_ptr() as *const _, len, 0) as i32 });
     if n == -1 {
         raise_errno();
     }
@@ -251,10 +245,7 @@ pub fn sockaddr(addr: Obj) -> Obj {
             let items = [
                 py_rs::obj::new_small_int(libc::AF_INET as isize),
                 objstr::new_str(unsafe {
-                    std::slice::from_raw_parts(
-                        &sa.sin_addr as *const _ as *const u8,
-                        4,
-                    )
+                    std::slice::from_raw_parts(&sa.sin_addr as *const _ as *const u8, 4)
                 }),
                 py_rs::obj::new_small_int(u16::from_be(sa.sin_port) as isize),
             ];

@@ -2,11 +2,14 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mphal;
-use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_ITERNEXT};
+use py_rs::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_ITERNEXT,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objlist;
 use py_rs::objmodule;
@@ -173,7 +176,13 @@ fn call3(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk0(f: BuiltinFn0) -> Obj {
@@ -261,7 +270,9 @@ fn stream_fd(obj_in: Obj) -> (i32, Option<StreamIoctlFn>) {
 }
 
 fn poll_register(self_in: Obj, obj_in: Obj) -> Obj {
-    let n = if obj::is_exact_type(obj_in, objlist::type_list()) || obj::is_exact_type(obj_in, objtuple::type_tuple()) {
+    let n = if obj::is_exact_type(obj_in, objlist::type_list())
+        || obj::is_exact_type(obj_in, objtuple::type_tuple())
+    {
         let len = obj::get_int(obj::len(obj_in)) as usize;
         let mut i = 0;
         while i < len {
@@ -459,7 +470,8 @@ fn init_poll_type() -> &'static ObjType {
                 value: mkv(1, 3, poll_ipoll),
             },
         ];
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             POLL_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

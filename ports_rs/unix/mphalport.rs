@@ -1,15 +1,14 @@
 //! rewrite of ports/unix/mphalport.h
 // symmetry: done
 
-use py_rs::mphal;
 use py_rs::mpconfig;
+use py_rs::mphal;
 use py_rs::vstr::{self, Vstr};
 use std::sync::Mutex;
 
 pub const CHAR_CTRL_C: u8 = 3;
 
-pub static COMPILE_ONLY: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+pub static COMPILE_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 static HISTORY: Mutex<Vec<String>> = Mutex::new(Vec::new());
 

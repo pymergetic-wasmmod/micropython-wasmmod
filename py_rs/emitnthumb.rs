@@ -5,10 +5,11 @@
 
 use crate::asmbase::{self, MpAsmBase};
 use crate::asmthumb::{
-    self, AsmThumb, ASM_THUMB_CC_EQ, ASM_THUMB_CC_NE, ASM_THUMB_FORMAT_4_AND, ASM_THUMB_FORMAT_4_ASR,
-    ASM_THUMB_FORMAT_4_EOR, ASM_THUMB_FORMAT_4_LSL, ASM_THUMB_FORMAT_4_LSR, ASM_THUMB_FORMAT_4_MUL,
-    ASM_THUMB_FORMAT_4_ORR, ASM_THUMB_REG_R0, ASM_THUMB_REG_R1, ASM_THUMB_REG_R2, ASM_THUMB_REG_R3,
-    ASM_THUMB_REG_R4, ASM_THUMB_REG_R5, ASM_THUMB_REG_R6, ASM_THUMB_REG_FUN_TABLE,
+    self, AsmThumb, ASM_THUMB_CC_EQ, ASM_THUMB_CC_NE, ASM_THUMB_FORMAT_4_AND,
+    ASM_THUMB_FORMAT_4_ASR, ASM_THUMB_FORMAT_4_EOR, ASM_THUMB_FORMAT_4_LSL, ASM_THUMB_FORMAT_4_LSR,
+    ASM_THUMB_FORMAT_4_MUL, ASM_THUMB_FORMAT_4_ORR, ASM_THUMB_REG_FUN_TABLE, ASM_THUMB_REG_R0,
+    ASM_THUMB_REG_R1, ASM_THUMB_REG_R2, ASM_THUMB_REG_R3, ASM_THUMB_REG_R4, ASM_THUMB_REG_R5,
+    ASM_THUMB_REG_R6,
 };
 use crate::emitnative::{self, AsmContext, NativeBackend};
 use crate::mpconfig;
@@ -43,7 +44,9 @@ impl NativeBackend for BackendThumb {
     const REG_FUN_TABLE: i32 = ASM_THUMB_REG_FUN_TABLE as i32;
     const REG_GENERATOR_STATE: i32 = ASM_THUMB_REG_R5 as i32;
     const REG_QSTR_TABLE: i32 = ASM_THUMB_REG_R6 as i32;
-    const REG_LOCAL_LAST: i32 = ASM_THUMB_REG_R6 as i32;
+    // See the comment on the x64 backend: with `PERSISTENT_CODE_SAVE` this must
+    // be `REG_LOCAL_2`, not `REG_LOCAL_3` (`REG_QSTR_TABLE`).
+    const REG_LOCAL_LAST: i32 = ASM_THUMB_REG_R5 as i32;
     const NLR_BUF_IDX_LOCAL_1: usize = 3;
     const N_X86: bool = false;
     const N_X64: bool = false;
@@ -74,7 +77,8 @@ impl NativeBackend for BackendThumb {
     const HAS_ASM_STORE16_REG_REG_REG: bool = true;
     const HAS_ASM_STORE32_REG_REG_REG: bool = true;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn new_asm(max_labels: usize) -> Self::Asm {
         let mut asm = AsmThumb {

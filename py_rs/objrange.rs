@@ -7,7 +7,9 @@ use crate::argcheck;
 use crate::malloc;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
-use crate::obj::{self, Int, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_SENTINEL, TYPE_FLAG_ITER_IS_ITERNEXT};
+use crate::obj::{
+    self, Int, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_SENTINEL, TYPE_FLAG_ITER_IS_ITERNEXT,
+};
 use crate::objslice::{self, BoundSlice};
 use crate::qstr::{self, Qstr};
 use crate::raise::{self, MpRaise};
@@ -32,7 +34,9 @@ struct ObjRangeIt {
 static mut RANGE_IT_SLOTS: [*const (); 1] = [range_it_iternext as *const ()];
 
 static TYPE_RANGE_IT: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -60,15 +64,25 @@ static mut RANGE_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
     slot_index_print: 2,
     slot_index_unary_op: 3,
-    slot_index_binary_op: if mpconfig::PY_BUILTINS_RANGE_BINOP { 6 } else { 0 },
-    slot_index_attr: if mpconfig::PY_BUILTINS_RANGE_ATTRS { 6 } else { 0 },
+    slot_index_binary_op: if mpconfig::PY_BUILTINS_RANGE_BINOP {
+        6
+    } else {
+        0
+    },
+    slot_index_attr: if mpconfig::PY_BUILTINS_RANGE_ATTRS {
+        6
+    } else {
+        0
+    },
     slot_index_subscr: 4,
     slot_index_call: 0,
     slot_index_iter: 5,
@@ -82,24 +96,27 @@ static TYPE: ObjType = ObjType {
 static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_range_type() {
-    INIT.get_or_init(|| {
-        unsafe {
-            let mut idx = 6;
-            if mpconfig::PY_BUILTINS_RANGE_BINOP {
-                RANGE_SLOTS[6] = range_binary_op as *const ();
-                idx = 7;
-            }
-            if mpconfig::PY_BUILTINS_RANGE_ATTRS {
-                RANGE_SLOTS[if mpconfig::PY_BUILTINS_RANGE_BINOP { 7 } else { 6 }] =
-                    range_attr as *const ();
-            }
+    INIT.get_or_init(|| unsafe {
+        TYPE.name = crate::qstr::from_str("range");
+        let mut idx = 6;
+        if mpconfig::PY_BUILTINS_RANGE_BINOP {
+            RANGE_SLOTS[6] = range_binary_op as *const ();
+            idx = 7;
         }
+        if mpconfig::PY_BUILTINS_RANGE_ATTRS {
+            RANGE_SLOTS[if mpconfig::PY_BUILTINS_RANGE_BINOP {
+                7
+            } else {
+                6
+            }] = range_attr as *const ();
+        }
+        let _ = idx;
     });
 }
 
 pub fn type_range() -> &'static ObjType {
     init_range_type();
-    &TYPE
+    unsafe { &TYPE }
 }
 
 fn type_range_it() -> &'static ObjType {
@@ -114,7 +131,11 @@ fn range_len(self_: &ObjRange) -> Int {
         len += 1;
     }
     len /= self_.step;
-    if len < 0 { 0 } else { len }
+    if len < 0 {
+        0
+    } else {
+        len
+    }
 }
 
 fn range_it_iternext(self_in: Obj) -> Obj {
@@ -196,14 +217,15 @@ fn range_binary_op(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
     let rhs_len = range_len(rhs);
     obj::new_bool(
         lhs_len == rhs_len
-            && (lhs_len == 0
-                || (lhs.start == rhs.start && (lhs_len == 1 || lhs.step == rhs.step))),
+            && (lhs_len == 0 || (lhs.start == rhs.start && (lhs_len == 1 || lhs.step == rhs.step))),
     )
 }
 
 fn range_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     if value == obj::OBJ_NULL {
-        raise::raise(MpRaise::TypeError("range object does not support item deletion"));
+        raise::raise(MpRaise::TypeError(
+            "range object does not support item deletion",
+        ));
     }
     if value != OBJ_SENTINEL {
         return obj::OBJ_NULL;
@@ -211,7 +233,11 @@ fn range_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjRange) };
     let len = range_len(self_);
     if mpconfig::PY_BUILTINS_SLICE && obj::is_exact_type(index, objslice::type_slice()) {
-        let mut slice = BoundSlice { start: 0, stop: 0, step: 1 };
+        let mut slice = BoundSlice {
+            start: 0,
+            stop: 0,
+            step: 1,
+        };
         objslice::slice_indices(index, len, &mut slice);
         let o = malloc::new_obj::<ObjRange>().expect("range slice alloc");
         unsafe {
@@ -258,7 +284,12 @@ mod tests {
     #[test]
     fn range_len_and_index() {
         setup();
-        let r = range_make_new(type_range(), 2, 0, &[obj::new_small_int(0), obj::new_small_int(10)]);
+        let r = range_make_new(
+            type_range(),
+            2,
+            0,
+            &[obj::new_small_int(0), obj::new_small_int(10)],
+        );
         assert_eq!(obj::get_int(range_unary_op(UnaryOp::Len, r)), 10);
         let v = range_subscr(r, obj::new_small_int(3), OBJ_SENTINEL);
         assert_eq!(obj::small_int_value(v), 3);
@@ -267,9 +298,16 @@ mod tests {
     #[test]
     fn range_iter_yields_values() {
         setup();
-        let r = range_make_new(type_range(), 2, 0, &[obj::new_small_int(1), obj::new_small_int(4)]);
+        let r = range_make_new(
+            type_range(),
+            2,
+            0,
+            &[obj::new_small_int(1), obj::new_small_int(4)],
+        );
         let mut buf = obj::ObjIterBuf {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             buf: [obj::OBJ_NULL; 3],
         };
         let it = range_getiter(r, &mut buf as *mut _);

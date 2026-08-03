@@ -48,7 +48,10 @@ pub struct ElapsedTicks {
     pub ticks: u32,
 }
 
-#[cfg(all(target_arch = "riscv32", any(target_os = "none", target_os = "unknown")))]
+#[cfg(all(
+    target_arch = "riscv32",
+    any(target_os = "none", target_os = "unknown")
+))]
 pub fn call(num: u32, arg: *mut ()) -> i32 {
     let mut call_number_register = num;
     let arguments_register = arg;
@@ -69,7 +72,10 @@ pub fn call(num: u32, arg: *mut ()) -> i32 {
     call_number_register as i32
 }
 
-#[cfg(not(all(target_arch = "riscv32", any(target_os = "none", target_os = "unknown"))))]
+#[cfg(not(all(
+    target_arch = "riscv32",
+    any(target_os = "none", target_os = "unknown")
+)))]
 pub fn call(num: u32, _arg: *mut ()) -> i32 {
     num as i32
 }
@@ -327,6 +333,10 @@ pub fn tmpnam(identifier: u8, buffer: &mut [u8]) -> i32 {
     if buffer.is_empty() {
         return -1;
     }
-    let mut arguments = [buffer.as_mut_ptr() as u32, identifier as u32, buffer.len() as u32];
+    let mut arguments = [
+        buffer.as_mut_ptr() as u32,
+        identifier as u32,
+        buffer.len() as u32,
+    ];
     call(SYS_TMPNAM, arguments.as_mut_ptr() as *mut ())
 }

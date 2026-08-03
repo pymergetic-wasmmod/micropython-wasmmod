@@ -5,12 +5,12 @@ use std::cell::RefCell;
 use std::sync::Mutex;
 
 use py_rs::malloc;
-use py_rs::unicode::unichar_isspace;
 use py_rs::mpconfig;
 use py_rs::mphal;
 use py_rs::mpprint;
 use py_rs::repl;
 use py_rs::unicode::unichar_isalnum;
+use py_rs::unicode::unichar_isspace;
 use py_rs::vstr::{self, Vstr};
 
 pub const CHAR_CTRL_A: i32 = 1;
@@ -339,10 +339,7 @@ pub fn process_char(c: i32) -> i32 {
                     vstr::str_ptr(&*rl.line).add(rl.cursor_pos),
                     cur_len - rl.cursor_pos,
                 );
-                mphal::stdout_tx_strn(
-                    std::str::from_utf8(bytes).unwrap_or(""),
-                    bytes.len(),
-                );
+                mphal::stdout_tx_strn(std::str::from_utf8(bytes).unwrap_or(""), bytes.len());
             }
             move_cursor_back(cur_len - (rl.cursor_pos + redraw_step_forward));
             rl.cursor_pos += redraw_step_forward;
@@ -352,10 +349,7 @@ pub fn process_char(c: i32) -> i32 {
                     vstr::str_ptr(&*rl.line).add(rl.cursor_pos),
                     redraw_step_forward,
                 );
-                mphal::stdout_tx_strn(
-                    std::str::from_utf8(bytes).unwrap_or(""),
-                    bytes.len(),
-                );
+                mphal::stdout_tx_strn(std::str::from_utf8(bytes).unwrap_or(""), bytes.len());
             }
             rl.cursor_pos += redraw_step_forward;
         }
@@ -396,14 +390,16 @@ pub fn push_history(line: &str) {
 
 /// Allocate a fresh line buffer for REPL use.
 pub fn new_line(alloc: usize) -> *mut Vstr {
-    malloc::new_obj::<Vstr>().map(|ptr| {
-        unsafe {
-            vstr::init(&mut *ptr, alloc);
-        }
-        ptr
-    }).unwrap_or_else(|| {
-        py_rs::raise::raise(py_rs::raise::MpRaise::RuntimeError("readline line alloc"));
-    })
+    malloc::new_obj::<Vstr>()
+        .map(|ptr| {
+            unsafe {
+                vstr::init(&mut *ptr, alloc);
+            }
+            ptr
+        })
+        .unwrap_or_else(|| {
+            py_rs::raise::raise(py_rs::raise::MpRaise::RuntimeError("readline line alloc"));
+        })
 }
 
 /// Helper used by tab completion.

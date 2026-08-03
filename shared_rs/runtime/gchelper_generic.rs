@@ -29,11 +29,10 @@ fn collect_regs_and_stack_setjmp() {
         let stack_top = t.stack_top as usize;
         if stack_top > start {
             let count = (stack_top - start) / core::mem::size_of::<usize>();
-            let mut ptrs = Vec::with_capacity(count);
-            for i in 0..count {
-                ptrs.push(unsafe { (start as *mut u8).add(i * core::mem::size_of::<usize>()) });
-            }
-            gc::collect_root(&ptrs);
+            // `collect_root_words` reads the *contents* of each stack slot as a
+            // candidate pointer; passing slot addresses themselves (as opposed
+            // to their values) would never match anything in the gc heap.
+            gc::collect_root_words(start as *const u8, count);
         }
     });
 }
@@ -116,11 +115,9 @@ fn scan_from_regs(regs: &[usize]) {
         let stack_top = t.stack_top as usize;
         if stack_top > start {
             let count = (stack_top - start) / core::mem::size_of::<usize>();
-            let mut ptrs = Vec::with_capacity(count);
-            for i in 0..count {
-                ptrs.push(unsafe { (start as *mut u8).add(i * core::mem::size_of::<usize>()) });
-            }
-            gc::collect_root(&ptrs);
+            // `collect_root_words` reads the *contents* of each slot (the saved
+            // register / stack values) as a candidate pointer.
+            gc::collect_root_words(start as *const u8, count);
         }
     });
 }

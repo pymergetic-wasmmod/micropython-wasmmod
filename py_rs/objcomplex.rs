@@ -2,10 +2,13 @@
 // symmetry: done
 
 use crate::argcheck;
+use crate::formatfloat;
 use crate::malloc;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
-use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_EQ_CHECKS_OTHER_TYPE, TYPE_FLAG_EQ_NOT_REFLEXIVE};
+use crate::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_EQ_CHECKS_OTHER_TYPE, TYPE_FLAG_EQ_NOT_REFLEXIVE,
+};
 use crate::objfloat::{self, MpFloat};
 use crate::parsenum;
 use crate::qstr;
@@ -27,8 +30,10 @@ static mut COMPLEX_SLOTS: [*const (); 5] = [
     complex_attr as *const (),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_NOT_REFLEXIVE | TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
     name: 0,
     slot_index_make_new: 1,
@@ -47,7 +52,11 @@ static TYPE: ObjType = ObjType {
 };
 
 pub fn type_complex() -> &'static ObjType {
-    &TYPE
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE.name = qstr::from_str("complex");
+    });
+    unsafe { &TYPE }
 }
 
 pub fn is_complex(o: Obj) -> bool {
@@ -100,32 +109,41 @@ pub fn get_complex(o: Obj, real: &mut MpFloat, imag: &mut MpFloat) {
     }
 }
 
-fn format_float_simple(val: MpFloat, show_sign: bool) -> String {
-    let mut s = if show_sign && val >= 0.0 {
-        format!("+{:.12}", val)
-    } else {
-        format!("{:.12}", val)
-    };
-    if s.contains('.') {
-        while s.ends_with('0') {
-            s.pop();
-        }
-        if s.ends_with('.') {
-            s.push('0');
-        }
-    }
-    s
-}
-
 pub fn complex_print(print: &Print, o_in: Obj, _kind: PrintKind) {
     let o = unsafe { &*(obj::as_ptr(o_in) as *const ObjComplex) };
+    let mut flags = 0u32;
     if o.real != 0.0 {
         mpprint::print_str(print, "(");
-        mpprint::print_str(print, &format_float_simple(o.real, false));
-        mpprint::print_str(print, &format_float_simple(o.imag, true));
+        mpprint::print_float(
+            print,
+            o.real,
+            b'g',
+            0,
+            b'\0',
+            -1,
+            formatfloat::FLOAT_REPR_PREC,
+        );
+        flags = mpprint::PF_FLAG_SHOW_SIGN;
+        mpprint::print_float(
+            print,
+            o.imag,
+            b'g',
+            flags,
+            b'\0',
+            -1,
+            formatfloat::FLOAT_REPR_PREC,
+        );
         mpprint::print_str(print, "j)");
     } else {
-        mpprint::print_str(print, &format_float_simple(o.imag, false));
+        mpprint::print_float(
+            print,
+            o.imag,
+            b'g',
+            0,
+            b'\0',
+            -1,
+            formatfloat::FLOAT_REPR_PREC,
+        );
         mpprint::print_str(print, "j");
     }
 }
@@ -204,7 +222,12 @@ pub fn complex_attr(self_in: Obj, attr: qstr::Qstr, dest: &mut [Obj; 2]) {
 }
 
 /// `mp_obj_complex_binary_op`
-pub fn complex_binary_op(op: BinaryOp, mut lhs_real: MpFloat, mut lhs_imag: MpFloat, rhs_in: Obj) -> Obj {
+pub fn complex_binary_op(
+    op: BinaryOp,
+    mut lhs_real: MpFloat,
+    mut lhs_imag: MpFloat,
+    rhs_in: Obj,
+) -> Obj {
     let mut rhs_real = 0.0;
     let mut rhs_imag = 0.0;
     if !get_complex_maybe(rhs_in, &mut rhs_real, &mut rhs_imag) {

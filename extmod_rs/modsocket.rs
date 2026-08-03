@@ -4,21 +4,29 @@
 
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
-use py_rs::objfloat;
+use py_rs::obj::{
+    self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
+use py_rs::objfloat;
 use py_rs::objlist;
 use py_rs::objmodule;
 use py_rs::objstr;
 use py_rs::objtuple;
+use py_rs::objtype;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::runtime::{self, HandlePendingBehaviour};
-use py_rs::stream::{self, StreamIoFn, StreamIoctlFn, StreamP, STREAM_CLOSE, STREAM_ERROR, STREAM_GET_FILENO, STREAM_POLL, STREAM_POLL_ERR, STREAM_POLL_HUP, STREAM_POLL_NVAL, STREAM_POLL_RD, STREAM_POLL_WR};
+use py_rs::stream::{
+    self, StreamIoFn, StreamIoctlFn, StreamP, STREAM_CLOSE, STREAM_ERROR, STREAM_GET_FILENO,
+    STREAM_POLL, STREAM_POLL_ERR, STREAM_POLL_HUP, STREAM_POLL_NVAL, STREAM_POLL_RD,
+    STREAM_POLL_WR,
+};
 
 use crate::vfs;
 
@@ -70,9 +78,7 @@ fn socket_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) -> us
     let self_ = unsafe { &*socket_ptr(self_in) };
     unsafe {
         *errcode = 0;
-        let r = retry_syscall(|| unsafe {
-            libc::read(self_.fd, buf as *mut _, size) as i32
-        });
+        let r = retry_syscall(|| unsafe { libc::read(self_.fd, buf as *mut _, size) as i32 });
         if r == -1 {
             let mut err = errno();
             if err == libc::EAGAIN && self_.blocking {
@@ -89,9 +95,7 @@ fn socket_write(self_in: Obj, buf: *const u8, size: usize, errcode: *mut i32) ->
     let self_ = unsafe { &*socket_ptr(self_in) };
     unsafe {
         *errcode = 0;
-        let r = retry_syscall(|| unsafe {
-            libc::write(self_.fd, buf as *const _, size) as i32
-        });
+        let r = retry_syscall(|| unsafe { libc::write(self_.fd, buf as *const _, size) as i32 });
         if r == -1 {
             let mut err = errno();
             if err == libc::EAGAIN && self_.blocking {
@@ -195,7 +199,9 @@ static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut FV: [*const (); 1] = [callv as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -213,7 +219,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -231,7 +239,9 @@ static T2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -259,7 +269,13 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk1(f: BuiltinFn1) -> Obj {
@@ -304,7 +320,11 @@ fn socket_connect(self_in: Obj, addr: Obj) -> Obj {
     let self_ = unsafe { &*socket_ptr(self_in) };
     let (len, data) = get_buffer(addr);
     let r = retry_syscall(|| unsafe {
-        libc::connect(self_.fd, data as *const libc::sockaddr, len as libc::socklen_t)
+        libc::connect(
+            self_.fd,
+            data as *const libc::sockaddr,
+            len as libc::socklen_t,
+        )
     });
     if r == -1 {
         let mut err = errno();
@@ -320,7 +340,11 @@ fn socket_bind(self_in: Obj, addr: Obj) -> Obj {
     let self_ = unsafe { &*socket_ptr(self_in) };
     let (len, data) = get_buffer(addr);
     let r = retry_syscall(|| unsafe {
-        libc::bind(self_.fd, data as *const libc::sockaddr, len as libc::socklen_t)
+        libc::bind(
+            self_.fd,
+            data as *const libc::sockaddr,
+            len as libc::socklen_t,
+        )
     });
     if r == -1 {
         raise_errno();
@@ -362,17 +386,18 @@ fn socket_accept(self_in: Obj) -> Obj {
         }
         raise::raise(MpRaise::OSError(err));
     }
-    let items = [
-        socket_new(fd),
-        objstr::new_bytes(&addr[..addrlen as usize]),
-    ];
+    let items = [socket_new(fd), objstr::new_bytes(&addr[..addrlen as usize])];
     objtuple::new_tuple(2, Some(&items))
 }
 
 fn socket_recv(n: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*socket_ptr(args[0]) };
     let sz = obj::get_int(args[1]) as usize;
-    let flags = if n > 2 { obj::get_int(args[2]) as i32 } else { 0 };
+    let flags = if n > 2 {
+        obj::get_int(args[2]) as i32
+    } else {
+        0
+    };
     let mut buf = vec![0u8; sz];
     let out_sz = retry_syscall(|| unsafe {
         libc::recv(self_.fd, buf.as_mut_ptr() as *mut _, sz, flags) as i32
@@ -386,7 +411,11 @@ fn socket_recv(n: usize, args: &[Obj]) -> Obj {
 fn socket_recvfrom(n: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*socket_ptr(args[0]) };
     let sz = obj::get_int(args[1]) as usize;
-    let flags = if n > 2 { obj::get_int(args[2]) as i32 } else { 0 };
+    let flags = if n > 2 {
+        obj::get_int(args[2]) as i32
+    } else {
+        0
+    };
     let mut addr: libc::sockaddr_storage = unsafe { std::mem::zeroed() };
     let mut addrlen = std::mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
     let mut buf = vec![0u8; sz];
@@ -413,11 +442,14 @@ fn socket_recvfrom(n: usize, args: &[Obj]) -> Obj {
 fn socket_send(n: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*socket_ptr(args[0]) };
     let is_sendall = n < 2;
-    let flags = if n > 2 { obj::get_int(args[2]) as i32 } else { 0 };
+    let flags = if n > 2 {
+        obj::get_int(args[2]) as i32
+    } else {
+        0
+    };
     let (len, data) = get_buffer(args[1]);
-    let out_sz = retry_syscall(|| unsafe {
-        libc::send(self_.fd, data as *const _, len, flags) as i32
-    });
+    let out_sz =
+        retry_syscall(|| unsafe { libc::send(self_.fd, data as *const _, len, flags) as i32 });
     if out_sz == -1 {
         raise_errno();
     }
@@ -472,9 +504,7 @@ fn socket_setsockopt(_n: usize, args: &[Obj]) -> Obj {
         let (len, data) = get_buffer(args[3]);
         (data as *const libc::c_void, len as libc::socklen_t)
     };
-    let r = retry_syscall(|| unsafe {
-        libc::setsockopt(self_.fd, level, option, optval, optlen)
-    });
+    let r = retry_syscall(|| unsafe { libc::setsockopt(self_.fd, level, option, optval, optlen) });
     if r == -1 {
         raise_errno();
     }
@@ -712,10 +742,7 @@ fn mod_sockaddr(addr: Obj) -> Obj {
             let items = [
                 obj::new_small_int(libc::AF_INET as isize),
                 objstr::new_bytes(unsafe {
-                    std::slice::from_raw_parts(
-                        &sa.sin_addr as *const _ as *const u8,
-                        4,
-                    )
+                    std::slice::from_raw_parts(&sa.sin_addr as *const _ as *const u8, 4)
                 }),
                 obj::new_small_int(u16::from_be(sa.sin_port) as isize),
             ];
@@ -726,10 +753,7 @@ fn mod_sockaddr(addr: Obj) -> Obj {
             let items = [
                 obj::new_small_int(libc::AF_INET6 as isize),
                 objstr::new_bytes(unsafe {
-                    std::slice::from_raw_parts(
-                        &sa.sin6_addr as *const _ as *const u8,
-                        16,
-                    )
+                    std::slice::from_raw_parts(&sa.sin6_addr as *const _ as *const u8, 16)
                 }),
                 obj::new_small_int(u16::from_be(sa.sin6_port) as isize),
                 obj::new_small_int(u32::from_be(sa.sin6_flowinfo) as isize),
@@ -757,28 +781,85 @@ fn locals_dict() -> *const () {
     static mut DICT: *const () = core::ptr::null();
     INIT.get_or_init(|| {
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("fileno")), value: mk1(socket_fileno) },
-            MapElem { key: obj::new_qstr(qstr::from_str("makefile")), value: mkv(1, 3, socket_makefile) },
-            MapElem { key: obj::new_qstr(qstr::from_str("read")), value: stream::stream_read_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("readinto")), value: stream::stream_readinto_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("readline")), value: stream::stream_unbuffered_readline_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("write")), value: stream::stream_write_obj() },
-            MapElem { key: obj::new_qstr(qstr::from_str("connect")), value: mk2(|s, a| socket_connect(s, a)) },
-            MapElem { key: obj::new_qstr(qstr::from_str("bind")), value: mk2(|s, a| socket_bind(s, a)) },
-            MapElem { key: obj::new_qstr(qstr::from_str("listen")), value: mkv(1, 2, socket_listen) },
-            MapElem { key: obj::new_qstr(qstr::from_str("accept")), value: mk1(socket_accept) },
-            MapElem { key: obj::new_qstr(qstr::from_str("recv")), value: mkv(2, 3, socket_recv) },
-            MapElem { key: obj::new_qstr(qstr::from_str("recvfrom")), value: mkv(2, 3, socket_recvfrom) },
-            MapElem { key: obj::new_qstr(qstr::from_str("send")), value: mkv(2, 3, socket_send) },
-            MapElem { key: obj::new_qstr(qstr::from_str("sendall")), value: mkv(2, 3, socket_sendall) },
-            MapElem { key: obj::new_qstr(qstr::from_str("sendto")), value: mkv(3, 4, socket_sendto) },
-            MapElem { key: obj::new_qstr(qstr::from_str("setsockopt")), value: mkv(4, 4, socket_setsockopt) },
-            MapElem { key: obj::new_qstr(qstr::from_str("setblocking")), value: mk2(|s, f| socket_setblocking(s, f)) },
-            MapElem { key: obj::new_qstr(qstr::from_str("settimeout")), value: mk2(|s, t| socket_settimeout(s, t)) },
-            MapElem { key: obj::new_qstr(qstr::from_str("close")), value: stream::stream_close_obj() },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("fileno")),
+                value: mk1(socket_fileno),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("makefile")),
+                value: mkv(1, 3, socket_makefile),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("read")),
+                value: stream::stream_read_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("readinto")),
+                value: stream::stream_readinto_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("readline")),
+                value: stream::stream_unbuffered_readline_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("write")),
+                value: stream::stream_write_obj(),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("connect")),
+                value: mk2(|s, a| socket_connect(s, a)),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("bind")),
+                value: mk2(|s, a| socket_bind(s, a)),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("listen")),
+                value: mkv(1, 2, socket_listen),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("accept")),
+                value: mk1(socket_accept),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("recv")),
+                value: mkv(2, 3, socket_recv),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("recvfrom")),
+                value: mkv(2, 3, socket_recvfrom),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("send")),
+                value: mkv(2, 3, socket_send),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("sendall")),
+                value: mkv(2, 3, socket_sendall),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("sendto")),
+                value: mkv(3, 4, socket_sendto),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("setsockopt")),
+                value: mkv(4, 4, socket_setsockopt),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("setblocking")),
+                value: mk2(|s, f| socket_setblocking(s, f)),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("settimeout")),
+                value: mk2(|s, t| socket_settimeout(s, t)),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("close")),
+                value: stream::stream_close_obj(),
+            },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -789,11 +870,13 @@ fn locals_dict() -> *const () {
 
 static mut SOCKET_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 static mut TYPE_SOCKET: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
-    slot_index_make_new: 0,
-    slot_index_print: 1,
+    slot_index_make_new: 1,
+    slot_index_print: 2,
     slot_index_call: 0,
     slot_index_unary_op: 0,
     slot_index_binary_op: 0,
@@ -801,9 +884,9 @@ static mut TYPE_SOCKET: ObjType = ObjType {
     slot_index_subscr: 0,
     slot_index_iter: 0,
     slot_index_buffer: 0,
-    slot_index_protocol: 2,
+    slot_index_protocol: 3,
     slot_index_parent: 0,
-    slot_index_locals_dict: 3,
+    slot_index_locals_dict: 4,
     slots: unsafe { SOCKET_SLOTS.as_ptr() },
 };
 
@@ -813,6 +896,7 @@ pub fn type_socket() -> &'static ObjType {
     TYPE_INIT.get_or_init(|| {
         let dict = locals_dict();
         unsafe {
+            TYPE_SOCKET.base.type_ = objtype::type_type() as *const ObjType;
             SOCKET_SLOTS[0] = socket_make_new as *const ();
             SOCKET_SLOTS[1] = socket_print as *const ();
             SOCKET_SLOTS[2] = &SOCKET_STREAM as *const StreamP as *const ();

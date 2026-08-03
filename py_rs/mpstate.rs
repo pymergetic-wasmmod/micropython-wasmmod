@@ -2,6 +2,7 @@
 // symmetry: done
 
 use std::cell::RefCell;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::gc;
 use crate::mpconfig;
@@ -35,12 +36,24 @@ pub struct MemArea {
 }
 
 /// GC / allocator state (`mp_state_mem_t` host projection).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct MemState {
     pub area: MemArea,
     pub gc_stack_overflow: i32,
+    /// C `gc_init` sets this to 1 (auto-collect on by default).
     pub gc_auto_collect_enabled: u16,
     pub gc_collected: usize,
+}
+
+impl Default for MemState {
+    fn default() -> Self {
+        Self {
+            area: MemArea::default(),
+            gc_stack_overflow: 0,
+            gc_auto_collect_enabled: 1,
+            gc_collected: 0,
+        }
+    }
 }
 
 /// Scheduled callback queue entry (`mp_sched_item_t`).
@@ -76,6 +89,24 @@ pub struct VmState {
     pub dupterm_objs: Vec<Obj>,
     /// GC-rooted host callback slots (`MP_STATE_VM(mp_wasm_host_slots)`).
     pub mp_wasm_host_slots: Obj,
+    /// GC-rooted Python object handles (`MP_STATE_VM(mp_wasm_handles)`).
+    pub mp_wasm_handles: Obj,
+    /// Pack search path list (`MP_STATE_VM(mp_wasm_path_obj)`).
+    pub mp_wasm_path: Obj,
+    /// Pack arch tags list (`MP_STATE_VM(mp_wasm_arch_obj)`).
+    pub mp_wasm_arch: Obj,
+    /// Saved builtin `__import__` when hook installed (`MP_STATE_VM(mp_wasm_prev_import)`).
+    pub mp_wasm_prev_import: Obj,
+    /// `sys.argv` list (`MP_STATE_VM(mp_sys_argv_obj)`).
+    pub mp_sys_argv: Obj,
+    /// `sys.path` list (`MP_STATE_VM(sys_mutable[MP_SYS_MUTABLE_PATH])`).
+    pub mp_sys_path: Obj,
+    /// `sys.ps1` (`MP_STATE_VM(sys_mutable[MP_SYS_MUTABLE_PS1])`).
+    pub sys_ps1: Obj,
+    /// `sys.ps2` (`MP_STATE_VM(sys_mutable[MP_SYS_MUTABLE_PS2])`).
+    pub sys_ps2: Obj,
+    /// `sys.atexit` callback (`MP_STATE_VM(sys_exitfunc)`).
+    pub sys_exitfunc: Obj,
     /// GIL mutex when `PY_THREAD_GIL` (`MP_STATE_VM(gil_mutex)`).
     pub gil_mutex: crate::mpthread::ThreadMutex,
 }
@@ -110,6 +141,15 @@ impl Default for VmState {
             vfs_cur: VfsCur::Root,
             dupterm_objs: vec![obj::OBJ_NULL; mpconfig::PY_OS_DUPTERM],
             mp_wasm_host_slots: obj::OBJ_NULL,
+            mp_wasm_handles: obj::OBJ_NULL,
+            mp_wasm_path: obj::OBJ_NULL,
+            mp_wasm_arch: obj::OBJ_NULL,
+            mp_wasm_prev_import: obj::OBJ_NULL,
+            mp_sys_argv: obj::OBJ_NULL,
+            mp_sys_path: obj::OBJ_NULL,
+            sys_ps1: obj::OBJ_NULL,
+            sys_ps2: obj::OBJ_NULL,
+            sys_exitfunc: obj::CONST_NONE,
             gil_mutex: crate::mpthread::ThreadMutex::default(),
         }
     }
@@ -182,6 +222,121 @@ fn with_ctx<R>(f: impl FnOnce(&mut StateCtx) -> R) -> R {
 /// Initialise global state container (`mp_state_ctx` bootstrap).
 pub fn init() {
     with_ctx(|_| {});
+}
+
+/// Mark GC roots held in `mp_state_ctx` (C `gc_collect_start` root scan).
+///
+/// Intended as a collect hook so both `gc::collect()` and port `gc_collect`
+/// keep live module/dict objects reachable. Dict maps use Rust `Vec` storage,
+/// so entries are marked explicitly (the GC bitmap scan cannot see them).
+pub fn mark_gc_roots() {
+    if !mpconfig::ENABLE_GC {
+        return;
+    }
+    let mut roots: Vec<*mut u8> = Vec::new();
+    let mut push = |o: Obj| {
+        if o != obj::OBJ_NULL {
+            roots.push(obj::to_ptr(o) as *mut u8);
+        }
+    };
+    with_thread(|t| {
+        push(t.dict_locals);
+        push(t.dict_globals);
+        push(t.mp_pending_exception);
+        push(t.stop_iteration_arg);
+        push(t.prof_trace_callback);
+        if mpconfig::ENABLE_PYSTACK && !t.pystack_start.is_null() && t.pystack_cur > t.pystack_start
+        {
+            let words =
+                (t.pystack_cur as usize - t.pystack_start as usize) / core::mem::size_of::<usize>();
+            gc::collect_root_words(t.pystack_start, words);
+        }
+    });
+    with_vm(|vm| {
+        push(vm.mp_emergency_exception_obj);
+        push(vm.mp_loaded_modules_dict);
+        push(vm.dict_main);
+        if let Some(d) = vm.mp_module_builtins_override_dict {
+            push(d);
+        }
+        for item in &vm.sched_queue {
+            push(item.func);
+            push(item.arg);
+        }
+        for m in &vm.vfs_mount_table {
+            push(m.obj);
+        }
+        for o in &vm.dupterm_objs {
+            push(*o);
+        }
+        push(vm.mp_wasm_host_slots);
+        push(vm.mp_wasm_handles);
+        push(vm.mp_wasm_path);
+        push(vm.mp_wasm_arch);
+        push(vm.mp_wasm_prev_import);
+        push(vm.mp_sys_argv);
+        push(vm.mp_sys_path);
+        push(vm.sys_ps1);
+        push(vm.sys_ps2);
+        push(vm.sys_exitfunc);
+    });
+    if !roots.is_empty() {
+        gc::collect_root(&roots);
+    }
+
+    // Deep-mark dict maps (Rust Vec) reachable from core roots.
+    let (locals, globals, loaded, main) = with_ctx(|ctx| {
+        (
+            ctx.thread.dict_locals,
+            ctx.thread.dict_globals,
+            ctx.vm.mp_loaded_modules_dict,
+            ctx.vm.dict_main,
+        )
+    });
+    let mut visited = std::collections::HashSet::new();
+    mark_dict_deep(locals, &mut visited);
+    mark_dict_deep(globals, &mut visited);
+    mark_dict_deep(main, &mut visited);
+    mark_dict_deep(loaded, &mut visited);
+    if let Some(b) = crate::objmodule::registered_builtins_globals() {
+        mark_dict_deep(b, &mut visited);
+    }
+}
+
+fn mark_dict_deep(dict_obj: Obj, visited: &mut std::collections::HashSet<usize>) {
+    if dict_obj == obj::OBJ_NULL || !obj::is_obj(dict_obj) {
+        return;
+    }
+    let ptr = obj::to_ptr(dict_obj) as usize;
+    if !visited.insert(ptr) {
+        return;
+    }
+    gc::collect_root(&[ptr as *mut u8]);
+    if !crate::objdict::is_dict_or_ordereddict(dict_obj) {
+        return;
+    }
+    let map = unsafe { &(*crate::objdict::dict_ptr(dict_obj)).map };
+    crate::map::mark_table(map);
+    for elem in &map.table {
+        if elem.key == obj::OBJ_NULL || elem.key == obj::OBJ_SENTINEL {
+            continue;
+        }
+        let val = elem.value;
+        if val == obj::OBJ_NULL {
+            continue;
+        }
+        if obj::is_exact_type(val, crate::objmodule::type_module()) {
+            gc::collect_root(&[obj::to_ptr(val) as *mut u8]);
+            let globals = unsafe {
+                obj::from_ptr(crate::objmodule::module_get_globals(val)
+                    as *const crate::objdict::ObjDict
+                    as *const ())
+            };
+            mark_dict_deep(globals, visited);
+        } else if crate::objdict::is_dict_or_ordereddict(val) {
+            mark_dict_deep(val, visited);
+        }
+    }
 }
 
 /// Access VM state (`MP_STATE_VM(...)`).
@@ -290,11 +445,17 @@ pub fn gc_unlock() {
     gc::unlock();
 }
 
-pub fn thread_init_state(locals: Option<Obj>, globals: Option<Obj>, stack_size: usize, stack_top: *mut u8) {
+pub fn thread_init_state(
+    locals: Option<Obj>,
+    globals: Option<Obj>,
+    stack_size: usize,
+    stack_top: *mut u8,
+) {
     with_thread(|ts| {
         ts.stack_top = stack_top;
         if mpconfig::STACK_CHECK {
-            ts.stack_limit = stack_size.saturating_sub(mpconfig::STACK_CHECK_MARGIN as usize) as Uint;
+            ts.stack_limit =
+                stack_size.saturating_sub(mpconfig::STACK_CHECK_MARGIN as usize) as Uint;
         }
         ts.gc_lock_depth = 0;
         ts.nlr_top = None;
@@ -311,6 +472,24 @@ pub fn thread_init_state(locals: Option<Obj>, globals: Option<Obj>, stack_size: 
     if let Some(glob) = globals {
         globals_set(glob);
     }
+}
+
+static COMPILE_ONLY: AtomicBool = AtomicBool::new(false);
+
+/// Set at port startup via `-X compile-only` (`mp_compile_only` in C).
+pub fn set_compile_only(enabled: bool) {
+    COMPILE_ONLY.store(enabled, Ordering::Relaxed);
+}
+
+/// Whether compilation should skip execution (`mp_compile_only`).
+pub fn compile_only() -> bool {
+    COMPILE_ONLY.load(Ordering::Relaxed)
+}
+
+/// Skip running compiled code when the port `-X compile-only` flag or
+/// `PYEXEC_COMPILE_ONLY` is active.
+pub fn skip_compiled_execution() -> bool {
+    compile_only() || mpconfig::PYEXEC_COMPILE_ONLY
 }
 
 #[cfg(test)]

@@ -20,8 +20,10 @@ pub const STACK_MUL_WINDOWS: usize = 2;
 pub const STACK_MUL_WINDOWS: usize = 1;
 
 /// `UNIX_STACK_MULTIPLIER` — scale default thread / main stack sizes.
-pub const STACK_MULTIPLIER: usize =
-    (core::mem::size_of::<*const ()>() / 4) * STACK_MUL_ARM * STACK_MUL_SANITIZERS * STACK_MUL_WINDOWS;
+pub const STACK_MULTIPLIER: usize = (core::mem::size_of::<*const ()>() / 4)
+    * STACK_MUL_ARM
+    * STACK_MUL_SANITIZERS
+    * STACK_MUL_WINDOWS;
 
 /// Default MicroPython stack size for unix (bytes), scaled by [`STACK_MULTIPLIER`].
 pub const DEFAULT_STACK_SIZE: usize = 32768 * STACK_MULTIPLIER;

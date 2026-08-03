@@ -85,7 +85,8 @@ pub fn handler() {
         let mut heap = SOFT_TIMER_HEAP;
         while !heap.is_null() && soft_timer_ticks_diff((*heap).expiry_ms, ticks_ms) <= 0 {
             let entry = heap;
-            heap = pairheap::pop(soft_timer_lt as PairHeapLt, heap as *mut PairHeap) as *mut SoftTimerEntry;
+            heap = pairheap::pop(soft_timer_lt as PairHeapLt, heap as *mut PairHeap)
+                as *mut SoftTimerEntry;
             if (*entry).flags & FLAG_PY_CALLBACK != 0 {
                 if super::mpirq::dispatch(
                     (*entry).py_callback,
@@ -136,10 +137,18 @@ pub fn gc_mark_all() {
     }
 }
 
-pub fn static_init(entry: &mut SoftTimerEntry, mode: u16, delta_ms: u32, cb: fn(*mut SoftTimerEntry)) {
+pub fn static_init(
+    entry: &mut SoftTimerEntry,
+    mode: u16,
+    delta_ms: u32,
+    cb: fn(*mut SoftTimerEntry),
+) {
     assert_eq!(core::mem::offset_of!(SoftTimerEntry, pairheap), 0);
     unsafe {
-        pairheap::init_node(soft_timer_lt as PairHeapLt, &mut entry.pairheap as *mut PairHeap);
+        pairheap::init_node(
+            soft_timer_lt as PairHeapLt,
+            &mut entry.pairheap as *mut PairHeap,
+        );
     }
     entry.flags = 0;
     entry.mode = mode;
@@ -150,7 +159,10 @@ pub fn static_init(entry: &mut SoftTimerEntry, mode: u16, delta_ms: u32, cb: fn(
 
 pub fn insert(entry: &mut SoftTimerEntry, initial_delta_ms: u32) {
     unsafe {
-        pairheap::init_node(soft_timer_lt as PairHeapLt, &mut entry.pairheap as *mut PairHeap);
+        pairheap::init_node(
+            soft_timer_lt as PairHeapLt,
+            &mut entry.pairheap as *mut PairHeap,
+        );
     }
     entry.expiry_ms = soft_timer_get_ms().wrapping_add(initial_delta_ms);
     unsafe {

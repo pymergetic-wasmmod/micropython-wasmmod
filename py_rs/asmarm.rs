@@ -169,10 +169,7 @@ pub fn entry(asm: &mut AsmArm, num_locals: i32) {
         }
     }
 
-    emit_al(
-        asm,
-        op_push(asm.push_reglist | (1 << ASM_ARM_REG_LR)),
-    );
+    emit_al(asm, op_push(asm.push_reglist | (1 << ASM_ARM_REG_LR)));
     if asm.stack_adjust > 0 {
         if asm.stack_adjust < 0x100 {
             emit_al(
@@ -181,10 +178,7 @@ pub fn entry(asm: &mut AsmArm, num_locals: i32) {
             );
         } else {
             mov_reg_i32_optimised(asm, REG_TEMP, asm.stack_adjust as i32);
-            emit_al(
-                asm,
-                op_sub_reg(ASM_ARM_REG_SP, ASM_ARM_REG_SP, REG_TEMP),
-            );
+            emit_al(asm, op_sub_reg(ASM_ARM_REG_SP, ASM_ARM_REG_SP, REG_TEMP));
         }
     }
 }
@@ -201,16 +195,10 @@ pub fn exit(asm: &mut AsmArm) {
             );
         } else {
             mov_reg_i32_optimised(asm, REG_TEMP, asm.stack_adjust as i32);
-            emit_al(
-                asm,
-                op_add_reg(ASM_ARM_REG_SP, ASM_ARM_REG_SP, REG_TEMP),
-            );
+            emit_al(asm, op_add_reg(ASM_ARM_REG_SP, ASM_ARM_REG_SP, REG_TEMP));
         }
     }
-    emit_al(
-        asm,
-        op_pop(asm.push_reglist | (1 << ASM_ARM_REG_PC)),
-    );
+    emit_al(asm, op_pop(asm.push_reglist | (1 << ASM_ARM_REG_PC)));
 }
 
 pub fn push(asm: &mut AsmArm, reglist: u32) {
@@ -425,11 +413,7 @@ pub fn ldrh_reg_reg_offset(asm: &mut AsmArm, rd: u32, rn: u32, byte_offset: u32)
     if byte_offset < 0x100 {
         emit_al(
             asm,
-            0x1d000b0
-                | (rn << 16)
-                | (rd << 12)
-                | ((byte_offset & 0xf0) << 4)
-                | (byte_offset & 0xf),
+            0x1d000b0 | (rn << 16) | (rd << 12) | ((byte_offset & 0xf0) << 4) | (byte_offset & 0xf),
         );
     } else {
         mov_reg_i32_optimised(asm, REG_TEMP, byte_offset as i32);
@@ -482,11 +466,7 @@ pub fn strh_reg_reg_offset(asm: &mut AsmArm, rd: u32, rn: u32, byte_offset: u32)
     if byte_offset < 0x100 {
         emit_al(
             asm,
-            0x1c000b0
-                | (rn << 16)
-                | (rd << 12)
-                | ((byte_offset & 0xf0) << 4)
-                | (byte_offset & 0xf),
+            0x1c000b0 | (rn << 16) | (rd << 12) | ((byte_offset & 0xf0) << 4) | (byte_offset & 0xf),
         );
     } else {
         mov_reg_i32_optimised(asm, REG_TEMP, byte_offset as i32);

@@ -26,13 +26,13 @@ pub const UNARY_OP_NUM_RUNTIME: u8 = (UnaryOp::Sizeof as u8) + 1;
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum BinaryOp {
-    // relational (bytecode)
+    // relational (bytecode) — must match C `MP_BINARY_OP_*` discriminants
     Less = 0,
     More,
     Equal,
-    NotEqual,
     LessEqual,
     MoreEqual,
+    NotEqual,
     In,
     Is,
     ExceptionMatch,

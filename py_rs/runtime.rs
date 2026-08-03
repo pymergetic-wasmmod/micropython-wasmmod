@@ -8,7 +8,11 @@ use crate::mpconfig;
 use crate::mpstate;
 use crate::mpthread;
 use crate::nlr::{self, NlrBuf};
-use crate::obj::{self, Int, Obj, ObjBase, ObjIterBuf, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_CUSTOM, TYPE_FLAG_ITER_IS_ITERNEXT, TYPE_FLAG_ITER_IS_STREAM};
+use crate::obj::{
+    self, Int, Obj, ObjBase, ObjIterBuf, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_CUSTOM, TYPE_FLAG_ITER_IS_ITERNEXT, TYPE_FLAG_ITER_IS_STREAM,
+};
+use crate::objboundmeth;
 use crate::objcomplex;
 use crate::objdict::{self, ObjDict};
 use crate::objexcept;
@@ -16,6 +20,7 @@ use crate::objfloat;
 use crate::objgenerator;
 use crate::objint_mpz;
 use crate::objlist;
+use crate::objmodule;
 use crate::objstr;
 use crate::objtuple;
 use crate::objtype;
@@ -114,6 +119,11 @@ pub fn init() {
 
     cstack::init_with_sp_here(64 * 1024);
 
+    if mpconfig::ENABLE_GC {
+        // Keep VM/thread Obj roots alive across collection (C `gc_collect_start`).
+        gc::register_collect_hook(mpstate::mark_gc_roots);
+    }
+
     if mpconfig::ENABLE_NATIVE_CODE {
         crate::nativeglue::init_fun_table_extras();
     }
@@ -197,9 +207,9 @@ pub fn load_global(qst: Qstr) -> Obj {
         }
     }
     if mpconfig::ERROR_REPORTING <= mpconfig::ERROR_REPORTING_NORMAL {
-        raise::raise(MpRaise::RuntimeError("name not defined"));
+        raise::raise(MpRaise::NameError("name not defined"));
     }
-    raise::raise(MpRaise::RuntimeError("name not defined"));
+    raise::raise(MpRaise::NameError("name not defined"));
 }
 
 /// `mp_load_build_class`.
@@ -242,7 +252,8 @@ pub fn delete_global(qst: Qstr) {
 // --- unary / binary operators ---------------------------------------------------
 
 fn type_has_iternext(type_: &ObjType) -> bool {
-    (type_.flags & (TYPE_FLAG_ITER_IS_ITERNEXT | TYPE_FLAG_ITER_IS_CUSTOM | TYPE_FLAG_ITER_IS_STREAM))
+    (type_.flags
+        & (TYPE_FLAG_ITER_IS_ITERNEXT | TYPE_FLAG_ITER_IS_CUSTOM | TYPE_FLAG_ITER_IS_STREAM))
         != 0
 }
 
@@ -267,25 +278,53 @@ pub fn binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Result<Obj> {
     if obj::is_small_int(lhs) && obj::is_small_int(rhs) {
         return binary_op_small_int(op, obj::small_int_value(lhs), obj::small_int_value(rhs));
     }
-    Err(RuntimeError::TypeError("binary_op: only small ints in smoke path"))
+    Err(RuntimeError::TypeError(
+        "binary_op: only small ints in smoke path",
+    ))
 }
 
 fn binary_op_small_int(op: BinaryOp, a: Int, b: Int) -> Result<Obj> {
     let v = match op {
-        BinaryOp::Add | BinaryOp::InplaceAdd => a.checked_add(b).ok_or(RuntimeError::Overflow("add"))?,
-        BinaryOp::Subtract | BinaryOp::InplaceSubtract => a.checked_sub(b).ok_or(RuntimeError::Overflow("sub"))?,
-        BinaryOp::Multiply | BinaryOp::InplaceMultiply => a.checked_mul(b).ok_or(RuntimeError::Overflow("mul"))?,
+        BinaryOp::Add | BinaryOp::InplaceAdd => {
+            a.checked_add(b).ok_or(RuntimeError::Overflow("add"))?
+        }
+        BinaryOp::Subtract | BinaryOp::InplaceSubtract => {
+            a.checked_sub(b).ok_or(RuntimeError::Overflow("sub"))?
+        }
+        BinaryOp::Multiply | BinaryOp::InplaceMultiply => {
+            a.checked_mul(b).ok_or(RuntimeError::Overflow("mul"))?
+        }
         BinaryOp::FloorDivide | BinaryOp::InplaceFloorDivide => {
             if b == 0 {
                 return Err(RuntimeError::ZeroDivision);
             }
             smallint::floor_divide(a, b)
         }
+        BinaryOp::TrueDivide | BinaryOp::InplaceTrueDivide => {
+            if !mpconfig::PY_BUILTINS_FLOAT {
+                return Err(RuntimeError::TypeError("binary_op: op not in smoke path"));
+            }
+            if b == 0 {
+                return Err(RuntimeError::ZeroDivision);
+            }
+            return Ok(objfloat::new_float(a as f64 / b as f64));
+        }
         BinaryOp::Modulo | BinaryOp::InplaceModulo => {
             if b == 0 {
                 return Err(RuntimeError::ZeroDivision);
             }
             smallint::modulo(a, b)
+        }
+        BinaryOp::Divmod => {
+            if b == 0 {
+                return Err(RuntimeError::ZeroDivision);
+            }
+            let quo = smallint::floor_divide(a, b);
+            let rem = smallint::modulo(a, b);
+            return Ok(objtuple::new_tuple(
+                2,
+                Some(&[obj::new_small_int(quo), obj::new_small_int(rem)]),
+            ));
         }
         BinaryOp::Or | BinaryOp::InplaceOr => a | b,
         BinaryOp::Xor | BinaryOp::InplaceXor => a ^ b,
@@ -298,7 +337,8 @@ fn binary_op_small_int(op: BinaryOp, a: Int, b: Int) -> Result<Obj> {
             if shift >= u32::BITS - 1 {
                 return Err(RuntimeError::Overflow("shift"));
             }
-            a.checked_shl(shift).ok_or(RuntimeError::Overflow("shift"))?
+            a.checked_shl(shift)
+                .ok_or(RuntimeError::Overflow("shift"))?
         }
         BinaryOp::Rshift | BinaryOp::InplaceRshift => {
             if b < 0 {
@@ -310,14 +350,15 @@ fn binary_op_small_int(op: BinaryOp, a: Int, b: Int) -> Result<Obj> {
             if b < 0 {
                 return Err(RuntimeError::TypeError("negative power without float"));
             }
-            a.checked_pow(b as u32).ok_or(RuntimeError::Overflow("pow"))?
+            a.checked_pow(b as u32)
+                .ok_or(RuntimeError::Overflow("pow"))?
         }
-        BinaryOp::Equal => return Ok(obj::new_small_int(i32::from(a == b) as Int)),
-        BinaryOp::NotEqual => return Ok(obj::new_small_int(i32::from(a != b) as Int)),
-        BinaryOp::Less => return Ok(obj::new_small_int(i32::from(a < b) as Int)),
-        BinaryOp::More => return Ok(obj::new_small_int(i32::from(a > b) as Int)),
-        BinaryOp::LessEqual => return Ok(obj::new_small_int(i32::from(a <= b) as Int)),
-        BinaryOp::MoreEqual => return Ok(obj::new_small_int(i32::from(a >= b) as Int)),
+        BinaryOp::Equal => return Ok(obj::new_bool(a == b)),
+        BinaryOp::NotEqual => return Ok(obj::new_bool(a != b)),
+        BinaryOp::Less => return Ok(obj::new_bool(a < b)),
+        BinaryOp::More => return Ok(obj::new_bool(a > b)),
+        BinaryOp::LessEqual => return Ok(obj::new_bool(a <= b)),
+        BinaryOp::MoreEqual => return Ok(obj::new_bool(a >= b)),
         _ => return Err(RuntimeError::TypeError("binary_op: op not in smoke path")),
     };
     if !smallint::fits(v) {
@@ -354,7 +395,10 @@ pub fn unary_op_obj(op: UnaryOp, arg: Obj) -> Obj {
     if op == UnaryOp::Bool {
         return obj::CONST_TRUE;
     }
-    if matches!(op, UnaryOp::IntMaybe | UnaryOp::FloatMaybe | UnaryOp::ComplexMaybe) {
+    if matches!(
+        op,
+        UnaryOp::IntMaybe | UnaryOp::FloatMaybe | UnaryOp::ComplexMaybe
+    ) {
         return obj::OBJ_NULL;
     }
     raise::raise(MpRaise::TypeError("unsupported type for operator"));
@@ -421,6 +465,10 @@ pub fn binary_op_obj(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
         if obj::is_small_int(rhs) {
             return binary_op_small_int_obj(op, lhs_val, obj::small_int_value(rhs));
         }
+        // Bool acts as 0/1 (C `mp_obj_int_binary_op_extra_cases`).
+        if obj::is_bool(rhs) {
+            return binary_op_small_int_obj(op, lhs_val, i32::from(obj::bool_value(rhs)) as Int);
+        }
         if mpconfig::PY_BUILTINS_FLOAT && objfloat::is_float(rhs) {
             let res = objfloat::float_binary_op_val(op, lhs_val as f64, rhs);
             if res != obj::OBJ_NULL {
@@ -452,7 +500,11 @@ pub fn binary_op_obj(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
 
     let op_u8 = op as u8;
     if op_u8 >= BinaryOp::InplaceOr as u8 && op_u8 <= BinaryOp::InplacePower as u8 {
-        let normal = unsafe { std::mem::transmute::<u8, BinaryOp>(op_u8 + (BinaryOp::Or as u8 - BinaryOp::InplaceOr as u8)) };
+        let normal = unsafe {
+            std::mem::transmute::<u8, BinaryOp>(
+                op_u8 + (BinaryOp::Or as u8 - BinaryOp::InplaceOr as u8),
+            )
+        };
         if let Some(slot) = obj::type_get_binary_op(obj::get_type(lhs)) {
             let r = slot(normal, lhs, rhs);
             if r != obj::OBJ_NULL {
@@ -464,7 +516,11 @@ pub fn binary_op_obj(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
     if mpconfig::PY_REVERSE_SPECIAL_METHODS {
         if op_u8 >= BinaryOp::Or as u8 && op_u8 <= BinaryOp::Power as u8 {
             std::mem::swap(&mut lhs, &mut rhs);
-            let reverse = unsafe { std::mem::transmute::<u8, BinaryOp>(op_u8 + (BinaryOp::ReverseOr as u8 - BinaryOp::Or as u8)) };
+            let reverse = unsafe {
+                std::mem::transmute::<u8, BinaryOp>(
+                    op_u8 + (BinaryOp::ReverseOr as u8 - BinaryOp::Or as u8),
+                )
+            };
             if let Some(slot) = obj::type_get_binary_op(obj::get_type(lhs)) {
                 let r = slot(reverse, lhs, rhs);
                 if r != obj::OBJ_NULL {
@@ -476,7 +532,9 @@ pub fn binary_op_obj(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
 
     if op == BinaryOp::Contains {
         let mut iter_buf = ObjIterBuf {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             buf: [obj::OBJ_NULL; 3],
         };
         let iter = getiter(lhs, Some(&mut iter_buf));
@@ -538,7 +596,13 @@ pub fn call_method_n_kw(n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     call_function_n_kw(fun, n_args + adjust, n_kw, rest)
 }
 
-pub fn call_method_self_n_kw(fun: Obj, self_: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
+pub fn call_method_self_n_kw(
+    fun: Obj,
+    self_: Obj,
+    n_args: usize,
+    n_kw: usize,
+    args: &[Obj],
+) -> Obj {
     let mut buf = Vec::with_capacity(2 + args.len() + 2 * n_kw);
     buf.push(fun);
     buf.push(self_);
@@ -547,7 +611,12 @@ pub fn call_method_self_n_kw(fun: Obj, self_: Obj, n_args: usize, n_kw: usize, a
 }
 
 /// `mp_call_prepare_args_n_kw_var`.
-pub fn call_prepare_args_n_kw_var(have_self: bool, n_args_n_kw: usize, args: &[Obj], out_args: &mut CallArgs) {
+pub fn call_prepare_args_n_kw_var(
+    have_self: bool,
+    n_args_n_kw: usize,
+    args: &[Obj],
+    out_args: &mut CallArgs,
+) {
     let mut idx = 0usize;
     let fun = args[idx];
     idx += 1;
@@ -560,8 +629,8 @@ pub fn call_prepare_args_n_kw_var(have_self: bool, n_args_n_kw: usize, args: &[O
     };
     let n_args = n_args_n_kw & 0xff;
     let n_kw = (n_args_n_kw >> 8) & 0xff;
-    let star_args = if n_args + 2 * n_kw < args.len() {
-        obj::small_int_value(args[n_args + 2 * n_kw]) as usize
+    let star_args = if idx + n_args + 2 * n_kw < args.len() {
+        obj::small_int_value(args[idx + n_args + 2 * n_kw]) as usize
     } else {
         0
     };
@@ -598,7 +667,9 @@ pub fn call_prepare_args_n_kw_var(have_self: bool, n_args_n_kw: usize, args: &[O
         for i in 0..n_args {
             let arg = args[pos_base + i];
             if (star_args >> i) & 1 != 0 {
-                if obj::is_exact_type(arg, objtuple::type_tuple()) || obj::is_exact_type(arg, objlist::type_list()) {
+                if obj::is_exact_type(arg, objtuple::type_tuple())
+                    || obj::is_exact_type(arg, objlist::type_list())
+                {
                     let (len, items) = if obj::is_exact_type(arg, objtuple::type_tuple()) {
                         objtuple::tuple_get(arg)
                     } else {
@@ -607,7 +678,9 @@ pub fn call_prepare_args_n_kw_var(have_self: bool, n_args_n_kw: usize, args: &[O
                     args2.extend_from_slice(&items[..len]);
                 } else {
                     let mut iter_buf = ObjIterBuf {
-                        base: ObjBase { type_: core::ptr::null() },
+                        base: ObjBase {
+                            type_: core::ptr::null(),
+                        },
                         buf: [obj::OBJ_NULL; 3],
                     };
                     let iterable = getiter(arg, Some(&mut iter_buf));
@@ -643,14 +716,22 @@ pub fn call_prepare_args_n_kw_var(have_self: bool, n_args_n_kw: usize, args: &[O
                 }
             } else {
                 let mut dest = [obj::OBJ_NULL; 3];
-                load_method(kw_value, qstr::from_str("keys"), &mut dest[..2].try_into().unwrap());
+                load_method(
+                    kw_value,
+                    qstr::from_str("keys"),
+                    &mut dest[..2].try_into().unwrap(),
+                );
                 let iterable = getiter(call_method_n_kw(0, 0, &dest), None);
                 loop {
                     let key = iternext(iterable);
                     if key == obj::OBJ_STOP_ITERATION {
                         break;
                     }
-                    load_method(kw_value, qstr::from_str("__getitem__"), &mut dest[..2].try_into().unwrap());
+                    load_method(
+                        kw_value,
+                        qstr::from_str("__getitem__"),
+                        &mut dest[..2].try_into().unwrap(),
+                    );
                     dest[2] = key;
                     let value = call_method_n_kw(1, 0, &dest);
                     args2.push(key);
@@ -750,17 +831,15 @@ pub fn load_method_maybe(obj_in: Obj, attr: Qstr, dest: &mut [Obj]) {
     if let Some(attr_fn) = obj::type_get_attr(t) {
         let mut pair = [obj::OBJ_NULL; 2];
         attr_fn(obj_in, attr, &mut pair);
+        // Match C `mp_load_method_maybe`: if type->attr ran (dest[1] != SENTINEL),
+        // return immediately — do not convert_member_lookup (modules return bare funs).
         if pair[1] != obj::OBJ_SENTINEL {
             dest[0] = pair[0];
             dest[1] = pair[1];
-            if dest[0] != obj::OBJ_NULL && dest[1] == obj::OBJ_NULL && obj::is_obj(dest[0]) {
-                let mut converted = [dest[0], dest[1]];
-                convert_member_lookup(obj_in, t, dest[0], &mut converted);
-                dest[0] = converted[0];
-                dest[1] = converted[1];
-            }
             return;
         }
+        // Clear the fail flag set by type->attr so it's like it never ran.
+        // (pair[1] was SENTINEL; fall through to locals_dict.)
     }
 
     if let Some(locals) = obj::type_get_slot_locals_dict(t) {
@@ -774,11 +853,25 @@ pub fn load_method_maybe(obj_in: Obj, attr: Qstr, dest: &mut [Obj]) {
     }
 }
 
+fn raise_no_attribute(obj_in: Obj, attr: Qstr) -> ! {
+    if mpconfig::ERROR_REPORTING <= mpconfig::ERROR_REPORTING_TERSE as u8 {
+        raise::raise(MpRaise::AttributeError("no such attribute"));
+    }
+    let type_name = obj::get_type_str(obj_in);
+    let attr_name = qstr::str_from_qstr(attr).unwrap_or_else(|| "?".into());
+    let msg = format!("'{type_name}' object has no attribute '{attr_name}'");
+    raise::raise_obj(objexcept::new_exception_args(
+        objexcept::type_attribute_error(),
+        1,
+        &[objstr::new_str(msg.as_bytes())],
+    ));
+}
+
 /// `mp_load_method`.
 pub fn load_method(obj_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
     load_method_maybe(obj_in, attr, dest);
     if dest[0] == obj::OBJ_NULL {
-        raise::raise(MpRaise::AttributeError("no such attribute"));
+        raise_no_attribute(obj_in, attr);
     }
 }
 
@@ -787,8 +880,23 @@ pub fn load_method_protected(obj_in: Obj, attr: Qstr, dest: &mut [Obj; 2], catch
     let mut nlr_buf = NlrBuf::default();
     match nlr::protect(&mut nlr_buf, || load_method_maybe(obj_in, attr, dest)) {
         Ok(()) => {}
-        Err(_) if catch_all_exc => {}
-        Err(v) => raise::reraise(v),
+        Err(_) if catch_all_exc => {
+            dest[0] = obj::OBJ_NULL;
+            dest[1] = obj::OBJ_NULL;
+        }
+        Err(v) => {
+            // C always swallows AttributeError; other exceptions re-raise unless
+            // `catch_all_exc` (needed so `dir()` survives module `__getattr__`).
+            let is_attr_err = objexcept::exception_match(
+                Obj(v),
+                obj::from_ptr(objexcept::type_attribute_error() as *const ObjType as *const ()),
+            );
+            dest[0] = obj::OBJ_NULL;
+            dest[1] = obj::OBJ_NULL;
+            if !is_attr_err {
+                raise::reraise(v);
+            }
+        }
     }
 }
 
@@ -797,9 +905,13 @@ pub fn load_attr(base: Obj, attr: Qstr) -> Obj {
     let mut dest = [obj::OBJ_NULL; 2];
     load_method(base, attr, &mut dest);
     if dest[1] == obj::OBJ_NULL {
+        // load_method returned just a normal attribute
         dest[0]
     } else {
-        call_method_n_kw(0, 0, &dest)
+        // load_method returned a method, so build a bound method object
+        // (must NOT be invoked here: `obj.method` without a call should
+        // yield a bound-method value, not the result of calling it).
+        objboundmeth::new_bound_meth(dest[0], dest[1])
     }
 }
 
@@ -813,7 +925,7 @@ pub fn store_attr(base: Obj, attr: Qstr, value: Obj) {
             return;
         }
     }
-    raise::raise(MpRaise::AttributeError("no such attribute"));
+    raise_no_attribute(base, attr);
 }
 
 // --- iteration ------------------------------------------------------------------
@@ -835,7 +947,9 @@ pub fn getiter(o_in: Obj, iter_buf: Option<&mut ObjIterBuf>) -> Obj {
             getiter_fn(o_in, ptr)
         } else {
             let heap_buf = Box::new(ObjIterBuf {
-                base: ObjBase { type_: core::ptr::null() },
+                base: ObjBase {
+                    type_: core::ptr::null(),
+                },
                 buf: [obj::OBJ_NULL; 3],
             });
             let ptr = &*heap_buf as *const ObjIterBuf as *mut ObjIterBuf;
@@ -920,7 +1034,9 @@ pub fn make_stop_iteration(o: Obj) -> Obj {
 /// `mp_unpack_sequence`.
 pub fn unpack_sequence(seq_in: Obj, num: usize, items: &mut [Obj]) {
     assert_eq!(items.len(), num);
-    if obj::is_exact_type(seq_in, objtuple::type_tuple()) || obj::is_exact_type(seq_in, objlist::type_list()) {
+    if obj::is_exact_type(seq_in, objtuple::type_tuple())
+        || obj::is_exact_type(seq_in, objlist::type_list())
+    {
         let (len, seq_items) = if obj::is_exact_type(seq_in, objtuple::type_tuple()) {
             objtuple::tuple_get(seq_in)
         } else {
@@ -938,7 +1054,9 @@ pub fn unpack_sequence(seq_in: Obj, num: usize, items: &mut [Obj]) {
         return;
     }
     let mut iter_buf = ObjIterBuf {
-        base: ObjBase { type_: core::ptr::null() },
+        base: ObjBase {
+            type_: core::ptr::null(),
+        },
         buf: [obj::OBJ_NULL; 3],
     };
     let iterable = getiter(seq_in, Some(&mut iter_buf));
@@ -958,7 +1076,9 @@ pub fn unpack_sequence(seq_in: Obj, num: usize, items: &mut [Obj]) {
 pub fn unpack_ex(seq_in: Obj, num_in: usize, items: &mut [Obj]) {
     let num_left = num_in & 0xff;
     let num_right = (num_in >> 8) & 0xff;
-    if obj::is_exact_type(seq_in, objtuple::type_tuple()) || obj::is_exact_type(seq_in, objlist::type_list()) {
+    if obj::is_exact_type(seq_in, objtuple::type_tuple())
+        || obj::is_exact_type(seq_in, objlist::type_list())
+    {
         let (seq_len, seq_items) = if obj::is_exact_type(seq_in, objtuple::type_tuple()) {
             objtuple::tuple_get(seq_in)
         } else {
@@ -970,7 +1090,8 @@ pub fn unpack_ex(seq_in: Obj, num_in: usize, items: &mut [Obj]) {
         for i in 0..num_right {
             items[i] = seq_items[seq_len - 1 - i];
         }
-        items[num_right] = objlist::new_list(seq_len - num_left - num_right, Some(&seq_items[num_left..]));
+        items[num_right] =
+            objlist::new_list(seq_len - num_left - num_right, Some(&seq_items[num_left..]));
         for i in 0..num_left {
             items[num_right + 1 + i] = seq_items[num_left - 1 - i];
         }
@@ -995,7 +1116,10 @@ pub fn unpack_ex(seq_in: Obj, num_in: usize, items: &mut [Obj]) {
     if rest.len() < num_right {
         raise::raise(MpRaise::ValueError("wrong number of values to unpack"));
     }
-    items[num_right] = objlist::new_list(rest.len() - num_right, Some(&rest[..rest.len() - num_right]));
+    items[num_right] = objlist::new_list(
+        rest.len() - num_right,
+        Some(&rest[..rest.len() - num_right]),
+    );
     for i in 0..num_right {
         items[num_right - 1 - i] = rest[rest.len() - num_right + i];
     }
@@ -1039,7 +1163,11 @@ pub fn resume(self_in: Obj, send_value: Obj, throw_value: Obj, ret_val: &mut Obj
     }
 
     if send_value != obj::OBJ_NULL {
-        load_method(self_in, qstr::from_str("send"), &mut dest[..2].try_into().unwrap());
+        load_method(
+            self_in,
+            qstr::from_str("send"),
+            &mut dest[..2].try_into().unwrap(),
+        );
         dest[2] = send_value;
         *ret_val = call_method_n_kw(1, 0, &dest);
         return VmReturnKind::Yield;
@@ -1078,25 +1206,123 @@ pub fn resume(self_in: Obj, send_value: Obj, throw_value: Obj, ret_val: &mut Obj
 
 /// `mp_make_raise_obj`.
 pub fn make_raise_obj(o: Obj) -> Obj {
-    if let Some(call) = obj::type_get_call(obj::get_type(o)) {
-        return call(o, 0, 0, &[]);
+    let mut o = o;
+    if objexcept::is_exception_type(o) {
+        o = call_function_n_kw(o, 0, 0, &[]);
     }
-    raise::raise(MpRaise::TypeError("exceptions must derive from BaseException"));
+    if objexcept::is_exception_instance(o) {
+        return o;
+    }
+    let msg = objstr::new_str(b"exceptions must derive from BaseException");
+    objexcept::new_exception_args(objexcept::type_type_error(), 1, &[msg])
 }
 
 /// `mp_import_name`.
-pub fn import_name(_name: Qstr, _fromlist: Obj, _level: Obj) -> Obj {
-    raise::raise(MpRaise::RuntimeError("import not available"));
+pub fn import_name(name: Qstr, fromlist: Obj, level: Obj) -> Obj {
+    let args = [
+        obj::new_qstr(name),
+        mpstate::globals_get(),
+        obj::CONST_NONE,
+        fromlist,
+        level,
+    ];
+    if mpconfig::CAN_OVERRIDE_BUILTINS {
+        if let Some(bo) = mpstate::with_vm(|vm| vm.mp_module_builtins_override_dict) {
+            if bo != obj::OBJ_NULL {
+                let import_key = obj::new_qstr(qstr::from_str("__import__"));
+                let import_fun = objdict::dict_get(bo, import_key);
+                if import_fun != obj::OBJ_NULL {
+                    return call_function_n_kw(import_fun, 5, 0, &args);
+                }
+            }
+        }
+    }
+    crate::builtinimport::builtin___import___default(5, &args)
 }
 
 /// `mp_import_from`.
-pub fn import_from(_module: Obj, _name: Qstr) -> Obj {
-    raise::raise(MpRaise::RuntimeError("import not available"));
+pub fn import_from(module: Obj, name: Qstr) -> Obj {
+    let mut dest = [obj::OBJ_NULL, obj::OBJ_NULL];
+    load_method_maybe(module, name, &mut dest);
+    if dest[1] != obj::OBJ_NULL {
+        return objboundmeth::new_bound_meth(dest[0], dest[1]);
+    }
+    if dest[0] != obj::OBJ_NULL {
+        return dest[0];
+    }
+
+    if mpconfig::ENABLE_EXTERNAL_IMPORT {
+        load_method_maybe(module, qstr::from_str("__path__"), &mut dest);
+        if dest[0] != obj::OBJ_NULL {
+            load_method(module, qstr::from_str("__name__"), &mut dest);
+            let (pkg_data, pkg_len) = objstr::get_str_data_len(dest[0]);
+            let pkg_name = std::str::from_utf8(&pkg_data[..pkg_len]).unwrap_or("");
+            let dot_name = format!(
+                "{pkg_name}.{}",
+                qstr::str_from_qstr(name).unwrap_or_default()
+            );
+            return import_name(
+                qstr::from_str(&dot_name),
+                obj::CONST_TRUE,
+                obj::new_small_int(0),
+            );
+        }
+    }
+
+    let msg = objstr::new_str(
+        format!(
+            "can't import name {}",
+            qstr::str_from_qstr(name).unwrap_or_default()
+        )
+        .as_bytes(),
+    );
+    raise::raise_obj(objexcept::new_exception_args(
+        objexcept::type_import_error(),
+        1,
+        &[msg],
+    ));
 }
 
 /// `mp_import_all`.
-pub fn import_all(_module: Obj) {
-    raise::raise(MpRaise::RuntimeError("import not available"));
+pub fn import_all(module: Obj) {
+    let mut dest = [obj::OBJ_NULL, obj::OBJ_NULL];
+
+    if mpconfig::MODULE_ALL {
+        load_method_maybe(module, qstr::from_str("__all__"), &mut dest);
+        if dest[0] != obj::OBJ_NULL {
+            let (len, items) = objtuple::tuple_get(dest[0]);
+            for item in items {
+                let qname = objstr::str_get_qstr(item);
+                load_method(module, qname, &mut dest);
+                store_name(qname, dest[0]);
+            }
+            return;
+        }
+    }
+
+    let globals = if mpconfig::CPYTHON_COMPAT {
+        load_method(module, qstr::from_str("__dict__"), &mut dest);
+        dest[0]
+    } else {
+        obj::from_ptr(objmodule::module_get_globals(module) as *const ObjDict as *const ())
+    };
+
+    let map = unsafe { &(*objdict::dict_ptr(globals)).map };
+    for i in 0..map.alloc {
+        if !crate::map::slot_is_filled(map, i) {
+            continue;
+        }
+        let key = map.table[i].key;
+        if !obj::is_qstr(key) {
+            continue;
+        }
+        let (data, len) = objstr::get_str_data_len(key);
+        if data.first() == Some(&b'_') {
+            continue;
+        }
+        let qname = objstr::str_get_qstr(key);
+        store_name(qname, map.table[i].value);
+    }
 }
 
 // --- events / scheduler ---------------------------------------------------------
@@ -1174,11 +1400,7 @@ fn exec_str_impl(source: &str) -> Obj {
     use crate::lexer::Lexer;
     use crate::parse::ParseInputKind;
     use crate::reader::READER_IS_ROM;
-    let lex = Lexer::new_from_str_len(
-        qstr::from_str("<string>"),
-        source.as_bytes(),
-        READER_IS_ROM,
-    );
+    let lex = Lexer::new_from_str_len(qstr::from_str("<string>"), source.as_bytes(), READER_IS_ROM);
     compile::parse_compile_execute(lex, ParseInputKind::FileInput, None, None)
 }
 

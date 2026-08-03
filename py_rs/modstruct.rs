@@ -3,8 +3,8 @@
 
 use crate::bc::ModuleContext;
 use crate::binary;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use crate::objdict;
@@ -35,7 +35,9 @@ struct ObjFunBuiltinVar {
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut FV: [*const (); 1] = [callv as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -53,7 +55,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -78,7 +82,13 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    crate::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    crate::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -191,7 +201,12 @@ fn struct_unpack_from(n_args: usize, args: &[Obj]) -> Obj {
         raise::raise(MpRaise::ValueError("buffer too small"));
     }
     let mut items = Vec::with_capacity(num_items);
-    let base_slice = unsafe { std::slice::from_raw_parts(bufinfo.buf.add(offset as usize), bufinfo.len - offset as usize) };
+    let base_slice = unsafe {
+        std::slice::from_raw_parts(
+            bufinfo.buf.add(offset as usize),
+            bufinfo.len - offset as usize,
+        )
+    };
     let mut pos = 0usize;
     let mut i = 0usize;
     while i < num_items {
@@ -267,7 +282,7 @@ fn struct_pack_into_internal(fmt_in: Obj, p: *mut u8, n_args: usize, args: &[Obj
             let mut bufinfo = obj::BufferInfo::default();
             obj::get_buffer_raise(args[i], &mut bufinfo, obj::BUFFER_READ);
             let to_copy = cnt.min(bufinfo.len);
-            base_slice[pos..pos + to_copy].copy_from_slice(unsafe { std::slice::from_raw_parts(bufinfo.buf, to_copy) });
+            base_slice[pos..pos + to_copy].copy_from_slice(&bufinfo.as_bytes()[..to_copy]);
             for b in &mut base_slice[pos + to_copy..pos + cnt] {
                 *b = 0;
             }
@@ -299,7 +314,12 @@ fn struct_pack_into(n_args: usize, args: &[Obj]) -> Obj {
     if offset as usize + sz as usize > bufinfo.len {
         raise::raise(MpRaise::ValueError("buffer too small"));
     }
-    struct_pack_into_internal(args[0], unsafe { bufinfo.buf.add(offset as usize) }, n_args - 3, &args[3..]);
+    struct_pack_into_internal(
+        args[0],
+        unsafe { bufinfo.buf.add(offset as usize) },
+        n_args - 3,
+        &args[3..],
+    );
     obj::CONST_NONE
 }
 
@@ -308,12 +328,30 @@ pub fn init_module() -> Obj {
         return obj::OBJ_NULL;
     }
     let table = vec![
-        MapElem { key: obj::new_qstr(qstr::from_str("__name__")), value: obj::new_qstr(qstr::from_str("struct")) },
-        MapElem { key: obj::new_qstr(qstr::from_str("calcsize")), value: mk1(struct_calcsize) },
-        MapElem { key: obj::new_qstr(qstr::from_str("pack")), value: mkv(1, 255, struct_pack) },
-        MapElem { key: obj::new_qstr(qstr::from_str("pack_into")), value: mkv(3, 255, struct_pack_into) },
-        MapElem { key: obj::new_qstr(qstr::from_str("unpack")), value: mkv(2, 3, struct_unpack_from) },
-        MapElem { key: obj::new_qstr(qstr::from_str("unpack_from")), value: mkv(2, 3, struct_unpack_from) },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("__name__")),
+            value: obj::new_qstr(qstr::from_str("struct")),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("calcsize")),
+            value: mk1(struct_calcsize),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("pack")),
+            value: mkv(1, 255, struct_pack),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("pack_into")),
+            value: mkv(3, 255, struct_pack_into),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("unpack")),
+            value: mkv(2, 3, struct_unpack_from),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("unpack_from")),
+            value: mkv(2, 3, struct_unpack_from),
+        },
     ];
     let ctx = malloc::new_obj::<ModuleContext>().expect("struct module");
     let dict = objdict::new_dict(table.len());

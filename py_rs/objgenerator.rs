@@ -4,12 +4,12 @@
 use core::mem::size_of;
 use core::ptr;
 
-use crate::emitglue;
 use crate::argcheck;
 use crate::bc::{self, CodeState, CodeStateNative, ExcStack, ModuleContext, ObjFunBc};
 use crate::cstack;
-use crate::map::{self, LookupKind, MapElem};
+use crate::emitglue;
 use crate::malloc;
+use crate::map::{self, LookupKind, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::mpstate;
@@ -87,9 +87,7 @@ fn decode_code_state_size(bytecode: *const u8) -> (usize, usize) {
 }
 
 fn is_native_gen_instance(o: Obj) -> bool {
-    unsafe {
-        (*gen_instance_ptr(o)).code_state.exc_sp_idx == CODE_STATE_EXC_SP_IDX_SENTINEL
-    }
+    unsafe { (*gen_instance_ptr(o)).code_state.exc_sp_idx == CODE_STATE_EXC_SP_IDX_SENTINEL }
 }
 
 fn gen_fun_bc(o: Obj) -> *const ObjFunBc {
@@ -168,7 +166,7 @@ pub fn gen_resume(
         self_.code_state.old_globals = objdict::dict_ptr(mpstate::globals_get());
         let fun = unsafe { &*(obj::as_ptr(self_.code_state.fun_bc) as *const ObjFunBc) };
         mpstate::globals_set(obj::from_ptr(
-            unsafe { (*fun.context).module.globals } as *const ObjDict as *const (),
+            unsafe { (*fun.context).module.globals } as *const ObjDict as *const ()
         ));
         type NativeGenFn = unsafe extern "C-unwind" fn(*mut CodeStateNative, Obj) -> VmReturnKind;
         let mut nlr_buf = nlr::NlrBuf::default();
@@ -196,14 +194,12 @@ pub fn gen_resume(
                     *ret_val = *self_.code_state.sp;
                 }
             }
-            VmReturnKind::Yield => {
-                unsafe {
-                    *ret_val = *self_.code_state.sp;
-                    if mpconfig::PY_GENERATOR_PEND_THROW {
-                        *self_.code_state.sp = obj::CONST_NONE;
-                    }
+            VmReturnKind::Yield => unsafe {
+                *ret_val = *self_.code_state.sp;
+                if mpconfig::PY_GENERATOR_PEND_THROW {
+                    *self_.code_state.sp = obj::CONST_NONE;
                 }
-            }
+            },
             VmReturnKind::Exception => {
                 self_.code_state.ip = ptr::null();
                 unsafe {
@@ -214,7 +210,8 @@ pub fn gen_resume(
                     obj::from_ptr(objexcept::type_stop_iteration() as *const ObjType as *const ()),
                 ) {
                     let msg = objstr::new_str(b"generator raised StopIteration");
-                    *ret_val = objexcept::new_exception_args(objexcept::type_runtime_error(), 1, &[msg]);
+                    *ret_val =
+                        objexcept::new_exception_args(objexcept::type_runtime_error(), 1, &[msg]);
                 }
             }
         }
@@ -245,7 +242,9 @@ pub fn gen_resume(
 
     let ret_kind = vm::execute_bytecode(&mut self_.code_state, throw_value);
 
-    mpstate::globals_set(obj::from_ptr(self_.code_state.old_globals as *const ObjDict as *const ()));
+    mpstate::globals_set(obj::from_ptr(
+        self_.code_state.old_globals as *const ObjDict as *const (),
+    ));
 
     self_.pend_exc = obj::CONST_NONE;
 
@@ -256,14 +255,12 @@ pub fn gen_resume(
                 *ret_val = *self_.code_state.sp;
             }
         }
-        VmReturnKind::Yield => {
-            unsafe {
-                *ret_val = *self_.code_state.sp;
-                if mpconfig::PY_GENERATOR_PEND_THROW {
-                    *self_.code_state.sp = obj::CONST_NONE;
-                }
+        VmReturnKind::Yield => unsafe {
+            *ret_val = *self_.code_state.sp;
+            if mpconfig::PY_GENERATOR_PEND_THROW {
+                *self_.code_state.sp = obj::CONST_NONE;
             }
-        }
+        },
         VmReturnKind::Exception => {
             self_.code_state.ip = ptr::null();
             unsafe {
@@ -274,7 +271,8 @@ pub fn gen_resume(
                 obj::from_ptr(objexcept::type_stop_iteration() as *const ObjType as *const ()),
             ) {
                 let msg = objstr::new_str(b"generator raised StopIteration");
-                *ret_val = objexcept::new_exception_args(objexcept::type_runtime_error(), 1, &[msg]);
+                *ret_val =
+                    objexcept::new_exception_args(objexcept::type_runtime_error(), 1, &[msg]);
             }
         }
     }
@@ -394,7 +392,9 @@ static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const (
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -413,7 +413,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -432,7 +434,9 @@ static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -464,7 +468,13 @@ fn fun_builtin_2_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -509,7 +519,8 @@ fn decode_native_code_state_size(fun: &ObjFunBc) -> (usize, usize) {
 fn gen_wrap_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_fun = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBc) };
     let (n_state, state_size) = decode_code_state_size(self_fun.bytecode);
-    let o = obj::malloc_var::<ObjGenInstance>(state_size, type_gen_instance()) as *mut ObjGenInstance;
+    let o =
+        obj::malloc_var::<ObjGenInstance>(state_size, type_gen_instance()) as *mut ObjGenInstance;
     unsafe {
         (*o).pend_exc = obj::CONST_NONE;
         (*o).code_state.fun_bc = obj::as_ptr(self_in) as *mut ObjFunBc;
@@ -522,8 +533,8 @@ fn gen_wrap_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj 
 fn native_gen_wrap_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_fun = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBc) };
     let (n_state, state_size) = decode_native_code_state_size(self_fun);
-    let o =
-        obj::malloc_var::<ObjGenInstanceNative>(state_size, type_gen_instance()) as *mut ObjGenInstanceNative;
+    let o = obj::malloc_var::<ObjGenInstanceNative>(state_size, type_gen_instance())
+        as *mut ObjGenInstanceNative;
     unsafe {
         (*o).pend_exc = obj::CONST_NONE;
         (*o).code_state.fun_bc = self_in;
@@ -535,13 +546,12 @@ fn native_gen_wrap_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) 
     }
 }
 
-static mut GEN_WRAP_SLOTS: [*const (); 2] = [
-    gen_wrap_call as *const (),
-    core::ptr::null(),
-];
+static mut GEN_WRAP_SLOTS: [*const (); 2] = [gen_wrap_call as *const (), core::ptr::null()];
 
 static mut TYPE_GEN_WRAP: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -559,13 +569,13 @@ static mut TYPE_GEN_WRAP: ObjType = ObjType {
     slots: unsafe { GEN_WRAP_SLOTS.as_ptr() },
 };
 
-static mut NATIVE_GEN_WRAP_SLOTS: [*const (); 2] = [
-    native_gen_wrap_call as *const (),
-    core::ptr::null(),
-];
+static mut NATIVE_GEN_WRAP_SLOTS: [*const (); 2] =
+    [native_gen_wrap_call as *const (), core::ptr::null()];
 
 static mut TYPE_NATIVE_GEN_WRAP: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -590,7 +600,9 @@ static mut GEN_INSTANCE_SLOTS: [*const (); 3] = [
 ];
 
 static mut TYPE_GEN_INSTANCE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -640,9 +652,11 @@ fn init_generator_types() {
                     value: new_fun_builtin_2(gen_instance_pend_throw),
                 });
             }
-            let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+            let ptr =
+                obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
             map::init_fixed_table(&mut (*ptr).map, table);
-            GEN_INSTANCE_SLOTS[2] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+            GEN_INSTANCE_SLOTS[2] =
+                obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
         }
         init_generator_exit();
     });
@@ -679,7 +693,13 @@ mod tests {
 
     fn make_test_fun_bc(name: Qstr) -> Obj {
         // Minimal prelude: n_state=1, n_exc_stack=0, name index 0, no cells.
-        static mut BYTECODE: [u8; 5] = [0x00, 0x00, 0x00, crate::bc0::LOAD_CONST_NONE, crate::bc0::RETURN_VALUE];
+        static mut BYTECODE: [u8; 5] = [
+            0x00,
+            0x00,
+            0x00,
+            crate::bc0::LOAD_CONST_NONE,
+            crate::bc0::RETURN_VALUE,
+        ];
         let ctx = malloc::new_obj::<ModuleContext>().expect("ctx");
         unsafe {
             (*ctx).module.base.type_ = objmodule::type_module() as *const ObjType;

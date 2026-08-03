@@ -3,11 +3,11 @@
 
 #![allow(non_snake_case)]
 
-use crate::asmbase::{self, MpAsmBase};
 use crate::asmarm::{
-    self, AsmArm, ASM_ARM_CC_EQ, ASM_ARM_CC_NE, ASM_ARM_REG_R0, ASM_ARM_REG_R1, ASM_ARM_REG_R2,
-    ASM_ARM_REG_R3, ASM_ARM_REG_R4, ASM_ARM_REG_R5, ASM_ARM_REG_R6, ASM_ARM_REG_FUN_TABLE,
+    self, AsmArm, ASM_ARM_CC_EQ, ASM_ARM_CC_NE, ASM_ARM_REG_FUN_TABLE, ASM_ARM_REG_R0,
+    ASM_ARM_REG_R1, ASM_ARM_REG_R2, ASM_ARM_REG_R3, ASM_ARM_REG_R4, ASM_ARM_REG_R5, ASM_ARM_REG_R6,
 };
+use crate::asmbase::{self, MpAsmBase};
 use crate::emitnative::{self, AsmContext, NativeBackend};
 use crate::mpconfig;
 use crate::qstr::Qstr;
@@ -41,7 +41,9 @@ impl NativeBackend for BackendArm {
     const REG_FUN_TABLE: i32 = ASM_ARM_REG_FUN_TABLE as i32;
     const REG_GENERATOR_STATE: i32 = ASM_ARM_REG_R5 as i32;
     const REG_QSTR_TABLE: i32 = ASM_ARM_REG_R6 as i32;
-    const REG_LOCAL_LAST: i32 = ASM_ARM_REG_R6 as i32;
+    // See the comment on the x64 backend: with `PERSISTENT_CODE_SAVE` this must
+    // be `REG_LOCAL_2`, not `REG_LOCAL_3` (`REG_QSTR_TABLE`).
+    const REG_LOCAL_LAST: i32 = ASM_ARM_REG_R5 as i32;
     const NLR_BUF_IDX_LOCAL_1: usize = 3;
     const N_X86: bool = false;
     const N_X64: bool = false;
@@ -72,7 +74,8 @@ impl NativeBackend for BackendArm {
     const HAS_ASM_STORE16_REG_REG_REG: bool = true;
     const HAS_ASM_STORE32_REG_REG_REG: bool = true;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn new_asm(max_labels: usize) -> Self::Asm {
         let mut asm = AsmArm {

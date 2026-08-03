@@ -29,7 +29,10 @@ pub fn format_ipv4_addr(ip: &[u8; IPV4ADDR_BUFSIZE], endian: Endian) -> Obj {
 }
 
 pub fn format_inet_addr(ip: &[u8; IPV4ADDR_BUFSIZE], port: Uint, endian: Endian) -> Obj {
-    let items = [format_ipv4_addr(ip, endian), obj::new_small_int(port as isize)];
+    let items = [
+        format_ipv4_addr(ip, endian),
+        obj::new_small_int(port as isize),
+    ];
     objtuple::new_tuple(2, Some(&items))
 }
 

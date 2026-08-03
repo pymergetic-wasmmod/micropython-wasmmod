@@ -224,10 +224,7 @@ fn write_r64_disp(asm: &mut AsmX64, r64: i32, disp_r64: i32, disp_offset: i32) {
     } else {
         MODRM_RM_DISP32
     };
-    write_byte_1(
-        asm,
-        modrm_r64(r64) | rm_disp | modrm_rm_r64(disp_r64),
-    );
+    write_byte_1(asm, modrm_r64(r64) | rm_disp | modrm_rm_r64(disp_r64));
     if (disp_r64 & 7) == ASM_X64_REG_RSP {
         write_byte_1(asm, 0x24);
     }
@@ -263,7 +260,11 @@ pub fn push_r64(asm: &mut AsmX64, src_r64: i32) {
     if src_r64 < 8 {
         write_byte_1(asm, OPCODE_PUSH_R64 | src_r64 as u8);
     } else {
-        write_byte_2(asm, REX_PREFIX | rex_b_from_r64(src_r64), OPCODE_PUSH_R64 | (src_r64 & 7) as u8);
+        write_byte_2(
+            asm,
+            REX_PREFIX | rex_b_from_r64(src_r64),
+            OPCODE_PUSH_R64 | (src_r64 & 7) as u8,
+        );
     }
 }
 
@@ -274,7 +275,11 @@ pub fn pop_r64(asm: &mut AsmX64, dest_r64: i32) {
     if dest_r64 < 8 {
         write_byte_1(asm, OPCODE_POP_R64 | dest_r64 as u8);
     } else {
-        write_byte_2(asm, REX_PREFIX | rex_b_from_r64(dest_r64), OPCODE_POP_R64 | (dest_r64 & 7) as u8);
+        write_byte_2(
+            asm,
+            REX_PREFIX | rex_b_from_r64(dest_r64),
+            OPCODE_POP_R64 | (dest_r64 & 7) as u8,
+        );
     }
 }
 
@@ -428,7 +433,11 @@ pub fn mov_i32_to_r64(asm: &mut AsmX64, src_i32: i32, dest_r64: i32) -> usize {
     if dest_r64 < 8 {
         write_byte_1(asm, OPCODE_MOV_I64_TO_R64 | dest_r64 as u8);
     } else {
-        write_byte_2(asm, REX_PREFIX | rex_b_from_r64(dest_r64), OPCODE_MOV_I64_TO_R64 | (dest_r64 & 7) as u8);
+        write_byte_2(
+            asm,
+            REX_PREFIX | rex_b_from_r64(dest_r64),
+            OPCODE_MOV_I64_TO_R64 | (dest_r64 & 7) as u8,
+        );
     }
     let loc = asm.base.get_code_pos();
     write_word32(asm, src_i32);
@@ -441,7 +450,13 @@ pub fn mov_i64_to_r64(asm: &mut AsmX64, src_i64: i64, dest_r64: i32) {
     }
     write_byte_2(
         asm,
-        REX_PREFIX | REX_W | if dest_r64 < 8 { 0 } else { rex_b_from_r64(dest_r64) },
+        REX_PREFIX
+            | REX_W
+            | if dest_r64 < 8 {
+                0
+            } else {
+                rex_b_from_r64(dest_r64)
+            },
         OPCODE_MOV_I64_TO_R64 | (dest_r64 & 7) as u8,
     );
     write_word64(asm, src_i64);

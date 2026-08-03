@@ -18,7 +18,9 @@ pub struct ObjGetitemIter {
 static mut GETITEM_ITER_SLOTS: [*const (); 1] = [getitem_iternext as *const ()];
 
 static mut TYPE_GETITEM_ITER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -52,7 +54,9 @@ pub fn type_getitem_iter() -> &'static ObjType {
 fn getitem_iternext(self_in: Obj, _buf: *mut ObjIterBuf) -> Obj {
     let self_ = unsafe { &mut *(obj::as_ptr(self_in) as *mut ObjGetitemIter) };
     let mut nlr_buf = NlrBuf::default();
-    match nlr::protect(&mut nlr_buf, || runtime::call_method_n_kw(1, 0, &self_.args)) {
+    match nlr::protect(&mut nlr_buf, || {
+        runtime::call_method_n_kw(1, 0, &self_.args)
+    }) {
         Ok(value) => {
             if obj::is_small_int(self_.args[2]) {
                 let n = obj::small_int_value(self_.args[2]) + 1;

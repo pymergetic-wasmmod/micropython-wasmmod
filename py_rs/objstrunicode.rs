@@ -6,16 +6,18 @@ use core::mem::size_of;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{self, IterNextFn, Obj, ObjBase, ObjIterBuf, ObjType, OBJ_SENTINEL};
+use crate::objpolyiter;
+use crate::objslice;
 use crate::objstr::{
     get_buffer, get_str_data_len, new_str, new_str_of_type, new_str_via_qstr, str_binary_op,
     str_make_new, str_print_json,
 };
-use crate::objpolyiter;
-use crate::objslice;
 use crate::qstr;
 use crate::raise::{self, MpRaise};
 use crate::runtime0::UnaryOp;
-use crate::unicode::{utf8_get_char, utf8_is_cont, utf8_is_nonascii, utf8_next_char, utf8_charlen, utf8_ptr_to_index};
+use crate::unicode::{
+    utf8_charlen, utf8_get_char, utf8_is_cont, utf8_is_nonascii, utf8_next_char, utf8_ptr_to_index,
+};
 
 // --- unicode str iterator -----------------------------------------------------
 
@@ -32,9 +34,11 @@ fn str_it_iternext(self_in: Obj) -> Obj {
     let (str_data, len) = get_str_data_len(self_.str);
     if self_.cur < len {
         let cur = &str_data[self_.cur..];
-        let end = utf8_next_char(cur);
-        let o_out = new_str_via_qstr(&cur[..end.len()]);
-        self_.cur += end.len();
+        let next = utf8_next_char(cur);
+        // C: `end - cur` byte length of the current character (not `next.len()`).
+        let char_len = cur.len() - next.len();
+        let o_out = new_str_via_qstr(&cur[..char_len]);
+        self_.cur += char_len;
         o_out
     } else {
         obj::OBJ_STOP_ITERATION
@@ -250,7 +254,9 @@ static mut STR_SLOTS: [*const (); 8] = [
 ];
 
 static mut TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_EQ_NOT_REFLEXIVE,
     name: 0,
     slot_index_make_new: 1,
@@ -271,12 +277,9 @@ static mut TYPE: ObjType = ObjType {
 static STR_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_str_type() {
-    STR_INIT.get_or_init(|| {
-        unsafe {
-            (*(core::ptr::addr_of_mut!(TYPE) as *mut ObjType)).name =
-                qstr::from_str("str");
-            STR_SLOTS[7] = crate::objstr::str_locals_dict_obj().0 as *const ();
-        }
+    STR_INIT.get_or_init(|| unsafe {
+        (*(core::ptr::addr_of_mut!(TYPE) as *mut ObjType)).name = qstr::from_str("str");
+        STR_SLOTS[7] = crate::objstr::str_locals_dict_obj().0 as *const ();
     });
 }
 

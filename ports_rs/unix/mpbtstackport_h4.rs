@@ -1,7 +1,7 @@
 //! rewrite of ports/unix/mpbtstackport_h4.c
 // symmetry: done
 
-use super::mpbtstackport_common::{BtStackState, btstack_state};
+use super::mpbtstackport_common::{btstack_state, BtStackState};
 
 /// `mp_bluetooth_hci_poll_h4`
 pub fn hci_poll_h4() {

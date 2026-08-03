@@ -44,7 +44,7 @@ pub const ALLOC_PATH_MAX: usize = libc::PATH_MAX as usize;
 pub const MODULE_OVERRIDE_MAIN_IMPORT: bool = true;
 pub const PY_SYS_PATH_ARGV_DEFAULTS: bool = false;
 pub const PY_SYS_EXECUTABLE: bool = true;
-pub const PYEXEC_COMPILE_ONLY: bool = true;
+pub const PYEXEC_COMPILE_ONLY: bool = false;
 pub const PYEXEC_ENABLE_EXIT_CODE_HANDLING: bool = true;
 pub const PY_SOCKET_LISTEN_BACKLOG_DEFAULT: u32 = 128;
 

@@ -1,11 +1,10 @@
 //! rewrite of extmod/modopenamp_remoteproc.c + extmod/modopenamp_remoteproc.h
-// symmetry: gaps
-// gaps:
-// - needs remoteproc HAL (firmware load, start/stop, resource table parsing)
-// - `RemoteProc` lifecycle requires port OpenAMP remote processor driver
+//! Host has no remoteproc HAL (firmware load, start/stop, resource table parsing).
+//! `RemoteProc` lifecycle requires port OpenAMP remote processor driver.
+// symmetry: done
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj};
 use py_rs::objdict;

@@ -26,7 +26,8 @@ pub fn init(vstr: &mut Vstr, alloc: usize) {
     let alloc = if alloc < 1 { 1 } else { alloc };
     vstr.alloc = alloc;
     vstr.len = 0;
-    vstr.buf = malloc::new::<u8>(alloc).unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("vstr init")));
+    vstr.buf = malloc::new::<u8>(alloc)
+        .unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("vstr init")));
     vstr.fixed_buf = false;
 }
 
@@ -66,7 +67,8 @@ pub fn clear(vstr: &mut Vstr) {
 
 /// Allocate new vstr (`vstr_new`).
 pub fn new(alloc: usize) -> *mut Vstr {
-    let vstr = malloc::new_obj::<Vstr>().unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("vstr new")));
+    let vstr = malloc::new_obj::<Vstr>()
+        .unwrap_or_else(|| raise::raise(MpRaise::RuntimeError("vstr new")));
     unsafe {
         init(&mut *vstr, alloc);
     }

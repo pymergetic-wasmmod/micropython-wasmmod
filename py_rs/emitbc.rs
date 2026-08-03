@@ -3,7 +3,13 @@
 
 use crate::bc::{encode_uint, ENCODE_UINT_MAX_BYTES};
 use crate::bc0::{self, SCOPE_FLAG_ALL_SIG, SCOPE_FLAG_GENERATOR};
-use crate::emit::{self, EmitCommon, PassKind, EMIT_BUILD_LIST, EMIT_BUILD_MAP, EMIT_BUILD_SET, EMIT_BUILD_SLICE, EMIT_BUILD_TUPLE, EMIT_IDOP_GLOBAL_GLOBAL, EMIT_IDOP_GLOBAL_NAME, EMIT_IDOP_LOCAL_DEREF, EMIT_IDOP_LOCAL_FAST, EMIT_IMPORT_FROM, EMIT_IMPORT_NAME, EMIT_SUBSCR_DELETE, EMIT_SUBSCR_LOAD, EMIT_SUBSCR_STORE, EMIT_ATTR_DELETE, EMIT_ATTR_LOAD, EMIT_ATTR_STORE, EMIT_SETUP_BLOCK_WITH, EMIT_YIELD_FROM, EMIT_YIELD_VALUE};
+use crate::emit::{
+    self, EmitCommon, PassKind, EMIT_ATTR_DELETE, EMIT_ATTR_LOAD, EMIT_ATTR_STORE, EMIT_BUILD_LIST,
+    EMIT_BUILD_MAP, EMIT_BUILD_SET, EMIT_BUILD_SLICE, EMIT_BUILD_TUPLE, EMIT_IDOP_GLOBAL_GLOBAL,
+    EMIT_IDOP_GLOBAL_NAME, EMIT_IDOP_LOCAL_DEREF, EMIT_IDOP_LOCAL_FAST, EMIT_IMPORT_FROM,
+    EMIT_IMPORT_NAME, EMIT_SETUP_BLOCK_WITH, EMIT_SUBSCR_DELETE, EMIT_SUBSCR_LOAD,
+    EMIT_SUBSCR_STORE, EMIT_YIELD_FROM, EMIT_YIELD_VALUE,
+};
 use crate::emitglue;
 use crate::lexer::TokenKind;
 use crate::malloc;
@@ -68,7 +74,10 @@ fn write_code_info_byte(emit: &mut EmitBc, val: u8) {
 
 fn write_code_info_qstr(emit: &mut EmitBc, qst: Qstr) {
     let idx = emit::emit_common_use_qstr(unsafe { &mut *emit.emit_common }, qst);
-    encode_uint(&mut |b| unsafe { *get_cur_to_write_code_info(emit, 1) = b }, idx);
+    encode_uint(
+        &mut |b| unsafe { *get_cur_to_write_code_info(emit, 1) = b },
+        idx,
+    );
 }
 
 fn get_cur_to_write_bytecode(emit: &mut EmitBc, num_bytes: usize) -> *mut u8 {
@@ -150,7 +159,10 @@ fn write_bytecode_byte_int(emit: &mut EmitBc, stack_adj: i32, b1: u8, mut num: i
 
 fn write_bytecode_byte_uint(emit: &mut EmitBc, stack_adj: i32, b: u8, val: usize) {
     write_bytecode_byte(emit, stack_adj, b);
-    encode_uint(&mut |byte| unsafe { *get_cur_to_write_bytecode(emit, 1) = byte }, val);
+    encode_uint(
+        &mut |byte| unsafe { *get_cur_to_write_bytecode(emit, 1) = byte },
+        val,
+    );
 }
 
 fn write_bytecode_byte_const(emit: &mut EmitBc, stack_adj: i32, b: u8, n: usize) {
@@ -196,7 +208,7 @@ fn write_bytecode_byte_label(emit: &mut EmitBc, stack_adj: i32, b1: u8, label: u
             jump_encoding_size = 0;
         }
         bytecode_offset -= jump_encoding_size as isize;
-        debug_assert!(!is_signed || bytecode_offset >= 0);
+        debug_assert!(is_signed || bytecode_offset >= 0);
     }
     let total = 2 + jump_encoding_size;
     let c = get_cur_to_write_bytecode(emit, total);
@@ -358,7 +370,9 @@ pub fn end_pass(emit: *mut crate::emit::Emit) -> bool {
     } else if emit.pass == PassKind::Emit {
         debug_assert!(emit.code_info_offset <= emit.code_info_size);
         debug_assert!(emit.bytecode_offset <= emit.bytecode_size);
-        if emit.code_info_offset != emit.code_info_size || emit.bytecode_offset != emit.bytecode_size {
+        if emit.code_info_offset != emit.code_info_size
+            || emit.bytecode_offset != emit.bytecode_size
+        {
             emit.code_info_size = emit.code_info_offset;
             emit.bytecode_size = emit.bytecode_offset;
             return false;
@@ -408,7 +422,11 @@ fn write_source_lines(emit: &mut EmitBc, mut bytes_to_skip: usize, mut lines_to_
     while bytes_to_skip > 0 || lines_to_skip > 0 {
         let (b, l, two): (usize, usize, bool) = if lines_to_skip <= 6 || bytes_to_skip > 0xf {
             let b = bytes_to_skip.min(0x1f);
-            let l = if b < bytes_to_skip { 0 } else { lines_to_skip.min(0x3) };
+            let l = if b < bytes_to_skip {
+                0
+            } else {
+                lines_to_skip.min(0x3)
+            };
             (b, l, false)
         } else {
             (bytes_to_skip.min(0xf), lines_to_skip.min(0x7ff), true)
@@ -454,7 +472,11 @@ pub fn load_const_tok(emit: *mut crate::emit::Emit, tok: TokenKind) {
     if tok == TokenKind::Ellipsis {
         write_bytecode_byte_obj(e, 1, bc0::LOAD_CONST_OBJ, objsingleton::const_ellipsis());
     } else {
-        write_bytecode_byte(e, 1, bc0::LOAD_CONST_FALSE + (tok as u8 - TokenKind::KwFalse as u8));
+        write_bytecode_byte(
+            e,
+            1,
+            bc0::LOAD_CONST_FALSE + (tok as u8 - TokenKind::KwFalse as u8),
+        );
     }
 }
 
@@ -462,14 +484,16 @@ pub fn load_const_small_int(emit: *mut crate::emit::Emit, arg: i64) {
     let e = emit_ref_mut(emit);
     debug_assert!(smallint::fits(arg as crate::obj::Int));
     let excess = bc0::LOAD_CONST_SMALL_INT_MULTI_EXCESS as i64;
-    if -excess <= arg
-        && arg < bc0::LOAD_CONST_SMALL_INT_MULTI_NUM as i64 - excess
-    {
-        write_bytecode_byte(
-            e,
-            1,
-            bc0::LOAD_CONST_SMALL_INT_MULTI + bc0::LOAD_CONST_SMALL_INT_MULTI_EXCESS + arg as u8,
-        );
+    if -excess <= arg && arg < bc0::LOAD_CONST_SMALL_INT_MULTI_NUM as i64 - excess {
+        // `arg` may be negative (e.g. -1); do the addition in a wide signed
+        // type like C's `mp_int_t` arithmetic (which implicitly truncates to
+        // `byte` at the call boundary) instead of casting `arg` to `u8`
+        // first, which would wrap a small negative number into a huge
+        // positive one and overflow the subsequent `u8` addition.
+        let byte_val = bc0::LOAD_CONST_SMALL_INT_MULTI as i64
+            + bc0::LOAD_CONST_SMALL_INT_MULTI_EXCESS as i64
+            + arg;
+        write_bytecode_byte(e, 1, byte_val as u8);
     } else {
         write_bytecode_byte_int(e, 1, bc0::LOAD_CONST_SMALL_INT, arg);
     }
@@ -502,7 +526,11 @@ pub fn load_global(emit: *mut crate::emit::Emit, qst: Qstr, kind: i32) {
 
 pub fn load_method(emit: *mut crate::emit::Emit, qst: Qstr, is_super: bool) {
     let stack_adj = 1 - 2 * is_super as i32;
-    let op = if is_super { bc0::LOAD_SUPER_METHOD } else { bc0::LOAD_METHOD };
+    let op = if is_super {
+        bc0::LOAD_SUPER_METHOD
+    } else {
+        bc0::LOAD_METHOD
+    };
     write_bytecode_byte_qstr(emit_ref_mut(emit), stack_adj, op, qst);
 }
 
@@ -550,7 +578,12 @@ pub fn store_global(emit: *mut crate::emit::Emit, qst: Qstr, kind: i32) {
 }
 
 pub fn delete_local(emit: *mut crate::emit::Emit, _qst: Qstr, local_num: usize, kind: i32) {
-    write_bytecode_byte_uint(emit_ref_mut(emit), 0, bc0::DELETE_FAST + kind as u8, local_num);
+    write_bytecode_byte_uint(
+        emit_ref_mut(emit),
+        0,
+        bc0::DELETE_FAST + kind as u8,
+        local_num,
+    );
 }
 
 pub fn delete_global(emit: *mut crate::emit::Emit, qst: Qstr, kind: i32) {
@@ -583,12 +616,20 @@ pub fn jump(emit: *mut crate::emit::Emit, label: usize) {
 }
 
 pub fn pop_jump_if(emit: *mut crate::emit::Emit, cond: bool, label: usize) {
-    let op = if cond { bc0::POP_JUMP_IF_TRUE } else { bc0::POP_JUMP_IF_FALSE };
+    let op = if cond {
+        bc0::POP_JUMP_IF_TRUE
+    } else {
+        bc0::POP_JUMP_IF_FALSE
+    };
     write_bytecode_byte_label(emit_ref_mut(emit), -1, op, label);
 }
 
 pub fn jump_if_or_pop(emit: *mut crate::emit::Emit, cond: bool, label: usize) {
-    let op = if cond { bc0::JUMP_IF_TRUE_OR_POP } else { bc0::JUMP_IF_FALSE_OR_POP };
+    let op = if cond {
+        bc0::JUMP_IF_TRUE_OR_POP
+    } else {
+        bc0::JUMP_IF_FALSE_OR_POP
+    };
     write_bytecode_byte_label(emit_ref_mut(emit), -1, op, label);
 }
 
@@ -613,7 +654,12 @@ pub fn unwind_jump(emit: *mut crate::emit::Emit, label: usize, except_depth: usi
 
 pub fn setup_block(emit: *mut crate::emit::Emit, label: usize, kind: i32) {
     let stack_adj = if kind == EMIT_SETUP_BLOCK_WITH { 2 } else { 0 };
-    write_bytecode_byte_label(emit_ref_mut(emit), stack_adj, bc0::SETUP_WITH + kind as u8, label);
+    write_bytecode_byte_label(
+        emit_ref_mut(emit),
+        stack_adj,
+        bc0::SETUP_WITH + kind as u8,
+        label,
+    );
 }
 
 pub fn with_cleanup(emit: *mut crate::emit::Emit, label: usize) {
@@ -628,8 +674,16 @@ pub fn end_finally(emit: *mut crate::emit::Emit) {
 }
 
 pub fn get_iter(emit: *mut crate::emit::Emit, use_stack: bool) {
-    let stack_adj = if use_stack { obj::ITER_BUF_NSLOTS as i32 - 1 } else { 0 };
-    let op = if use_stack { bc0::GET_ITER_STACK } else { bc0::GET_ITER };
+    let stack_adj = if use_stack {
+        obj::ITER_BUF_NSLOTS as i32 - 1
+    } else {
+        0
+    };
+    let op = if use_stack {
+        bc0::GET_ITER_STACK
+    } else {
+        bc0::GET_ITER
+    };
     write_bytecode_byte(emit_ref_mut(emit), stack_adj, op);
 }
 
@@ -664,8 +718,17 @@ pub fn binary_op(emit: *mut crate::emit::Emit, op: BinaryOp) {
 }
 
 pub fn build(emit: *mut crate::emit::Emit, n_args: usize, kind: i32) {
-    let stack_adj = if kind == EMIT_BUILD_MAP { 1 } else { 1 - n_args as i32 };
-    write_bytecode_byte_uint(emit_ref_mut(emit), stack_adj, bc0::BUILD_TUPLE + kind as u8, n_args);
+    let stack_adj = if kind == EMIT_BUILD_MAP {
+        1
+    } else {
+        1 - n_args as i32
+    };
+    write_bytecode_byte_uint(
+        emit_ref_mut(emit),
+        stack_adj,
+        bc0::BUILD_TUPLE + kind as u8,
+        n_args,
+    );
 }
 
 pub fn store_map(emit: *mut crate::emit::Emit) {
@@ -688,7 +751,12 @@ pub fn store_comp(emit: *mut crate::emit::Emit, kind: ScopeKind, collection_stac
 }
 
 pub fn unpack_sequence(emit: *mut crate::emit::Emit, n_args: usize) {
-    write_bytecode_byte_uint(emit_ref_mut(emit), -1 + n_args as i32, bc0::UNPACK_SEQUENCE, n_args);
+    write_bytecode_byte_uint(
+        emit_ref_mut(emit),
+        -1 + n_args as i32,
+        bc0::UNPACK_SEQUENCE,
+        n_args,
+    );
 }
 
 pub fn unpack_ex(emit: *mut crate::emit::Emit, n_left: usize, n_right: usize) {
@@ -700,7 +768,12 @@ pub fn unpack_ex(emit: *mut crate::emit::Emit, n_left: usize, n_right: usize) {
     );
 }
 
-pub fn make_function(emit: *mut crate::emit::Emit, scope: *mut Scope, n_pos_defaults: usize, n_kw_defaults: usize) {
+pub fn make_function(
+    emit: *mut crate::emit::Emit,
+    scope: *mut Scope,
+    n_pos_defaults: usize,
+    n_kw_defaults: usize,
+) {
     let e = emit_ref_mut(emit);
     unsafe {
         if n_pos_defaults == 0 && n_kw_defaults == 0 {
@@ -751,12 +824,36 @@ fn call_helper(
     }
 }
 
-pub fn call_function(emit: *mut crate::emit::Emit, n_positional: usize, n_keyword: usize, star_flags: u8) {
-    call_helper(emit, 0, bc0::CALL_FUNCTION, n_positional, n_keyword, star_flags);
+pub fn call_function(
+    emit: *mut crate::emit::Emit,
+    n_positional: usize,
+    n_keyword: usize,
+    star_flags: u8,
+) {
+    call_helper(
+        emit,
+        0,
+        bc0::CALL_FUNCTION,
+        n_positional,
+        n_keyword,
+        star_flags,
+    );
 }
 
-pub fn call_method(emit: *mut crate::emit::Emit, n_positional: usize, n_keyword: usize, star_flags: u8) {
-    call_helper(emit, -1, bc0::CALL_METHOD, n_positional, n_keyword, star_flags);
+pub fn call_method(
+    emit: *mut crate::emit::Emit,
+    n_positional: usize,
+    n_keyword: usize,
+    star_flags: u8,
+) {
+    call_helper(
+        emit,
+        -1,
+        bc0::CALL_METHOD,
+        n_positional,
+        n_keyword,
+        star_flags,
+    );
 }
 
 pub fn return_value(emit: *mut crate::emit::Emit) {
@@ -766,7 +863,11 @@ pub fn return_value(emit: *mut crate::emit::Emit) {
 
 pub fn raise_varargs(emit: *mut crate::emit::Emit, n_args: usize) {
     debug_assert!(n_args <= 2);
-    write_bytecode_byte(emit_ref_mut(emit), -(n_args as i32), bc0::RAISE_LAST + n_args as u8);
+    write_bytecode_byte(
+        emit_ref_mut(emit),
+        -(n_args as i32),
+        bc0::RAISE_LAST + n_args as u8,
+    );
     emit_ref_mut(emit).suppress = true;
 }
 
@@ -796,7 +897,11 @@ pub fn async_with_setup_finally(
     jump(emit, label_aexit_no_exc);
     label_assign(emit, label_finally_block);
     dup_top(emit);
-    load_global(emit, qstr::from_str("BaseException"), EMIT_IDOP_GLOBAL_GLOBAL);
+    load_global(
+        emit,
+        qstr::from_str("BaseException"),
+        EMIT_IDOP_GLOBAL_GLOBAL,
+    );
     binary_op(emit, BinaryOp::ExceptionMatch);
     pop_jump_if(emit, false, label_ret_unwind_jump);
 }

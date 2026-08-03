@@ -169,7 +169,13 @@ fn compile_code(bytes: &[u8], prog: &mut ByteProg, sizecode: bool) -> Option<usi
                 } else {
                     emit_byte(prog, term, SPLIT, sizecode);
                 }
-                emit_checked(prog, term + 1, rel(term, prog.bytelen as usize), &mut err, sizecode);
+                emit_checked(
+                    prog,
+                    term + 1,
+                    rel(term, prog.bytelen as usize),
+                    &mut err,
+                    sizecode,
+                );
                 prog.len += 1;
                 term = prog.bytelen as usize;
             }
@@ -188,7 +194,13 @@ fn compile_code(bytes: &[u8], prog: &mut ByteProg, sizecode: bool) -> Option<usi
                 } else {
                     emit_byte(prog, term, SPLIT, sizecode);
                 }
-                emit_checked(prog, term + 1, rel(term, prog.bytelen as usize), &mut err, sizecode);
+                emit_checked(
+                    prog,
+                    term + 1,
+                    rel(term, prog.bytelen as usize),
+                    &mut err,
+                    sizecode,
+                );
                 prog.len += 2;
                 term = prog.bytelen as usize;
             }
@@ -210,7 +222,13 @@ fn compile_code(bytes: &[u8], prog: &mut ByteProg, sizecode: bool) -> Option<usi
             }
             b'|' => {
                 if alt_label != 0 {
-                    emit_checked(prog, alt_label, rel(alt_label, prog.bytelen as usize) + 1, &mut err, sizecode);
+                    emit_checked(
+                        prog,
+                        alt_label,
+                        rel(alt_label, prog.bytelen as usize) + 1,
+                        &mut err,
+                        sizecode,
+                    );
                 }
                 insert_code(prog, start, 2, sizecode);
                 let jmp_pc = prog.bytelen as usize;
@@ -218,7 +236,13 @@ fn compile_code(bytes: &[u8], prog: &mut ByteProg, sizecode: bool) -> Option<usi
                 alt_label = jmp_pc + 1;
                 prog.bytelen += 1;
                 emit_byte(prog, start, SPLIT, sizecode);
-                emit_checked(prog, start + 1, rel(start, prog.bytelen as usize), &mut err, sizecode);
+                emit_checked(
+                    prog,
+                    start + 1,
+                    rel(start, prog.bytelen as usize),
+                    &mut err,
+                    sizecode,
+                );
                 prog.len += 2;
                 term = prog.bytelen as usize;
             }
@@ -249,7 +273,13 @@ fn compile_code(bytes: &[u8], prog: &mut ByteProg, sizecode: bool) -> Option<usi
     }
 
     if alt_label != 0 {
-        emit_checked(prog, alt_label, rel(alt_label, prog.bytelen as usize) + 1, &mut err, sizecode);
+        emit_checked(
+            prog,
+            alt_label,
+            rel(alt_label, prog.bytelen as usize) + 1,
+            &mut err,
+            sizecode,
+        );
     }
 
     if err {

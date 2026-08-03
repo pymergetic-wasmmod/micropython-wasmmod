@@ -3,7 +3,7 @@
 
 use crate::map::{self, LookupKind, Map};
 use crate::mpconfig;
-use crate::obj::{self, Obj, Int};
+use crate::obj::{self, Int, Obj};
 use crate::qstr::Qstr;
 use crate::raise::{self, MpRaise};
 
@@ -77,7 +77,9 @@ pub fn check_num_sig(n_args: usize, n_kw: usize, sig: u32) {
         if mpconfig::ERROR_REPORTING <= mpconfig::ERROR_REPORTING_TERSE as u8 {
             error_terse_mismatch();
         }
-        raise::raise(MpRaise::TypeError("function doesn't take keyword arguments"));
+        raise::raise(MpRaise::TypeError(
+            "function doesn't take keyword arguments",
+        ));
     }
 
     if n_args_min == n_args_max {
@@ -126,7 +128,9 @@ pub fn parse_all(
             }
             pos_found += 1;
             pos[i]
-        } else if let Some(elem) = map::lookup(kws, obj::new_qstr(allowed[i].qst), LookupKind::Lookup) {
+        } else if let Some(elem) =
+            map::lookup(kws, obj::new_qstr(allowed[i].qst), LookupKind::Lookup)
+        {
             kws_found += 1;
             elem.value
         } else {

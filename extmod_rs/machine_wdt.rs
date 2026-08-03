@@ -2,10 +2,12 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::qstr;
 
@@ -33,7 +35,9 @@ struct ObjFunBuiltin2 {
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -51,7 +55,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -102,7 +108,9 @@ fn wdt_ptr(o: Obj) -> *mut MachineWdt {
 }
 
 static mut WDT_DEFAULT: MachineWdt = MachineWdt {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     timeout_ms: 5000,
 };
 
@@ -157,7 +165,9 @@ fn wdt_timeout_ms(self_in: Obj, timeout_in: Obj) -> Obj {
 
 static mut WDT_SLOTS: [*const (); 2] = [wdt_make_new as MakeNewFn as *const (), core::ptr::null()];
 static mut WDT_TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -189,8 +199,8 @@ fn init_wdt_type() -> &'static ObjType {
                 value: mk2(wdt_timeout_ms),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             WDT_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

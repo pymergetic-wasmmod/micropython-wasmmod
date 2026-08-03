@@ -54,8 +54,10 @@ static PINBASE_PIN_P: PinProtocol = PinProtocol {
     ioctl: pinbase_ioctl,
 };
 
-static mut PINBASE_SLOTS: [*const (); 2] =
-    [pinbase_make_new as *const (), &raw const PINBASE_PIN_P as *const ()];
+static mut PINBASE_SLOTS: [*const (); 2] = [
+    pinbase_make_new as *const (),
+    &raw const PINBASE_PIN_P as *const (),
+];
 static mut PINBASE_TYPE: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
@@ -80,11 +82,9 @@ static mut PINBASE_TYPE: ObjType = ObjType {
 static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_pinbase() {
-    INIT.get_or_init(|| {
-        unsafe {
-            PINBASE_TYPE.name = qstr::from_str("PinBase");
-            PINBASE_SINGLETON.base.type_ = &PINBASE_TYPE;
-        }
+    INIT.get_or_init(|| unsafe {
+        PINBASE_TYPE.name = qstr::from_str("PinBase");
+        PINBASE_SINGLETON.base.type_ = &PINBASE_TYPE;
     });
 }
 

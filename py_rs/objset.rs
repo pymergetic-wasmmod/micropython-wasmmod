@@ -4,8 +4,8 @@
 use core::mem::size_of;
 
 use crate::argcheck;
-use crate::map::{self, LookupKind, MapElem, Set};
 use crate::malloc;
+use crate::map::{self, LookupKind, MapElem, Set};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{
@@ -57,7 +57,9 @@ static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const (
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -76,7 +78,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -95,7 +99,9 @@ static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -127,7 +133,13 @@ fn fun_builtin_2_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -195,8 +207,10 @@ static mut SET_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -226,8 +240,10 @@ static mut FROZENSET_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE_FROZENSET: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_FROZENSET: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
     name: 0,
     slot_index_make_new: 1,
@@ -252,27 +268,84 @@ fn init_set_type() {
         return;
     }
     SET_INIT.get_or_init(|| {
+        unsafe {
+            TYPE.name = qstr::from_str("set");
+        }
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("add")), value: new_fun_builtin_2(set_add) },
-            MapElem { key: obj::new_qstr(qstr::from_str("clear")), value: new_fun_builtin_1(set_clear) },
-            MapElem { key: obj::new_qstr(qstr::from_str("copy")), value: new_fun_builtin_1(set_copy) },
-            MapElem { key: obj::new_qstr(qstr::from_str("discard")), value: new_fun_builtin_2(set_discard) },
-            MapElem { key: obj::new_qstr(qstr::from_str("difference")), value: new_fun_builtin_var(1, usize::MAX as u8, set_diff) },
-            MapElem { key: obj::new_qstr(qstr::from_str("difference_update")), value: new_fun_builtin_var(1, usize::MAX as u8, set_diff_update) },
-            MapElem { key: obj::new_qstr(qstr::from_str("intersection")), value: new_fun_builtin_2(set_intersect) },
-            MapElem { key: obj::new_qstr(qstr::from_str("intersection_update")), value: new_fun_builtin_2(set_intersect_update) },
-            MapElem { key: obj::new_qstr(qstr::from_str("isdisjoint")), value: new_fun_builtin_2(set_isdisjoint) },
-            MapElem { key: obj::new_qstr(qstr::from_str("issubset")), value: new_fun_builtin_2(set_issubset) },
-            MapElem { key: obj::new_qstr(qstr::from_str("issuperset")), value: new_fun_builtin_2(set_issuperset) },
-            MapElem { key: obj::new_qstr(qstr::from_str("pop")), value: new_fun_builtin_1(set_pop) },
-            MapElem { key: obj::new_qstr(qstr::from_str("remove")), value: new_fun_builtin_2(set_remove) },
-            MapElem { key: obj::new_qstr(qstr::from_str("symmetric_difference")), value: new_fun_builtin_2(set_symmetric_difference) },
-            MapElem { key: obj::new_qstr(qstr::from_str("symmetric_difference_update")), value: new_fun_builtin_2(set_symmetric_difference_update) },
-            MapElem { key: obj::new_qstr(qstr::from_str("union")), value: new_fun_builtin_2(set_union) },
-            MapElem { key: obj::new_qstr(qstr::from_str("update")), value: new_fun_builtin_var(1, usize::MAX as u8, set_update) },
-            MapElem { key: obj::new_qstr(qstr::from_str("__contains__")), value: new_fun_builtin_2(op_contains) },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("add")),
+                value: new_fun_builtin_2(set_add),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("clear")),
+                value: new_fun_builtin_1(set_clear),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("copy")),
+                value: new_fun_builtin_1(set_copy),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("discard")),
+                value: new_fun_builtin_2(set_discard),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("difference")),
+                value: new_fun_builtin_var(1, usize::MAX as u8, set_diff),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("difference_update")),
+                value: new_fun_builtin_var(1, usize::MAX as u8, set_diff_update),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("intersection")),
+                value: new_fun_builtin_2(set_intersect),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("intersection_update")),
+                value: new_fun_builtin_2(set_intersect_update),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("isdisjoint")),
+                value: new_fun_builtin_2(set_isdisjoint),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("issubset")),
+                value: new_fun_builtin_2(set_issubset),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("issuperset")),
+                value: new_fun_builtin_2(set_issuperset),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("pop")),
+                value: new_fun_builtin_1(set_pop),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("remove")),
+                value: new_fun_builtin_2(set_remove),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("symmetric_difference")),
+                value: new_fun_builtin_2(set_symmetric_difference),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("symmetric_difference_update")),
+                value: new_fun_builtin_2(set_symmetric_difference_update),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("union")),
+                value: new_fun_builtin_2(set_union),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("update")),
+                value: new_fun_builtin_var(1, usize::MAX as u8, set_update),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("__contains__")),
+                value: new_fun_builtin_2(op_contains),
+            },
         ];
-        let ptr = obj::malloc_helper(size_of::<ObjDict>(), &TYPE) as *mut ObjDict;
+        let ptr = obj::malloc_helper(size_of::<ObjDict>(), unsafe { &TYPE }) as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             SET_SLOTS[6] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -286,18 +359,49 @@ fn init_frozenset_type() {
     }
     FROZENSET_INIT.get_or_init(|| {
         init_set_type();
+        unsafe {
+            TYPE_FROZENSET.name = qstr::from_str("frozenset");
+        }
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("copy")), value: new_fun_builtin_1(set_copy) },
-            MapElem { key: obj::new_qstr(qstr::from_str("difference")), value: new_fun_builtin_var(1, usize::MAX as u8, set_diff) },
-            MapElem { key: obj::new_qstr(qstr::from_str("intersection")), value: new_fun_builtin_2(set_intersect) },
-            MapElem { key: obj::new_qstr(qstr::from_str("isdisjoint")), value: new_fun_builtin_2(set_isdisjoint) },
-            MapElem { key: obj::new_qstr(qstr::from_str("issubset")), value: new_fun_builtin_2(set_issubset) },
-            MapElem { key: obj::new_qstr(qstr::from_str("issuperset")), value: new_fun_builtin_2(set_issuperset) },
-            MapElem { key: obj::new_qstr(qstr::from_str("symmetric_difference")), value: new_fun_builtin_2(set_symmetric_difference) },
-            MapElem { key: obj::new_qstr(qstr::from_str("union")), value: new_fun_builtin_2(set_union) },
-            MapElem { key: obj::new_qstr(qstr::from_str("__contains__")), value: new_fun_builtin_2(op_contains) },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("copy")),
+                value: new_fun_builtin_1(set_copy),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("difference")),
+                value: new_fun_builtin_var(1, usize::MAX as u8, set_diff),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("intersection")),
+                value: new_fun_builtin_2(set_intersect),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("isdisjoint")),
+                value: new_fun_builtin_2(set_isdisjoint),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("issubset")),
+                value: new_fun_builtin_2(set_issubset),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("issuperset")),
+                value: new_fun_builtin_2(set_issuperset),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("symmetric_difference")),
+                value: new_fun_builtin_2(set_symmetric_difference),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("union")),
+                value: new_fun_builtin_2(set_union),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("__contains__")),
+                value: new_fun_builtin_2(op_contains),
+            },
         ];
-        let ptr = obj::malloc_helper(size_of::<ObjDict>(), &TYPE_FROZENSET) as *mut ObjDict;
+        let ptr =
+            obj::malloc_helper(size_of::<ObjDict>(), unsafe { &TYPE_FROZENSET }) as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             FROZENSET_SLOTS[6] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -310,7 +414,7 @@ pub fn type_set() -> &'static ObjType {
         panic!("set builtin disabled");
     }
     init_set_type();
-    &TYPE
+    unsafe { &TYPE }
 }
 
 pub fn type_frozenset() -> &'static ObjType {
@@ -321,7 +425,7 @@ pub fn type_frozenset() -> &'static ObjType {
         panic!("frozenset builtin disabled");
     }
     init_frozenset_type();
-    &TYPE_FROZENSET
+    unsafe { &TYPE_FROZENSET }
 }
 
 fn set_ptr(o: Obj) -> *mut ObjSet {
@@ -369,7 +473,10 @@ fn iter_next(iter: Obj) -> Obj {
     } else if (t.flags & obj::TYPE_FLAG_ITER_IS_ITERNEXT) != 0 {
         if let Some(slot) = obj::type_get_iter(t) {
             unsafe {
-                std::mem::transmute::<_, fn(Obj, *mut ObjIterBuf) -> Obj>(slot)(iter, core::ptr::null_mut())
+                std::mem::transmute::<_, fn(Obj, *mut ObjIterBuf) -> Obj>(slot)(
+                    iter,
+                    core::ptr::null_mut(),
+                )
             }
         } else {
             obj::OBJ_STOP_ITERATION
@@ -397,7 +504,9 @@ fn for_each_item(other_in: Obj, mut f: impl FnMut(Obj)) {
         return;
     }
     let mut iter_buf = ObjIterBuf {
-        base: ObjBase { type_: core::ptr::null() },
+        base: ObjBase {
+            type_: core::ptr::null(),
+        },
         buf: [obj::OBJ_NULL; 3],
     };
     let iter = runtime::getiter(other_in, Some(&mut iter_buf));
@@ -416,7 +525,11 @@ fn set_extend_from_iter(set: Obj, iterable: Obj) {
 
 fn set_update_int(self_: *mut ObjSet, other_in: Obj) {
     for_each_item(other_in, |next| {
-        map::set_lookup(&mut unsafe { &mut *self_ }.set, next, LookupKind::AddIfNotFound);
+        map::set_lookup(
+            &mut unsafe { &mut *self_ }.set,
+            next,
+            LookupKind::AddIfNotFound,
+        );
     });
 }
 
@@ -445,7 +558,8 @@ pub fn set_store(self_in: Obj, item: Obj) {
 
 pub fn set_print(print: &Print, self_in: Obj, _kind: PrintKind) {
     let self_ = unsafe { &*set_ptr(self_in) };
-    let is_frozen = mpconfig::PY_BUILTINS_FROZENSET && obj::is_exact_type(self_in, type_frozenset());
+    let is_frozen =
+        mpconfig::PY_BUILTINS_FROZENSET && obj::is_exact_type(self_in, type_frozenset());
     if self_.set.used == 0 {
         if is_frozen {
             mpprint::print_str(print, "frozen");
@@ -509,11 +623,16 @@ pub fn set_unary_op(op: UnaryOp, self_in: Obj) -> Obj {
     match op {
         UnaryOp::Bool => obj::new_bool(self_.set.used != 0),
         UnaryOp::Len => obj::new_small_int(self_.set.used as obj::Int),
-        UnaryOp::Hash if mpconfig::PY_BUILTINS_FROZENSET && obj::is_exact_type(self_in, type_frozenset()) => {
+        UnaryOp::Hash
+            if mpconfig::PY_BUILTINS_FROZENSET && obj::is_exact_type(self_in, type_frozenset()) =>
+        {
             let mut hash = type_frozenset() as *const ObjType as usize as obj::Int;
             for i in 0..self_.set.alloc {
                 if map::set_slot_is_filled(&self_.set, i) {
-                    hash += obj::small_int_value(runtime::unary_op_obj(UnaryOp::Hash, self_.set.table[i]));
+                    hash += obj::small_int_value(runtime::unary_op_obj(
+                        UnaryOp::Hash,
+                        self_.set.table[i],
+                    ));
                 }
             }
             obj::new_small_int(hash)
@@ -656,14 +775,22 @@ fn set_intersect_int(self_in: Obj, other: Obj, update: bool) -> Obj {
     }
 
     if self_in == other {
-        return if update { obj::CONST_NONE } else { set_copy(self_in) };
+        return if update {
+            obj::CONST_NONE
+        } else {
+            set_copy(self_in)
+        };
     }
 
     let self_mut = unsafe { &mut *set_ptr(self_in) };
     let out = set_new_empty(type_set());
     for_each_item(other, |next| {
         if map::set_lookup(&mut self_mut.set, next, LookupKind::Lookup) != OBJ_NULL {
-            map::set_lookup(&mut unsafe { &mut *out }.set, next, LookupKind::AddIfNotFound);
+            map::set_lookup(
+                &mut unsafe { &mut *out }.set,
+                next,
+                LookupKind::AddIfNotFound,
+            );
         }
     });
 
@@ -715,7 +842,9 @@ fn set_issubset_internal(self_in: Obj, other_in: Obj, proper: bool) -> Obj {
         obj::CONST_FALSE
     } else {
         let mut iter_buf = ObjIterBuf {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             buf: [obj::OBJ_NULL; 3],
         };
         let iter = set_getiter(self_obj, &mut iter_buf as *mut ObjIterBuf);
@@ -725,8 +854,11 @@ fn set_issubset_internal(self_in: Obj, other_in: Obj, proper: bool) -> Obj {
             if next == obj::OBJ_STOP_ITERATION {
                 break;
             }
-            if map::set_lookup(&mut unsafe { &mut *set_ptr(other_obj) }.set, next, LookupKind::Lookup)
-                == OBJ_NULL
+            if map::set_lookup(
+                &mut unsafe { &mut *set_ptr(other_obj) }.set,
+                next,
+                LookupKind::Lookup,
+            ) == OBJ_NULL
             {
                 result = obj::CONST_FALSE;
                 break;
@@ -847,11 +979,7 @@ mod tests {
     }
 
     fn set_contains(s: Obj, v: obj::Int) -> bool {
-        obj::is_true(set_binary_op(
-            BinaryOp::Contains,
-            s,
-            obj::new_small_int(v),
-        ))
+        obj::is_true(set_binary_op(BinaryOp::Contains, s, obj::new_small_int(v)))
     }
 
     #[test]
@@ -984,7 +1112,9 @@ mod tests {
         setup();
         let s = int_set(&[1, 2, 3]);
         let mut iter_buf = ObjIterBuf {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             buf: [obj::OBJ_NULL; 3],
         };
         let iter = set_getiter(s, &mut iter_buf as *mut ObjIterBuf);

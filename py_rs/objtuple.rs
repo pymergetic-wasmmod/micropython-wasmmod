@@ -58,7 +58,9 @@ static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const (
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -77,7 +79,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -96,7 +100,9 @@ static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -128,7 +134,13 @@ fn fun_builtin_2_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -195,8 +207,10 @@ static mut TUPLE_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -226,6 +240,9 @@ static mut EMPTY_TUPLE_STORAGE: ObjTuple = ObjTuple {
 
 fn init_tuple_type() {
     TUPLE_INIT.get_or_init(|| {
+        unsafe {
+            TYPE.name = qstr::from_str("tuple");
+        }
         let table = vec![
             MapElem {
                 key: obj::new_qstr(qstr::from_str("count")),
@@ -251,7 +268,7 @@ fn init_tuple_type() {
 
 pub fn type_tuple() -> &'static ObjType {
     init_tuple_type();
-    &TYPE
+    unsafe { &TYPE }
 }
 
 pub fn const_empty_tuple() -> Obj {
@@ -294,7 +311,10 @@ fn tuple_subclass_helper(obj_in: Obj) -> Option<*const ObjTuple> {
     }
     let tuple_type = obj::get_type(obj_in);
     if obj::type_get_iter(tuple_type) != Some(tuple_getiter) {
-        let native = objtype::cast_to_native_base(obj_in, obj::from_ptr(type_tuple() as *const ObjType as *const ()));
+        let native = objtype::cast_to_native_base(
+            obj_in,
+            obj::from_ptr(type_tuple() as *const ObjType as *const ()),
+        );
         if native == obj::OBJ_NULL {
             return None;
         }
@@ -473,18 +493,26 @@ pub fn tuple_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
             unsafe {
                 (*s).len = o.len * n;
                 sequence::multiply(
-                    std::slice::from_raw_parts(items_ptr(o as *const ObjTuple) as *const u8, o.len * size_of::<Obj>()),
+                    std::slice::from_raw_parts(
+                        items_ptr(o as *const ObjTuple) as *const u8,
+                        o.len * size_of::<Obj>(),
+                    ),
                     size_of::<Obj>(),
                     o.len,
                     n,
-                    std::slice::from_raw_parts_mut(items_ptr_mut(s) as *mut u8, o.len * n * size_of::<Obj>()),
+                    std::slice::from_raw_parts_mut(
+                        items_ptr_mut(s) as *mut u8,
+                        o.len * n * size_of::<Obj>(),
+                    ),
                 );
             }
             obj::from_ptr(s as *const ObjTuple as *const ())
         }
-        BinaryOp::Equal | BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::More | BinaryOp::MoreEqual => {
-            tuple_cmp_helper(op, lhs, rhs)
-        }
+        BinaryOp::Equal
+        | BinaryOp::Less
+        | BinaryOp::LessEqual
+        | BinaryOp::More
+        | BinaryOp::MoreEqual => tuple_cmp_helper(op, lhs, rhs),
         _ => obj::OBJ_NULL,
     }
 }
@@ -493,9 +521,15 @@ pub fn tuple_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     if value == OBJ_SENTINEL {
         let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjTuple) };
         if mpconfig::PY_BUILTINS_SLICE && obj::is_exact_type(index, objslice::type_slice()) {
-            let mut slice = objslice::BoundSlice { start: 0, stop: 0, step: 1 };
+            let mut slice = objslice::BoundSlice {
+                start: 0,
+                stop: 0,
+                step: 1,
+            };
             if !sequence::get_fast_slice_indexes(self_.len, index, &mut slice) {
-                raise::raise(MpRaise::RuntimeError("only slices with step=1 (aka None) are supported"));
+                raise::raise(MpRaise::RuntimeError(
+                    "only slices with step=1 (aka None) are supported",
+                ));
             }
             let res_len = (slice.stop - slice.start) as usize;
             let res = obj::malloc_var::<ObjTuple>(res_len * size_of::<Obj>(), type_tuple());
@@ -520,14 +554,16 @@ pub fn tuple_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
 pub fn tuple_count(self_in: Obj, value: Obj) -> Obj {
     check_self(self_in);
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjTuple) };
-    let items = unsafe { std::slice::from_raw_parts(items_ptr(self_ as *const ObjTuple), self_.len) };
+    let items =
+        unsafe { std::slice::from_raw_parts(items_ptr(self_ as *const ObjTuple), self_.len) };
     sequence::count_obj(items, self_.len, value)
 }
 
 pub fn tuple_index(n_args: usize, args: &[Obj]) -> Obj {
     check_self(args[0]);
     let self_ = unsafe { &*(obj::as_ptr(args[0]) as *const ObjTuple) };
-    let items = unsafe { std::slice::from_raw_parts(items_ptr(self_ as *const ObjTuple), self_.len) };
+    let items =
+        unsafe { std::slice::from_raw_parts(items_ptr(self_ as *const ObjTuple), self_.len) };
     sequence::index_obj(items, self_.len, n_args, args)
 }
 

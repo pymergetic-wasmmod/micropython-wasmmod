@@ -49,7 +49,14 @@ pub fn int_to_bytes(
 ) {
     if mpconfig::LONGINT_IMPL == mpconfig::LONGINT_IMPL_LONGLONG {
         let val = obj::get_int(self_in);
-        crate::objint_impl::small_int_to_bytes(val, buf_len, buf, big_endian, is_signed, overflow_check);
+        crate::objint_impl::small_int_to_bytes(
+            val,
+            buf_len,
+            buf,
+            big_endian,
+            is_signed,
+            overflow_check,
+        );
     } else {
         crate::objint::int_to_bytes(self_in, buf_len, buf, big_endian, is_signed, overflow_check);
     }

@@ -16,10 +16,15 @@ pub struct ObjEnumerate {
     pub cur: Int,
 }
 
-static mut ENUM_SLOTS: [*const (); 2] = [enumerate_make_new as *const (), enumerate_iternext as *const ()];
+static mut ENUM_SLOTS: [*const (); 2] = [
+    enumerate_make_new as *const (),
+    enumerate_iternext as *const (),
+];
 
 static mut TYPE_ENUMERATE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 1,
@@ -91,10 +96,7 @@ mod tests {
     #[test]
     fn enumerate_yields_index_value() {
         setup();
-        let lst = objlist::new_list(2, Some(&[
-            obj::new_small_int(10),
-            obj::new_small_int(20),
-        ]));
+        let lst = objlist::new_list(2, Some(&[obj::new_small_int(10), obj::new_small_int(20)]));
         let e = enumerate_make_new(type_enumerate(), 1, 0, &[lst]);
         let t0 = enumerate_iternext(e);
         let (_, items) = objtuple::tuple_get(t0);

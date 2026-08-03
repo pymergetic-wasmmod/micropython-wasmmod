@@ -3,8 +3,8 @@
 
 use crate::bc::ModuleContext;
 use crate::gc;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::mpstate;
 use crate::obj::{self, Obj, ObjType};
@@ -34,7 +34,9 @@ static mut FUN0_SLOTS: [*const (); 1] = [fun0_call as *const ()];
 static mut FUNVAR_SLOTS: [*const (); 1] = [funvar_call as *const ()];
 
 static TYPE_FUN0: ObjType = ObjType {
-    base: obj::ObjBase { type_: core::ptr::null() },
+    base: obj::ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -53,7 +55,9 @@ static TYPE_FUN0: ObjType = ObjType {
 };
 
 static TYPE_FUNVAR: ObjType = ObjType {
-    base: obj::ObjBase { type_: core::ptr::null() },
+    base: obj::ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -79,7 +83,13 @@ fn fun0_call(self_in: Obj, n_args: usize, n_kw: usize, _args: &[Obj]) -> Obj {
 
 fn funvar_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    crate::argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    crate::argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -114,11 +124,13 @@ fn py_gc_collect() -> Obj {
 
 fn gc_disable() -> Obj {
     mpstate::with_mem(|mem| mem.gc_auto_collect_enabled = 0);
+    gc::set_auto_collect(false);
     obj::CONST_NONE
 }
 
 fn gc_enable() -> Obj {
     mpstate::with_mem(|mem| mem.gc_auto_collect_enabled = 1);
+    gc::set_auto_collect(true);
     obj::CONST_NONE
 }
 
@@ -145,13 +157,34 @@ pub fn init_module() -> Obj {
         return obj::OBJ_NULL;
     }
     let mut table = vec![
-        MapElem { key: obj::new_qstr(qstr::from_str("__name__")), value: obj::new_qstr(qstr::from_str("gc")) },
-        MapElem { key: obj::new_qstr(qstr::from_str("collect")), value: new_fun0(py_gc_collect) },
-        MapElem { key: obj::new_qstr(qstr::from_str("disable")), value: new_fun0(gc_disable) },
-        MapElem { key: obj::new_qstr(qstr::from_str("enable")), value: new_fun0(gc_enable) },
-        MapElem { key: obj::new_qstr(qstr::from_str("isenabled")), value: new_fun0(gc_isenabled) },
-        MapElem { key: obj::new_qstr(qstr::from_str("mem_free")), value: new_fun0(gc_mem_free) },
-        MapElem { key: obj::new_qstr(qstr::from_str("mem_alloc")), value: new_fun0(gc_mem_alloc) },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("__name__")),
+            value: obj::new_qstr(qstr::from_str("gc")),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("collect")),
+            value: new_fun0(py_gc_collect),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("disable")),
+            value: new_fun0(gc_disable),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("enable")),
+            value: new_fun0(gc_enable),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("isenabled")),
+            value: new_fun0(gc_isenabled),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("mem_free")),
+            value: new_fun0(gc_mem_free),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("mem_alloc")),
+            value: new_fun0(gc_mem_alloc),
+        },
     ];
     if mpconfig::GC_ALLOC_THRESHOLD {
         table.push(MapElem {
@@ -184,5 +217,21 @@ mod tests {
         let m = init_module();
         assert!(obj::is_obj(m));
         assert_eq!(py_gc_collect(), obj::new_small_int(0));
+    }
+
+    #[test]
+    fn collect_keeps_main_dict_binding() {
+        let _ = gc::init();
+        runtime::init();
+        let _ = init_module();
+        let main = crate::mpstate::with_vm(|vm| vm.dict_main);
+        crate::objdict::dict_store(
+            main,
+            crate::obj::new_qstr(crate::qstr::from_str("keep")),
+            crate::obj::new_small_int(7),
+        );
+        assert_eq!(py_gc_collect(), crate::obj::new_small_int(0));
+        let v = crate::objdict::dict_get(main, crate::obj::new_qstr(crate::qstr::from_str("keep")));
+        assert_eq!(v, crate::obj::new_small_int(7));
     }
 }

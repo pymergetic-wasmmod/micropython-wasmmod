@@ -1,0 +1,127 @@
+name: metalpython Rust rewrite
+
+on:
+  push:
+    paths:
+      - '.github/workflows/metalpython_rs.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'py_rs/**'
+      - 'shared_rs/**'
+      - 'extmod_rs/**'
+      - 'ports_rs/**'
+      - 'mpy-cross_rs/**'
+      - 'rewrite/**'
+  pull_request:
+    paths:
+      - '.github/workflows/metalpython_rs.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'py_rs/**'
+      - 'shared_rs/**'
+      - 'extmod_rs/**'
+      - 'ports_rs/**'
+      - 'mpy-cross_rs/**'
+      - 'rewrite/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: cargo check --workspace
+        run: cargo check --workspace
+      - name: cargo test py_rs
+        run: cargo test -p py_rs --lib -- --test-threads=1
+      - name: cargo test extmod_rs
+        run: cargo test -p extmod_rs --lib -- --test-threads=1
+      - name: smoke eval expression
+        run: |
+          out=$(cargo run -p ports_rs_unix -- '1+2*3')
+          echo "$out" | grep -q 7
+      - name: smoke -c command
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -c 'print(40+2)')
+          echo "$out" | grep -q 42
+      - name: smoke SystemExit codes
+        run: |
+          set +e
+          cargo run -q -p ports_rs_unix -- -c 'raise SystemExit(7)'
+          test $? -eq 7
+          cargo run -q -p ports_rs_unix -- -c 'import sys; sys.exit(3)'
+          test $? -eq 3
+          cargo run -q -p ports_rs_unix -- -c 'raise SystemExit'
+          test $? -eq 0
+      - name: smoke sys.argv
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -c 'import sys; print(sys.argv)' hello)
+          echo "$out" | grep -F "['-c', 'hello']"
+      - name: smoke script file
+        run: |
+          printf 'print("via_file")\n' > /tmp/mp_via_file.py
+          out=$(cargo run -p ports_rs_unix -- /tmp/mp_via_file.py)
+          echo "$out" | grep -q via_file
+      - name: smoke -m module argv
+        run: |
+          printf 'import sys; print(sys.argv[0])\n' > mp_modmain.py
+          out=$(cargo run -p ports_rs_unix -- -m mp_modmain)
+          echo "$out" | grep -q 'mp_modmain.py$'
+      - name: smoke -X heapsize
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -X heapsize=2m -c 'import gc; print(gc.mem_free()>1000000)')
+          echo "$out" | grep -Eq '^(1|True)$'
+      - name: smoke -X emit=native
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -X emit=native -c 'def f(x):
+           return x+1
+          print(f(41))')
+          echo "$out" | grep -q 42
+      - name: smoke -X emit=viper
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -X emit=viper -c '@micropython.viper
+          def f(x:int)->int:
+           return x+1
+          print(f(41))')
+          echo "$out" | grep -q 42
+      - name: smoke frozen import
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -c 'import frozentest; print(frozentest.x)')
+          echo "$out" | grep -q 42
+      - name: smoke frozen mpy import
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -c 'import frozenmpy; print(frozenmpy.y)')
+          echo "$out" | grep -q 99
+      - name: smoke sys.executable
+        run: |
+          out=$(cargo run -p ports_rs_unix -- -c 'import sys; print(sys.executable)')
+          echo "$out" | grep -q metalpython
+      - name: smoke mpy-cross
+        run: |
+          printf 'def f():\n    return 1\n' > /tmp/foo.py
+          cargo run -p mpy_cross_rs -- -O2 -X emit=bytecode /tmp/foo.py -o /tmp/foo.mpy
+          test -s /tmp/foo.mpy
+      - name: smoke mpy-cross roundtrip
+        run: |
+          printf 'print(7*6)\n' > /tmp/rt.py
+          cargo run -p mpy_cross_rs -- -o /tmp/rt.mpy -s rt.py /tmp/rt.py
+          test -s /tmp/rt.mpy
+          out=$(cargo run -p ports_rs_unix -- -c "import sys; sys.path.insert(0,'/tmp'); import rt")
+          echo "$out" | grep -q 42
+          out=$(cargo run -p ports_rs_unix -- /tmp/rt.mpy)
+          echo "$out" | grep -q 42
+      - name: smoke mpy-cross stdin/stdout
+        run: |
+          echo 'print(6*7)' | cargo run -p mpy_cross_rs -- -s stdin.py - > /tmp/mp_stdin.mpy
+          test -s /tmp/mp_stdin.mpy
+          out=$(cargo run -p ports_rs_unix -- /tmp/mp_stdin.mpy)
+          echo "$out" | grep -q 42
+      - name: symmetry check
+        run: python3 -m rewrite.symmetry --fail-on-regression

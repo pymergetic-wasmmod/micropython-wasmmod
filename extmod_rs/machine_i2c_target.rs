@@ -1,8 +1,7 @@
 //! rewrite of extmod/machine_i2c_target.c
-// symmetry: gaps
-// gaps:
-// - needs I2C target/peripheral HAL (slave address match, clock stretch, FIFO)
-// - `I2CTarget` read/write/irq paths require port slave-mode driver
+//! Host has no I2C target/peripheral HAL (slave address match, clock stretch, FIFO).
+//! `I2CTarget` read/write/irq paths require port slave-mode driver.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

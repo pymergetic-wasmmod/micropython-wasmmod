@@ -2,11 +2,12 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
+use py_rs::objint;
 use py_rs::objmodule;
 use py_rs::objstr;
 use py_rs::qstr;
@@ -16,26 +17,58 @@ type BuiltinFn1 = fn(Obj) -> Obj;
 type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
 
 #[repr(C)]
-struct ObjFunBuiltin1 { base: ObjBase, fun: BuiltinFn1 }
+struct ObjFunBuiltin1 {
+    base: ObjBase,
+    fun: BuiltinFn1,
+}
 #[repr(C)]
-struct ObjFunBuiltinVar { base: ObjBase, min_args: u8, max_args: u8, fun: BuiltinFnVar }
+struct ObjFunBuiltinVar {
+    base: ObjBase,
+    min_args: u8,
+    max_args: u8,
+    fun: BuiltinFnVar,
+}
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut FV: [*const (); 1] = [callv as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BUILTIN_FUN, name: 0,
-    slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0,
-    slot_index_subscr: 0, slot_index_iter: 0, slot_index_buffer: 0,
-    slot_index_protocol: 0, slot_index_parent: 0, slot_index_locals_dict: 0,
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
     slots: unsafe { F1.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() }, flags: TYPE_FLAG_BUILTIN_FUN, name: 0,
-    slot_index_make_new: 0, slot_index_print: 0, slot_index_call: 1,
-    slot_index_unary_op: 0, slot_index_binary_op: 0, slot_index_attr: 0,
-    slot_index_subscr: 0, slot_index_iter: 0, slot_index_buffer: 0,
-    slot_index_protocol: 0, slot_index_parent: 0, slot_index_locals_dict: 0,
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
     slots: unsafe { FV.as_ptr() },
 };
 
@@ -45,16 +78,32 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk1(f: BuiltinFn1) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltin1>().expect("binascii fn1");
-    unsafe { (*o).base.type_ = &T1; (*o).fun = f; obj::from_ptr(o as *const ObjFunBuiltin1 as *const ()) }
+    unsafe {
+        (*o).base.type_ = &T1;
+        (*o).fun = f;
+        obj::from_ptr(o as *const ObjFunBuiltin1 as *const ())
+    }
 }
 fn mkv(min: u8, max: u8, f: BuiltinFnVar) -> Obj {
     let o = malloc::new_obj::<ObjFunBuiltinVar>().expect("binascii fnv");
-    unsafe { (*o).base.type_ = &TV; (*o).min_args = min; (*o).max_args = max; (*o).fun = f; obj::from_ptr(o as *const ObjFunBuiltinVar as *const ()) }
+    unsafe {
+        (*o).base.type_ = &TV;
+        (*o).min_args = min;
+        (*o).max_args = max;
+        (*o).fun = f;
+        obj::from_ptr(o as *const ObjFunBuiltinVar as *const ())
+    }
 }
 
 fn sextet(ch: u8) -> i32 {
@@ -74,6 +123,33 @@ fn get_buf(o: Obj) -> Vec<u8> {
     unsafe { std::slice::from_raw_parts(info.buf as *const u8, info.len).to_vec() }
 }
 
+// uzlib CRC32 nibble table (`lib/uzlib/crc32.c`).
+const CRC32_TAB: [u32; 16] = [
+    0x0000_0000, 0x1db7_1064, 0x3b6e_20c8, 0x26d9_30ac, 0x76dc_4190, 0x6b6b_51f4, 0x4db2_6158,
+    0x5005_713c, 0xedb8_8320, 0xf00f_9344, 0xd6d6_a3e8, 0xcb61_b38c, 0x9b64_c2b0, 0x86d3_d2d4,
+    0xa00a_e278, 0xbdbd_f21c,
+];
+
+fn uzlib_crc32(data: &[u8], mut crc: u32) -> u32 {
+    for &b in data {
+        crc ^= u32::from(b);
+        crc = CRC32_TAB[(crc & 0x0f) as usize] ^ (crc >> 4);
+        crc = CRC32_TAB[(crc & 0x0f) as usize] ^ (crc >> 4);
+    }
+    crc
+}
+
+fn crc32(n_args: usize, args: &[Obj]) -> Obj {
+    let data = get_buf(args[0]);
+    let mut crc = if n_args > 1 {
+        obj::get_int_truncated(args[1]) as u32
+    } else {
+        0
+    };
+    crc = uzlib_crc32(&data, crc ^ 0xffff_ffff);
+    objint::new_int_from_uint((crc ^ 0xffff_ffff) as py_rs::obj::Uint)
+}
+
 fn a2b_base64(data: Obj) -> Obj {
     let buf = get_buf(data);
     let mut out = Vec::with_capacity(buf.len() * 3 / 4 + 1);
@@ -83,6 +159,7 @@ fn a2b_base64(data: Obj) -> Obj {
     for &b in &buf {
         if b == b'=' {
             if nbits == 2 || (nbits == 4 && hadpad) {
+                nbits = 0;
                 break;
             }
             hadpad = true;
@@ -109,7 +186,11 @@ fn a2b_base64(data: Obj) -> Obj {
 fn b2a_base64(n: usize, args: &[Obj]) -> Obj {
     let newline = if n > 1 { obj::is_true(args[1]) } else { true };
     let buf = get_buf(args[0]);
-    let base_len = if buf.is_empty() { 0 } else { ((buf.len() - 1) / 3 + 1) * 4 };
+    let base_len = if buf.is_empty() {
+        0
+    } else {
+        ((buf.len() - 1) / 3 + 1) * 4
+    };
     let mut v = vec![0u8; base_len + if newline { 1 } else { 0 }];
     let mut out_idx = 0usize;
     let mut i = buf.len();
@@ -154,12 +235,34 @@ pub fn init_module() -> Obj {
     if !mpconfig::PY_BINASCII {
         return obj::OBJ_NULL;
     }
-    let table = vec![
-        MapElem { key: obj::new_qstr(qstr::from_str("__name__")), value: obj::new_qstr(qstr::from_str("binascii")) },
-        MapElem { key: obj::new_qstr(qstr::from_str("a2b_base64")), value: mk1(a2b_base64) },
-        MapElem { key: obj::new_qstr(qstr::from_str("b2a_base64")), value: mkv(1, 2, b2a_base64) },
+    let mut table = vec![
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("__name__")),
+            value: obj::new_qstr(qstr::from_str("binascii")),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("a2b_base64")),
+            value: mk1(a2b_base64),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("b2a_base64")),
+            value: mkv(1, 2, b2a_base64),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("hexlify")),
+            value: mkv(1, 2, objstr::binascii_hexlify),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("unhexlify")),
+            value: mkv(1, 1, objstr::binascii_unhexlify),
+        },
     ];
-    // hexlify/unhexlify live on bytes type in py_rs; module table matches C when enabled.
+    if mpconfig::PY_BINASCII_CRC32 && mpconfig::PY_DEFLATE {
+        table.push(MapElem {
+            key: obj::new_qstr(qstr::from_str("crc32")),
+            value: mkv(1, 2, crc32),
+        });
+    }
     let ctx = malloc::new_obj::<ModuleContext>().expect("binascii");
     let dict = objdict::new_dict(table.len());
     unsafe {

@@ -77,7 +77,12 @@ impl Lock {
         self.acquire()
     }
 
-    pub fn aexit(&mut self, _exc_type: Option<()>, exc: Option<CancelledError>, _tb: Option<()>) -> bool {
+    pub fn aexit(
+        &mut self,
+        _exc_type: Option<()>,
+        exc: Option<CancelledError>,
+        _tb: Option<()>,
+    ) -> bool {
         if let Some(er) = exc {
             if let Some(cur) = core::cur_task() {
                 self.acquire_handle_cancel(true, &cur);

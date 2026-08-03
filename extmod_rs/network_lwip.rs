@@ -1,8 +1,7 @@
 //! rewrite of extmod/network_lwip.c
-// symmetry: gaps
-// gaps:
-// - needs lwIP netif HAL (link up/down, input/output, DHCP hooks)
-// - `AbstractNIC` bindings require port TCP/IP stack and driver glue
+//! Host has no lwIP netif HAL (link up/down, input/output, DHCP hooks).
+//! `AbstractNIC` bindings require port TCP/IP stack and driver glue.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

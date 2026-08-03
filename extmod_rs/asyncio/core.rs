@@ -81,8 +81,16 @@ impl IoQueue {
             }
             Entry::Occupied(mut e) => {
                 let sm = e.get_mut();
-                assert!(if idx == 0 { sm.read.is_none() } else { sm.write.is_none() });
-                assert!(if idx == 0 { sm.write.is_some() } else { sm.read.is_some() });
+                assert!(if idx == 0 {
+                    sm.read.is_none()
+                } else {
+                    sm.write.is_none()
+                });
+                assert!(if idx == 0 {
+                    sm.write.is_some()
+                } else {
+                    sm.read.is_some()
+                });
                 if idx == 0 {
                     sm.read = Some(task.clone());
                 } else {
@@ -127,7 +135,9 @@ impl IoQueue {
     pub fn wait_io_event(&mut self, _dt: i64) {
         let keys: Vec<usize> = self.map.keys().copied().collect();
         for s in keys {
-            let Some(entry) = self.map.get_mut(&s) else { continue };
+            let Some(entry) = self.map.get_mut(&s) else {
+                continue;
+            };
             let ev = 0x001 | 0x004;
             if ev & !0x004 != 0 {
                 if let Some(t) = entry.read.take() {

@@ -2,8 +2,8 @@
 // symmetry: done
 
 use crate::argcheck;
-use crate::map::{self, LookupKind};
 use crate::malloc;
+use crate::map::{self, LookupKind};
 use crate::mpconfig;
 use crate::mpprint::{self, PrintKind, PLAT_PRINT};
 use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
@@ -37,7 +37,9 @@ struct ObjFunBuiltinVar {
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -57,7 +59,13 @@ static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -90,12 +98,12 @@ fn help_print_modules() {
     let list = objlist::new_list(0, None);
     help_add_builtin_modules(list);
 
-    objlist::list_sort(1, &[list]);
+    let mut empty_kw = crate::map::Map::default();
+    objlist::list_sort(1, &[list], &mut empty_kw);
 
     let (len, items) = objlist::list_get(list);
-    let num_rows =
-        (len + mpconfig::PY_BUILTINS_HELP_NUM_COLUMNS as usize - 1)
-            / mpconfig::PY_BUILTINS_HELP_NUM_COLUMNS as usize;
+    let num_rows = (len + mpconfig::PY_BUILTINS_HELP_NUM_COLUMNS as usize - 1)
+        / mpconfig::PY_BUILTINS_HELP_NUM_COLUMNS as usize;
     for i in 0..num_rows {
         let mut j = i;
         loop {
@@ -105,8 +113,7 @@ fn help_print_modules() {
             if j >= len {
                 break;
             }
-            let mut gap =
-                mpconfig::PY_BUILTINS_HELP_COLUMN_WIDTH as i32 - l;
+            let mut gap = mpconfig::PY_BUILTINS_HELP_COLUMN_WIDTH as i32 - l;
             while gap < 1 {
                 gap += mpconfig::PY_BUILTINS_HELP_COLUMN_WIDTH as i32;
             }
@@ -143,9 +150,8 @@ fn help_print_obj(obj_in: Obj) {
         if type_ as *const ObjType == objtype::type_type() as *const ObjType {
             type_ = unsafe { &*(obj::as_ptr(obj_in) as *const ObjType) };
         }
-        obj::type_get_slot_locals_dict(type_).map(|ld| unsafe {
-            &mut (*(obj::as_ptr(ld) as *mut ObjDict)).map
-        })
+        obj::type_get_slot_locals_dict(type_)
+            .map(|ld| unsafe { &mut (*(obj::as_ptr(ld) as *mut ObjDict)).map })
     };
 
     if let Some(map) = map {

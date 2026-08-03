@@ -86,7 +86,7 @@ static mut EXCEPTION_SLOTS: [*const (); 3] = [
     exception_attr as *const (),
 ];
 
-static TYPE_BASE_EXCEPTION: ObjType = ObjType {
+static mut TYPE_BASE_EXCEPTION: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
     },
@@ -108,14 +108,14 @@ static TYPE_BASE_EXCEPTION: ObjType = ObjType {
 };
 
 macro_rules! define_exception {
-    ($acc:ident, $ty:ident, $slots:ident, $name:literal, $parent:expr) => {
+    ($acc:ident, $ty:ident, $slots:ident, $name:literal, $parent:ident) => {
         static mut $slots: [*const (); 4] = [
             exception_make_new as *const (),
             exception_print as *const (),
             exception_attr as *const (),
-            $parent as *const ObjType as *const (),
+            core::ptr::addr_of!($parent) as *const ObjType as *const (),
         ];
-        static $ty: ObjType = ObjType {
+        static mut $ty: ObjType = ObjType {
             base: ObjBase {
                 type_: core::ptr::null(),
             },
@@ -133,11 +133,11 @@ macro_rules! define_exception {
             slot_index_protocol: 0,
             slot_index_parent: 4,
             slot_index_locals_dict: 0,
-            slots: unsafe { $slots.as_ptr() },
+            slots: core::ptr::null(),
         };
         pub fn $acc() -> &'static ObjType {
             init_exception_types();
-            &$ty
+            unsafe { &$ty }
         }
     };
 }
@@ -147,168 +147,168 @@ define_exception!(
     TYPE_SYSTEM_EXIT,
     SLOTS_SYSTEM_EXIT,
     "SystemExit",
-    &TYPE_BASE_EXCEPTION
+    TYPE_BASE_EXCEPTION
 );
 define_exception!(
     type_keyboard_interrupt,
     TYPE_KEYBOARD_INTERRUPT,
     SLOTS_KEYBOARD_INTERRUPT,
     "KeyboardInterrupt",
-    &TYPE_BASE_EXCEPTION
+    TYPE_BASE_EXCEPTION
 );
 define_exception!(
     type_generator_exit,
     TYPE_GENERATOR_EXIT,
     SLOTS_GENERATOR_EXIT,
     "GeneratorExit",
-    &TYPE_BASE_EXCEPTION
+    TYPE_BASE_EXCEPTION
 );
 define_exception!(
     type_exception,
     TYPE_EXCEPTION,
     SLOTS_EXCEPTION,
     "Exception",
-    &TYPE_BASE_EXCEPTION
+    TYPE_BASE_EXCEPTION
 );
 define_exception!(
     type_stop_iteration,
     TYPE_STOP_ITERATION,
     SLOTS_STOP_ITERATION,
     "StopIteration",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_arithmetic_error,
     TYPE_ARITHMETIC_ERROR,
     SLOTS_ARITHMETIC_ERROR,
     "ArithmeticError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_overflow_error,
     TYPE_OVERFLOW_ERROR,
     SLOTS_OVERFLOW_ERROR,
     "OverflowError",
-    &TYPE_ARITHMETIC_ERROR
+    TYPE_ARITHMETIC_ERROR
 );
 define_exception!(
     type_zero_division_error,
     TYPE_ZERO_DIVISION_ERROR,
     SLOTS_ZERO_DIVISION_ERROR,
     "ZeroDivisionError",
-    &TYPE_ARITHMETIC_ERROR
+    TYPE_ARITHMETIC_ERROR
 );
 define_exception!(
     type_assertion_error,
     TYPE_ASSERTION_ERROR,
     SLOTS_ASSERTION_ERROR,
     "AssertionError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_attribute_error,
     TYPE_ATTRIBUTE_ERROR,
     SLOTS_ATTRIBUTE_ERROR,
     "AttributeError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_eof_error,
     TYPE_EOF_ERROR,
     SLOTS_EOF_ERROR,
     "EOFError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_import_error,
     TYPE_IMPORT_ERROR,
     SLOTS_IMPORT_ERROR,
     "ImportError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_lookup_error,
     TYPE_LOOKUP_ERROR,
     SLOTS_LOOKUP_ERROR,
     "LookupError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_index_error,
     TYPE_INDEX_ERROR,
     SLOTS_INDEX_ERROR,
     "IndexError",
-    &TYPE_LOOKUP_ERROR
+    TYPE_LOOKUP_ERROR
 );
 define_exception!(
     type_key_error,
     TYPE_KEY_ERROR,
     SLOTS_KEY_ERROR,
     "KeyError",
-    &TYPE_LOOKUP_ERROR
+    TYPE_LOOKUP_ERROR
 );
 define_exception!(
     type_memory_error,
     TYPE_MEMORY_ERROR,
     SLOTS_MEMORY_ERROR,
     "MemoryError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_name_error,
     TYPE_NAME_ERROR,
     SLOTS_NAME_ERROR,
     "NameError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_os_error,
     TYPE_OS_ERROR,
     SLOTS_OS_ERROR,
     "OSError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_runtime_error,
     TYPE_RUNTIME_ERROR,
     SLOTS_RUNTIME_ERROR,
     "RuntimeError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_not_implemented_error,
     TYPE_NOT_IMPLEMENTED_ERROR,
     SLOTS_NOT_IMPLEMENTED_ERROR,
     "NotImplementedError",
-    &TYPE_RUNTIME_ERROR
+    TYPE_RUNTIME_ERROR
 );
 define_exception!(
     type_syntax_error,
     TYPE_SYNTAX_ERROR,
     SLOTS_SYNTAX_ERROR,
     "SyntaxError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_indentation_error,
     TYPE_INDENTATION_ERROR,
     SLOTS_INDENTATION_ERROR,
     "IndentationError",
-    &TYPE_SYNTAX_ERROR
+    TYPE_SYNTAX_ERROR
 );
 define_exception!(
     type_type_error,
     TYPE_TYPE_ERROR,
     SLOTS_TYPE_ERROR,
     "TypeError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 define_exception!(
     type_value_error,
     TYPE_VALUE_ERROR,
     SLOTS_VALUE_ERROR,
     "ValueError",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 
 define_exception!(
@@ -316,7 +316,7 @@ define_exception!(
     TYPE_STOP_ASYNC_ITERATION,
     SLOTS_STOP_ASYNC_ITERATION,
     "StopAsyncIteration",
-    &TYPE_EXCEPTION
+    TYPE_EXCEPTION
 );
 
 define_exception!(
@@ -324,7 +324,7 @@ define_exception!(
     TYPE_VIPER_TYPE_ERROR,
     SLOTS_VIPER_TYPE_ERROR,
     "ViperTypeError",
-    &TYPE_TYPE_ERROR
+    TYPE_TYPE_ERROR
 );
 
 define_exception!(
@@ -332,7 +332,7 @@ define_exception!(
     TYPE_UNICODE_ERROR,
     SLOTS_UNICODE_ERROR,
     "UnicodeError",
-    &TYPE_VALUE_ERROR
+    TYPE_VALUE_ERROR
 );
 
 static EXCEPTION_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
@@ -341,12 +341,97 @@ fn init_exception_types() {
     EXCEPTION_INIT.get_or_init(|| {
         qstr::init();
         unsafe {
-            EMERGENCY_EXCEPTION.base.type_ = &TYPE_BASE_EXCEPTION as *const ObjType;
-            EMERGENCY_EXCEPTION.args =
-                obj::as_ptr(objtuple::const_empty_tuple()) as *mut ObjTuple;
+            let type_type = objtype::type_type() as *const ObjType;
+            let set_name = |ty: *mut ObjType, slots: *const *const (), name: &str| {
+                (*ty).name = qstr::from_str(name);
+                (*ty).base.type_ = type_type;
+                (*ty).slots = slots;
+            };
+            macro_rules! init_exc {
+                ($ty:ident, $slots:ident, $name:literal) => {
+                    set_name(
+                        core::ptr::addr_of_mut!($ty),
+                        core::ptr::addr_of!($slots) as *const *const (),
+                        $name,
+                    );
+                };
+            }
+            set_name(
+                core::ptr::addr_of_mut!(TYPE_BASE_EXCEPTION),
+                core::ptr::addr_of!(EXCEPTION_SLOTS) as *const *const (),
+                "BaseException",
+            );
+            init_exc!(TYPE_SYSTEM_EXIT, SLOTS_SYSTEM_EXIT, "SystemExit");
+            init_exc!(
+                TYPE_KEYBOARD_INTERRUPT,
+                SLOTS_KEYBOARD_INTERRUPT,
+                "KeyboardInterrupt"
+            );
+            init_exc!(TYPE_GENERATOR_EXIT, SLOTS_GENERATOR_EXIT, "GeneratorExit");
+            init_exc!(TYPE_EXCEPTION, SLOTS_EXCEPTION, "Exception");
+            init_exc!(TYPE_STOP_ITERATION, SLOTS_STOP_ITERATION, "StopIteration");
+            init_exc!(
+                TYPE_ARITHMETIC_ERROR,
+                SLOTS_ARITHMETIC_ERROR,
+                "ArithmeticError"
+            );
+            init_exc!(TYPE_OVERFLOW_ERROR, SLOTS_OVERFLOW_ERROR, "OverflowError");
+            init_exc!(
+                TYPE_ZERO_DIVISION_ERROR,
+                SLOTS_ZERO_DIVISION_ERROR,
+                "ZeroDivisionError"
+            );
+            init_exc!(
+                TYPE_ASSERTION_ERROR,
+                SLOTS_ASSERTION_ERROR,
+                "AssertionError"
+            );
+            init_exc!(
+                TYPE_ATTRIBUTE_ERROR,
+                SLOTS_ATTRIBUTE_ERROR,
+                "AttributeError"
+            );
+            init_exc!(TYPE_EOF_ERROR, SLOTS_EOF_ERROR, "EOFError");
+            init_exc!(TYPE_IMPORT_ERROR, SLOTS_IMPORT_ERROR, "ImportError");
+            init_exc!(TYPE_LOOKUP_ERROR, SLOTS_LOOKUP_ERROR, "LookupError");
+            init_exc!(TYPE_INDEX_ERROR, SLOTS_INDEX_ERROR, "IndexError");
+            init_exc!(TYPE_KEY_ERROR, SLOTS_KEY_ERROR, "KeyError");
+            init_exc!(TYPE_MEMORY_ERROR, SLOTS_MEMORY_ERROR, "MemoryError");
+            init_exc!(TYPE_NAME_ERROR, SLOTS_NAME_ERROR, "NameError");
+            init_exc!(TYPE_OS_ERROR, SLOTS_OS_ERROR, "OSError");
+            init_exc!(TYPE_RUNTIME_ERROR, SLOTS_RUNTIME_ERROR, "RuntimeError");
+            init_exc!(
+                TYPE_NOT_IMPLEMENTED_ERROR,
+                SLOTS_NOT_IMPLEMENTED_ERROR,
+                "NotImplementedError"
+            );
+            init_exc!(TYPE_SYNTAX_ERROR, SLOTS_SYNTAX_ERROR, "SyntaxError");
+            init_exc!(
+                TYPE_INDENTATION_ERROR,
+                SLOTS_INDENTATION_ERROR,
+                "IndentationError"
+            );
+            init_exc!(TYPE_TYPE_ERROR, SLOTS_TYPE_ERROR, "TypeError");
+            init_exc!(TYPE_VALUE_ERROR, SLOTS_VALUE_ERROR, "ValueError");
+            init_exc!(
+                TYPE_STOP_ASYNC_ITERATION,
+                SLOTS_STOP_ASYNC_ITERATION,
+                "StopAsyncIteration"
+            );
+            init_exc!(
+                TYPE_VIPER_TYPE_ERROR,
+                SLOTS_VIPER_TYPE_ERROR,
+                "ViperTypeError"
+            );
+            init_exc!(TYPE_UNICODE_ERROR, SLOTS_UNICODE_ERROR, "UnicodeError");
+
+            EMERGENCY_EXCEPTION.base.type_ =
+                core::ptr::addr_of!(TYPE_BASE_EXCEPTION) as *const ObjType;
+            EMERGENCY_EXCEPTION.args = obj::as_ptr(objtuple::const_empty_tuple()) as *mut ObjTuple;
             mpstate::with_vm(|vm| {
-                vm.mp_emergency_exception_obj =
-                    obj::from_ptr(&raw const EMERGENCY_EXCEPTION as *const ObjException as *const ());
+                vm.mp_emergency_exception_obj = obj::from_ptr(
+                    &raw const EMERGENCY_EXCEPTION as *const ObjException as *const (),
+                );
             });
         }
     });
@@ -355,7 +440,7 @@ fn init_exception_types() {
 /// `mp_type_BaseException`
 pub fn type_base_exception() -> &'static ObjType {
     init_exception_types();
-    &TYPE_BASE_EXCEPTION
+    unsafe { &TYPE_BASE_EXCEPTION }
 }
 
 // --- helpers ------------------------------------------------------------------
@@ -370,9 +455,7 @@ fn get_native_exception(self_in: Obj) -> *mut ObjException {
         return exception_ptr(self_in);
     }
     let inst = obj::as_ptr(self_in) as *const ObjInstance;
-    unsafe {
-        exception_ptr(objtype::subobj_get(inst, 0))
-    }
+    unsafe { exception_ptr(objtype::subobj_get(inst, 0)) }
 }
 
 fn emergency_traceback_ptr() -> *mut usize {
@@ -389,11 +472,7 @@ fn emergency_tuple_ptr(n_args: usize) -> Option<*mut ObjTuple> {
     }
     let needed = EMG_BUF_TUPLE_OFFSET + emg_buf_tuple_size(n_args);
     if needed <= mpconfig::EMERGENCY_EXCEPTION_BUF_SIZE {
-        Some(unsafe {
-            EMERGENCY_BUF
-                .as_mut_ptr()
-                .add(EMG_BUF_TUPLE_OFFSET) as *mut ObjTuple
-        })
+        Some(unsafe { EMERGENCY_BUF.as_mut_ptr().add(EMG_BUF_TUPLE_OFFSET) as *mut ObjTuple })
     } else {
         None
     }
@@ -410,8 +489,7 @@ pub fn init_emergency_exception_buf() {
 pub fn exception_print(print: &Print, o_in: Obj, kind: PrintKind) {
     let o = unsafe { &*exception_ptr(o_in) };
     let raw = kind as u8;
-    let k =
-        unsafe { core::mem::transmute::<u8, PrintKind>(raw & !PRINT_EXC_SUBCLASS) };
+    let k = unsafe { core::mem::transmute::<u8, PrintKind>(raw & !PRINT_EXC_SUBCLASS) };
     let is_subclass = raw & PRINT_EXC_SUBCLASS != 0;
 
     if !is_subclass && (k == PrintKind::Repr || k == PrintKind::Exc) {
@@ -437,9 +515,8 @@ pub fn exception_print(print: &Print, o_in: Obj, kind: PrintKind) {
                 *((o.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj)
             })
         {
-            let errno_val = unsafe {
-                *((o.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj)
-            };
+            let errno_val =
+                unsafe { *((o.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj) };
             let qst = moderrno::errno_to_str(errno_val);
             if qst != qstr::QSTR_NULL {
                 mpprint::printf(
@@ -448,16 +525,12 @@ pub fn exception_print(print: &Print, o_in: Obj, kind: PrintKind) {
                     [],
                 );
                 if let Some(data) = qstr::str_data(qst) {
-                    mpprint::print_str(
-                        print,
-                        core::str::from_utf8(&data).unwrap_or(""),
-                    );
+                    mpprint::print_str(print, core::str::from_utf8(&data).unwrap_or(""));
                 }
                 if args.len > 1 {
                     mpprint::print_str(print, ": ");
                     let item = unsafe {
-                        *((o.args as *const u8)
-                            .add(size_of::<ObjTuple>() + size_of::<Obj>())
+                        *((o.args as *const u8).add(size_of::<ObjTuple>() + size_of::<Obj>())
                             as *const Obj)
                     };
                     obj::print_helper(print, item, PrintKind::Str);
@@ -467,15 +540,17 @@ pub fn exception_print(print: &Print, o_in: Obj, kind: PrintKind) {
         }
 
         if args.len == 1 {
-            let item = unsafe {
-                *((o.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj)
-            };
+            let item = unsafe { *((o.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj) };
             obj::print_helper(print, item, PrintKind::Str);
             return;
         }
     }
 
-    objtuple::tuple_print(print, obj::from_ptr(o.args as *const ObjTuple as *const ()), kind);
+    objtuple::tuple_print(
+        print,
+        obj::from_ptr(o.args as *const ObjTuple as *const ()),
+        kind,
+    );
 }
 
 /// `mp_obj_exception_make_new`
@@ -542,9 +617,7 @@ pub fn exception_get_value(self_in: Obj) -> Obj {
     if args.len == 0 {
         obj::CONST_NONE
     } else {
-        unsafe {
-            *((self_.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj)
-        }
+        unsafe { *((self_.args as *const u8).add(size_of::<ObjTuple>()) as *const Obj) }
     }
 }
 
@@ -605,16 +678,17 @@ pub fn is_native_exception_instance(self_in: Obj) -> bool {
 
 /// `mp_obj_is_exception_type`
 pub fn is_exception_type(self_in: Obj) -> bool {
-    let Some(self_) = type_from_obj(self_in) else {
+    if !obj::is_obj(self_in) {
         return false;
-    };
+    }
+    if obj::get_type(self_in) as *const ObjType != obj::type_type() as *const ObjType {
+        return false;
+    }
+    let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjType) };
     if obj::type_get_make_new(self_) == Some(exception_make_new as MakeNewFn) {
         return true;
     }
-    if obj::is_exact_type(self_in, obj::type_type()) {
-        return is_exception_subclass(self_, type_base_exception());
-    }
-    false
+    is_exception_subclass(self_, type_base_exception())
 }
 
 /// `mp_obj_is_exception_instance`
@@ -710,12 +784,7 @@ pub fn exception_add_traceback(self_in: Obj, file: Qstr, line: usize, block: Qst
         let old_bytes = traceback_alloc(self_) * size_of::<usize>();
         let new_alloc = traceback_alloc(self_) + TRACEBACK_ENTRY_LEN;
         let new_bytes = new_alloc * size_of::<usize>();
-        match malloc::renew_maybe(
-            self_.traceback_data,
-            old_bytes,
-            new_bytes,
-            true,
-        ) {
+        match malloc::renew_maybe(self_.traceback_data, old_bytes, new_bytes, true) {
             Some(tb) => {
                 self_.traceback_data = tb;
                 set_traceback_alloc(self_, new_alloc);
@@ -724,9 +793,7 @@ pub fn exception_add_traceback(self_in: Obj, file: Qstr, line: usize, block: Qst
         }
     }
 
-    let tb_data = unsafe {
-        self_.traceback_data.add(traceback_len(self_))
-    };
+    let tb_data = unsafe { self_.traceback_data.add(traceback_len(self_)) };
     set_traceback_len(self_, traceback_len(self_) + TRACEBACK_ENTRY_LEN);
     unsafe {
         *tb_data.add(0) = file;
@@ -789,11 +856,9 @@ mod tests {
         let msg = objstr::new_str(b"bad value");
         let exc = new_exception_args(type_value_error(), 1, &[msg]);
         assert_eq!(exception_get_value(exc), msg);
-        let (len, items) = objtuple::tuple_get(
-            obj::from_ptr(
-                unsafe { &*exception_ptr(exc) }.args as *const ObjTuple as *const (),
-            ),
-        );
+        let (len, items) = objtuple::tuple_get(obj::from_ptr(
+            unsafe { &*exception_ptr(exc) }.args as *const ObjTuple as *const (),
+        ));
         assert_eq!(len, 1);
         assert_eq!(items[0], msg);
     }
@@ -879,13 +944,47 @@ mod tests {
     }
 
     #[test]
+    fn exception_type_names() {
+        setup();
+        assert_eq!(
+            qstr::str_from_qstr(type_value_error().name).unwrap(),
+            "ValueError"
+        );
+        assert_eq!(
+            qstr::str_from_qstr(type_base_exception().name).unwrap(),
+            "BaseException"
+        );
+    }
+
+    #[test]
+    fn print_exception_includes_traceback() {
+        setup();
+        let exc = new_exception(type_value_error());
+        let file = qstr::from_str("tb.py");
+        let block = qstr::from_str("f");
+        exception_add_traceback(exc, file, 2, block);
+
+        let mut out = Vec::new();
+        let mut print = Print {
+            data: &mut out as *mut Vec<u8> as *mut (),
+            print_strn: Some(collect_print),
+        };
+        obj::print_exception(&print, exc);
+        let printed = String::from_utf8(out).unwrap();
+        assert!(printed.starts_with("Traceback (most recent call last):\n"));
+        assert!(printed.contains("File \"tb.py\", line 2"));
+        assert!(printed.contains(", in f\n"));
+        assert!(printed.ends_with("ValueError: \n"));
+    }
+
+    #[test]
     fn exception_print_str_and_exc() {
         setup();
         let msg = objstr::new_str(b"fail");
         let exc = new_exception_args(type_type_error(), 1, &[msg]);
         assert_eq!(print_to_string(exc, PrintKind::Str), "fail");
         let printed = print_to_string(exc, PrintKind::Exc);
-        assert!(printed.ends_with("fail"));
+        assert_eq!(printed, "TypeError: fail");
     }
 
     #[test]

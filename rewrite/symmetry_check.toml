@@ -8,7 +8,7 @@ qemu_mcu = ["rv32"]
 # Also expect .py → .rs in these reference trees.
 python_to_rs = ["extmod"]
 # Enable when mpy-cross rewrite starts.
-mpy_cross = false
+mpy_cross = true
 baseline_path = "rewrite/symmetry_baseline.json"
 # SHA checkpoint of tracked ref + shadow files (updated with --checkpoint).
 sha_path = "rewrite/symmetry_shas.json"
@@ -25,6 +25,11 @@ dirs = [
     "ports/unix/build-standard",
     "ports/qemu/boards",
     "ports/qemu/test-frzmpy",
+    # Guest packs / demos / CLIs — not MetalPython host rewrite targets.
+    "extmod/wasmmod/examples",
+    "extmod/wasmmod/tools",
+    "extmod/wasmmod/third_party",
+    "extmod/wasmmod/docs",
 ]
 files = [
     "extmod/asyncio/manifest.py",

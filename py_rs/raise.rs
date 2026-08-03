@@ -5,17 +5,26 @@ use crate::nlr;
 use crate::obj::Obj;
 
 /// Exception tag encoded in the low bits of an NLR jump value.
+///
+/// All kind tags must be odd so `(encode(...) & 3) != 0`. That way encoded
+/// payloads never look like REPR_A heap objects (`is_obj` requires low bits 0),
+/// which previously let SyntaxError/OverflowError encodings segfault when
+/// mistaken for exception instances.
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MpRaiseKind {
     TypeError = 1,
-    ValueError = 2,
-    RuntimeError = 3,
-    OverflowError = 4,
-    ZeroDivisionError = 5,
-    OSError = 6,
-    RecursionDepth = 7,
-    SyntaxError = 8,
+    ValueError = 3,
+    RuntimeError = 5,
+    OverflowError = 7,
+    ZeroDivisionError = 9,
+    OSError = 11,
+    RecursionDepth = 13,
+    SyntaxError = 15,
+    NameError = 17,
+    AttributeError = 19,
+    KeyError = 21,
+    IndexError = 23,
 }
 
 /// MicroPython exception payload carried by `nlr_jump`.
@@ -29,6 +38,9 @@ pub enum MpRaise {
     OSError(i32),
     AttributeError(&'static str),
     SyntaxError(&'static str),
+    NameError(&'static str),
+    KeyError(&'static str),
+    IndexError(&'static str),
     RecursionDepth,
 }
 
@@ -41,8 +53,11 @@ impl MpRaise {
             MpRaise::OverflowError(_) => MpRaiseKind::OverflowError,
             MpRaise::ZeroDivisionError => MpRaiseKind::ZeroDivisionError,
             MpRaise::OSError(_) => MpRaiseKind::OSError,
-            MpRaise::AttributeError(_) => MpRaiseKind::TypeError,
+            MpRaise::AttributeError(_) => MpRaiseKind::AttributeError,
             MpRaise::SyntaxError(_) => MpRaiseKind::SyntaxError,
+            MpRaise::NameError(_) => MpRaiseKind::NameError,
+            MpRaise::KeyError(_) => MpRaiseKind::KeyError,
+            MpRaise::IndexError(_) => MpRaiseKind::IndexError,
             MpRaise::RecursionDepth => MpRaiseKind::RecursionDepth,
         }
     }
@@ -54,7 +69,10 @@ impl MpRaise {
             | MpRaise::RuntimeError(m)
             | MpRaise::OverflowError(m)
             | MpRaise::AttributeError(m)
-            | MpRaise::SyntaxError(m) => Some(m),
+            | MpRaise::SyntaxError(m)
+            | MpRaise::NameError(m)
+            | MpRaise::KeyError(m)
+            | MpRaise::IndexError(m) => Some(m),
             MpRaise::ZeroDivisionError => Some("divide by zero"),
             MpRaise::OSError(_) | MpRaise::RecursionDepth => None,
         }
@@ -65,8 +83,16 @@ impl MpRaise {
 pub fn encode(err: MpRaise) -> usize {
     let kind = err.clone().kind() as usize;
     match err {
-        MpRaise::TypeError(msg) | MpRaise::ValueError(msg) | MpRaise::RuntimeError(msg) | MpRaise::OverflowError(msg) | MpRaise::AttributeError(msg) | MpRaise::SyntaxError(msg) => {
-            ((msg.as_ptr() as usize) << 8) | kind
+        MpRaise::TypeError(msg)
+        | MpRaise::ValueError(msg)
+        | MpRaise::RuntimeError(msg)
+        | MpRaise::OverflowError(msg)
+        | MpRaise::AttributeError(msg)
+        | MpRaise::SyntaxError(msg)
+        | MpRaise::NameError(msg)
+        | MpRaise::KeyError(msg)
+        | MpRaise::IndexError(msg) => {
+            ((msg.as_ptr() as usize) << 16) | ((msg.len().min(255)) << 8) | kind
         }
         MpRaise::ZeroDivisionError | MpRaise::RecursionDepth => kind,
         MpRaise::OSError(code) => ((code as usize) << 8) | kind,
@@ -74,17 +100,12 @@ pub fn encode(err: MpRaise) -> usize {
 }
 
 fn decode_str(value: usize) -> &'static str {
-    let ptr = (value >> 8) as *const u8;
-    if ptr.is_null() {
+    let len = (value >> 8) & 0xff;
+    let ptr = (value >> 16) as *const u8;
+    if ptr.is_null() || len == 0 {
         return "";
     }
-    unsafe {
-        let mut len = 0usize;
-        while *ptr.add(len) != 0 {
-            len += 1;
-        }
-        std::str::from_utf8_unchecked(std::slice::from_raw_parts(ptr, len))
-    }
+    unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(ptr, len)) }
 }
 
 /// Decode an NLR jump value back into a raise payload.
@@ -99,6 +120,10 @@ pub fn decode(value: usize) -> MpRaise {
         x if x == MpRaiseKind::OSError as u8 => MpRaise::OSError((value >> 8) as i32),
         x if x == MpRaiseKind::RecursionDepth as u8 => MpRaise::RecursionDepth,
         x if x == MpRaiseKind::SyntaxError as u8 => MpRaise::SyntaxError(decode_str(value)),
+        x if x == MpRaiseKind::NameError as u8 => MpRaise::NameError(decode_str(value)),
+        x if x == MpRaiseKind::AttributeError as u8 => MpRaise::AttributeError(decode_str(value)),
+        x if x == MpRaiseKind::KeyError as u8 => MpRaise::KeyError(decode_str(value)),
+        x if x == MpRaiseKind::IndexError as u8 => MpRaise::IndexError(decode_str(value)),
         _ => MpRaise::RuntimeError("unknown exception"),
     }
 }
@@ -116,4 +141,112 @@ pub fn raise_obj(exc: Obj) -> ! {
 /// Re-raise a decoded NLR payload.
 pub fn reraise(value: usize) -> ! {
     nlr::jump(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn roundtrip(err: MpRaise, check_msg: Option<&str>) {
+        let encoded = encode(err.clone());
+        let decoded = decode(encoded);
+        match (err, decoded.clone()) {
+            (
+                MpRaise::TypeError(m)
+                | MpRaise::ValueError(m)
+                | MpRaise::RuntimeError(m)
+                | MpRaise::OverflowError(m)
+                | MpRaise::AttributeError(m)
+                | MpRaise::SyntaxError(m)
+                | MpRaise::NameError(m)
+                | MpRaise::KeyError(m)
+                | MpRaise::IndexError(m),
+                MpRaise::TypeError(d)
+                | MpRaise::ValueError(d)
+                | MpRaise::RuntimeError(d)
+                | MpRaise::OverflowError(d)
+                | MpRaise::AttributeError(d)
+                | MpRaise::SyntaxError(d)
+                | MpRaise::NameError(d)
+                | MpRaise::KeyError(d)
+                | MpRaise::IndexError(d),
+            ) => assert_eq!(m, d),
+            (MpRaise::ZeroDivisionError, MpRaise::ZeroDivisionError) => {}
+            (MpRaise::RecursionDepth, MpRaise::RecursionDepth) => {}
+            (MpRaise::OSError(c), MpRaise::OSError(d)) => assert_eq!(c, d),
+            _ => panic!("roundtrip kind mismatch"),
+        }
+        if let Some(msg) = check_msg {
+            assert_eq!(decoded.message(), Some(msg));
+        }
+    }
+
+    #[test]
+    fn encode_decode_static_messages() {
+        roundtrip(MpRaise::ValueError("1"), Some("1"));
+        roundtrip(MpRaise::TypeError("bad type"), Some("bad type"));
+        roundtrip(
+            MpRaise::RuntimeError("name not defined"),
+            Some("name not defined"),
+        );
+        roundtrip(MpRaise::ZeroDivisionError, Some("divide by zero"));
+        roundtrip(MpRaise::OSError(28), None);
+        roundtrip(MpRaise::RecursionDepth, None);
+    }
+
+    #[test]
+    fn encode_kinds_never_look_like_heap_objects() {
+        // REPR_A: is_obj when (val & 3) == 0. Encoded MpRaise must never match.
+        for kind in [
+            MpRaiseKind::TypeError,
+            MpRaiseKind::ValueError,
+            MpRaiseKind::RuntimeError,
+            MpRaiseKind::OverflowError,
+            MpRaiseKind::ZeroDivisionError,
+            MpRaiseKind::OSError,
+            MpRaiseKind::RecursionDepth,
+            MpRaiseKind::SyntaxError,
+            MpRaiseKind::NameError,
+            MpRaiseKind::AttributeError,
+            MpRaiseKind::KeyError,
+            MpRaiseKind::IndexError,
+        ] {
+            let encoded = encode_kind(kind, 0);
+            assert_ne!(
+                encoded & 3,
+                0,
+                "{kind:?} encode looks like a heap object: {encoded:#x}"
+            );
+        }
+    }
+
+    fn encode_kind(kind: MpRaiseKind, msg_bits: usize) -> usize {
+        (msg_bits << 8) | kind as usize
+    }
+
+    #[test]
+    fn encode_decode_attribute_key_index_errors() {
+        roundtrip(
+            MpRaise::AttributeError("no such attribute"),
+            Some("no such attribute"),
+        );
+        roundtrip(MpRaise::KeyError("missing"), Some("missing"));
+        roundtrip(
+            MpRaise::IndexError("index out of range"),
+            Some("index out of range"),
+        );
+        roundtrip(
+            MpRaise::NameError("name not defined"),
+            Some("name not defined"),
+        );
+    }
+
+    #[test]
+    fn decode_hand_crafted_value_error() {
+        let msg = "1";
+        let encoded = ((msg.as_ptr() as usize) << 16)
+            | ((msg.len().min(255)) << 8)
+            | MpRaiseKind::ValueError as usize;
+        assert!(matches!(decode(encoded), MpRaise::ValueError("1")));
+    }
 }

@@ -30,9 +30,22 @@ pub fn register_static_qstrdefs() {
         ];
         if mpconfig::PY_SYS_PS1_PS2 {
             table = &[
-                b"*", b"_", b"/", b">>> ", b"... ",
-                b" ", b"\n", b"<module>", b"<lambda>", b"<listcomp>",
-                b"<dictcomp>", b"<setcomp>", b"<genexpr>", b"<string>", b"<stdin>", b"utf-8",
+                b"*",
+                b"_",
+                b"/",
+                b">>> ",
+                b"... ",
+                b" ",
+                b"\n",
+                b"<module>",
+                b"<lambda>",
+                b"<listcomp>",
+                b"<dictcomp>",
+                b"<setcomp>",
+                b"<genexpr>",
+                b"<string>",
+                b"<stdin>",
+                b"utf-8",
             ];
         }
         if mpconfig::PY_BUILTINS_STR_OP_MODULO {

@@ -52,12 +52,20 @@ pub fn obj_new_tuple(n: usize, items: Option<&[pm_mpy_obj_t]>) -> pm_mpy_obj_t {
 }
 
 /// Load an attribute (`pm::mpy::obj_getattr`).
-pub fn obj_getattr(base: pm_mpy_obj_t, attr: super::types::pm_mpy_qstr_t, out: &mut pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn obj_getattr(
+    base: pm_mpy_obj_t,
+    attr: super::types::pm_mpy_qstr_t,
+    out: &mut pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     super::infra::obj_getattr_protected(base, attr, out)
 }
 
 /// Store an attribute (`pm::mpy::obj_setattr`).
-pub fn obj_setattr(base: pm_mpy_obj_t, attr: super::types::pm_mpy_qstr_t, value: pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn obj_setattr(
+    base: pm_mpy_obj_t,
+    attr: super::types::pm_mpy_qstr_t,
+    value: pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     super::infra::obj_setattr_protected(base, attr, value)
 }
 
@@ -144,12 +152,14 @@ pub unsafe extern "C" fn pm_mpy_obj_setattr(
 }
 
 /// Map lookup helper used by the public ABI (`pm::mpy::lookup`).
-pub fn lookup(map_obj: pm_mpy_obj_t, index: pm_mpy_obj_t, out: &mut pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn lookup(
+    map_obj: pm_mpy_obj_t,
+    index: pm_mpy_obj_t,
+    out: &mut pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     let dict = map_obj.to_obj();
     let dict_ptr = objdict::dict_ptr(dict);
-    let elem = unsafe {
-        map::lookup(&mut (*dict_ptr).map, index.to_obj(), LookupKind::Lookup)
-    };
+    let elem = unsafe { map::lookup(&mut (*dict_ptr).map, index.to_obj(), LookupKind::Lookup) };
     match elem {
         Some(e) => {
             *out = pm_mpy_obj_t::from_obj(e.value);

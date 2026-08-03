@@ -4,7 +4,9 @@
 use super::types::{pm_mpy_obj_t, pm_mpy_status_t};
 
 #[no_mangle]
-pub unsafe extern "C" fn pm_mpy_import_import_module(_name: *const core::ffi::c_char) -> pm_mpy_obj_t {
+pub unsafe extern "C" fn pm_mpy_import_import_module(
+    _name: *const core::ffi::c_char,
+) -> pm_mpy_obj_t {
     pm_mpy_obj_t::NULL
 }
 

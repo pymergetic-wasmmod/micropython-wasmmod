@@ -5,8 +5,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::bc::ModuleContext;
 use crate::cstack;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, PrintKind};
 use crate::mpstate::{self, ThreadState};
@@ -49,7 +49,9 @@ static mut FUN1: [*const (); 1] = [call1 as *const ()];
 static mut FUNV: [*const (); 1] = [callv as *const ()];
 
 static TYPE_FUN0: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -67,7 +69,9 @@ static TYPE_FUN0: ObjType = ObjType {
     slots: unsafe { FUN0.as_ptr() },
 };
 static TYPE_FUN1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -85,7 +89,9 @@ static TYPE_FUN1: ObjType = ObjType {
     slots: unsafe { FUN1.as_ptr() },
 };
 static TYPE_FUNVAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -114,7 +120,13 @@ fn call1(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    crate::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    crate::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -156,7 +168,9 @@ struct ObjThreadLock {
 
 static mut LOCK_SLOTS: [*const (); 2] = [lock_make_new as *const _, core::ptr::null()];
 static mut TYPE_LOCK: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -203,11 +217,7 @@ fn lock_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, _args: &[Obj]) -
 
 fn lock_acquire(n: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &mut *lock_ptr(args[0]) };
-    let wait = if n > 1 {
-        obj::is_true(args[1])
-    } else {
-        true
-    };
+    let wait = if n > 1 { obj::is_true(args[1]) } else { true };
     mpthread::thread_gil_exit();
     let ret = mpthread::mutex_lock(&self_.mutex, wait);
     mpthread::thread_gil_enter();
@@ -266,7 +276,8 @@ fn init_lock_type() -> &'static ObjType {
                 value: mkv(4, 4, lock_exit),
             },
         ];
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             LOCK_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const _;

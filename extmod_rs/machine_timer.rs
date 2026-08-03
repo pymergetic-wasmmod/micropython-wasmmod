@@ -2,11 +2,13 @@
 // symmetry: done
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
-use py_rs::map::{self, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objfloat;
 use py_rs::qstr;
@@ -333,8 +335,8 @@ fn init_timer_type() -> &'static ObjType {
                 value: obj::new_small_int(MODE_PERIODIC as isize),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             TIMER_SLOTS[2] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -376,7 +378,10 @@ mod tests {
 
     #[test]
     fn delta_from_freq() {
-        assert_eq!(compute_delta_ms(Some(obj::new_small_int(50)), u32::MAX, 1000, 1000), 20);
+        assert_eq!(
+            compute_delta_ms(Some(obj::new_small_int(50)), u32::MAX, 1000, 1000),
+            20
+        );
         assert_eq!(compute_delta_ms(None, 40, 1000, 1000), 40);
         assert_eq!(compute_delta_ms(None, u32::MAX, 1000, 500), 500);
     }

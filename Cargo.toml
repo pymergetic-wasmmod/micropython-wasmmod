@@ -8,6 +8,7 @@ members = [
     "extmod_rs",
     "ports_rs/unix",
     "ports_rs/qemu",
+    "mpy-cross_rs",
 ]
 
 [workspace.package]

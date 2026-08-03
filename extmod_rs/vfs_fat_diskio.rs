@@ -5,8 +5,8 @@
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
 use fatfs::{Date, DateTime, Dir, FileSystem, FormatVolumeOptions, FsOptions, Time};
+use py_rs::mperrno::{EEXIST, EIO, EISDIR, ENOENT, ENOTDIR};
 use py_rs::obj::Obj;
-use py_rs::mperrno::{EEXIST, EISDIR, ENOTDIR, ENOENT, EIO};
 
 use crate::vfs_blockdev::{
     self, VfsBlockdev, BLOCKDEV_FLAG_FREE_OBJ, BLOCKDEV_FLAG_NO_FILESYSTEM,
@@ -106,7 +106,10 @@ impl Write for FatBlockStream {
                 buf[done..].as_ptr(),
             );
             if ret != 0 {
-                return Err(io::Error::new(io::ErrorKind::Other, "blockdev write failed"));
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "blockdev write failed",
+                ));
             }
             done += chunk;
             self.pos += chunk as u64;
@@ -247,9 +250,7 @@ impl FatMount {
         fatfs::format_volume(&mut stream, FormatVolumeOptions::new())
             .map_err(|_| py_rs::mperrno::EIO)?;
         stream.pos = 0;
-        self.fs = Some(
-            FileSystem::new(stream, FsOptions::new()).map_err(|_| py_rs::mperrno::EIO)?,
-        );
+        self.fs = Some(FileSystem::new(stream, FsOptions::new()).map_err(|_| py_rs::mperrno::EIO)?);
         self.no_filesystem = false;
         Ok(())
     }
@@ -471,7 +472,7 @@ fn blockdev_count(bdev: &mut VfsBlockdev) -> Result<usize, i32> {
 }
 
 pub fn map_io_err(err: io::Error) -> i32 {
-    use py_rs::mperrno::{EACCES, EEXIST, EIO, ENOENT, ENOSPC, EINVAL, EISDIR, ENOTDIR};
+    use py_rs::mperrno::{EACCES, EEXIST, EINVAL, EIO, EISDIR, ENOENT, ENOSPC, ENOTDIR};
     let msg = err.to_string();
     if msg.contains("Is a directory") {
         return EISDIR;

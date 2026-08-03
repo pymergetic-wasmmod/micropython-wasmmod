@@ -23,8 +23,10 @@ static mut BOUND_METH_SLOTS: [*const (); 4] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -49,25 +51,30 @@ static TYPE: ObjType = ObjType {
 static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_type() {
-    INIT.get_or_init(|| {
-        unsafe {
-            if mpconfig::ERROR_REPORTING == mpconfig::ERROR_REPORTING_DETAILED {
-                BOUND_METH_SLOTS[3] = bound_meth_print as *const ();
-            }
-            if mpconfig::PY_FUNCTION_ATTRS {
-                BOUND_METH_SLOTS[3] = bound_meth_attr as *const ();
-            }
+    INIT.get_or_init(|| unsafe {
+        TYPE.name = qstr::from_str("bound_method");
+        if mpconfig::ERROR_REPORTING == mpconfig::ERROR_REPORTING_DETAILED {
+            BOUND_METH_SLOTS[3] = bound_meth_print as *const ();
+        }
+        if mpconfig::PY_FUNCTION_ATTRS {
+            BOUND_METH_SLOTS[3] = bound_meth_attr as *const ();
         }
     });
 }
 
 pub fn type_bound_meth() -> &'static ObjType {
     init_type();
-    &TYPE
+    unsafe { &*core::ptr::addr_of!(TYPE) }
 }
 
 /// `mp_call_method_self_n_kw` (also in runtime.rs; kept for C API parity).
-pub fn call_method_self_n_kw(meth: Obj, self_: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
+pub fn call_method_self_n_kw(
+    meth: Obj,
+    self_: Obj,
+    n_args: usize,
+    n_kw: usize,
+    args: &[Obj],
+) -> Obj {
     runtime::call_method_self_n_kw(meth, self_, n_args, n_kw, args)
 }
 

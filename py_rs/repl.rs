@@ -21,10 +21,19 @@ pub fn repl_get_psx(entry: usize) -> Option<String> {
         return None;
     }
     mpstate::with_vm(|vm| {
-        // Host port stores REPL prompts in thread state when wired; fall back to empty.
-        let _ = entry;
-        let _ = vm;
-        None
+        let o = match entry {
+            0 => vm.sys_ps1,
+            1 => vm.sys_ps2,
+            _ => return None,
+        };
+        if o == obj::OBJ_NULL || o == obj::CONST_NONE {
+            return None;
+        }
+        if obj::is_str(o) {
+            Some(crate::objstr::str_get_str(o).to_string())
+        } else {
+            None
+        }
     })
 }
 
@@ -224,11 +233,7 @@ fn print_completions(print: &Print, s_start: &str, obj: Obj, q_first: Qstr, q_la
                 mpprint::print_str(print, d_str);
                 line_len += gap + d_len as i32;
             } else {
-                let _ = mpprint::printf(
-                    print,
-                    "\n%s",
-                    std::iter::once(mpprint::VaArg::Str(d_str)),
-                );
+                let _ = mpprint::printf(print, "\n%s", std::iter::once(mpprint::VaArg::Str(d_str)));
                 line_len = d_len as i32;
             }
         }
@@ -244,8 +249,7 @@ fn repl_main_module() -> Obj {
             (*ctx).module.base = ObjBase {
                 type_: type_module() as *const ObjType,
             };
-            (*ctx).module.globals =
-                objdict::dict_ptr(mpstate::with_vm(|vm| vm.dict_main));
+            (*ctx).module.globals = objdict::dict_ptr(mpstate::with_vm(|vm| vm.dict_main));
             (*ctx).constants = Default::default();
             obj::from_ptr(ctx as *const ModuleContext as *const ())
         }
@@ -268,8 +272,7 @@ pub fn repl_autocomplete(
     let mut start = 0usize;
     for i in (0..top).rev() {
         let ch = org_str.as_bytes()[i];
-        if !(unichar_isalpha(ch as u32) || unichar_isdigit(ch as u32) || ch == b'_' || ch == b'.')
-        {
+        if !(unichar_isalpha(ch as u32) || unichar_isdigit(ch as u32) || ch == b'_' || ch == b'.') {
             start = i + 1;
             break;
         }

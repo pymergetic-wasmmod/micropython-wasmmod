@@ -8,7 +8,9 @@ use py_rs::malloc;
 use py_rs::map::{self, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::mperrno;
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
@@ -231,7 +233,9 @@ static mut F3: [*const (); 1] = [call3 as *const ()];
 static mut FVS: [*const (); 1] = [callvs as *const ()];
 static mut FKW: [*const (); 1] = [call_kw as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -249,7 +253,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static TF2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -267,7 +273,9 @@ static TF2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TF3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -285,7 +293,9 @@ static TF3: ObjType = ObjType {
     slots: unsafe { F3.as_ptr() },
 };
 static TFVS: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -303,7 +313,9 @@ static TFVS: ObjType = ObjType {
     slots: unsafe { FVS.as_ptr() },
 };
 static TFKW: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -335,7 +347,13 @@ fn call3(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callvs(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVarSelf) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     unsafe { (self_.fun)(a[0], n - 1, &a[1..]) }
 }
 
@@ -405,7 +423,9 @@ static VFS_LFS2_PROTO: VfsProto = VfsProto { import_stat };
 
 static mut VFS_LFS2_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_VFS_LFS2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -480,8 +500,8 @@ fn init_type() {
                 value: mk2(vfs_lfsx::statvfs),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             VFS_LFS2_SLOTS[0] = make_new as MakeNewFn as *const ();

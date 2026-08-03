@@ -79,11 +79,8 @@ pub fn start_pass(emit: *mut EmitInlineAsm, pass: PassKind, error_slot: *mut Obj
         (*emit).pass = pass as u16;
         (*emit).error_slot = error_slot;
         if (*emit).pass == PassKind::CodeSize as u16 {
-            core::ptr::write_bytes(
-                (*emit).label_lookup,
-                0,
-                (*emit).max_num_labels * core::mem::size_of::<Qstr>(),
-            );
+            // `write_bytes::<Qstr>` takes an *element* count, not a byte count.
+            core::ptr::write_bytes((*emit).label_lookup, 0, (*emit).max_num_labels);
         }
         let asm_pass = if pass == PassKind::Emit {
             MP_ASM_PASS_EMIT
@@ -133,9 +130,12 @@ pub fn count_params(emit: *mut EmitInlineAsm, n_params: usize, pn_params: *mut P
             );
             return 0;
         }
-        let p = qstr::qstr_str(parse::parse_node_leaf_arg(pn) as Qstr)
-            .unwrap_or_default();
-        let p = if p.last() == Some(&0) { &p[..p.len() - 1] } else { p.as_slice() };
+        let p = qstr::qstr_str(parse::parse_node_leaf_arg(pn) as Qstr).unwrap_or_default();
+        let p = if p.last() == Some(&0) {
+            &p[..p.len() - 1]
+        } else {
+            p.as_slice()
+        };
         if !(p.len() == 2 && p[0] == b'a' && p[1] == b'2' + i as u8) {
             error_msg(
                 unsafe { &mut *emit },
@@ -167,8 +167,8 @@ pub fn label(emit: *mut EmitInlineAsm, label_num: usize, label_id: Qstr) -> bool
 }
 
 const REGISTERS: [&[u8]; 16] = [
-    b"a0", b"a1", b"a2", b"a3", b"a4", b"a5", b"a6", b"a7",
-    b"a8", b"a9", b"a10", b"a11", b"a12", b"a13", b"a14", b"a15",
+    b"a0", b"a1", b"a2", b"a3", b"a4", b"a5", b"a6", b"a7", b"a8", b"a9", b"a10", b"a11", b"a12",
+    b"a13", b"a14", b"a15",
 ];
 
 fn get_arg_reg(emit: &mut EmitInlineAsm, op: &[u8], pn: ParseNode) -> usize {
@@ -343,14 +343,18 @@ const OPCODE_TABLE: &[OpcodeEntry] = &[
 const BCCZ_OPCODES: [&[u8]; 6] = [b"beqz", b"bnez", b"bltz", b"bgez", b"beqz_n", b"bnez_n"];
 
 const BRANCH_OPCODE_NAMES: [&[u8]; 14] = [
-    b"bnone", b"beq", b"blt", b"bltu", b"ball", b"bbc", b"", b"",
-    b"bany", b"bne", b"bge", b"bgeu", b"bnall", b"bbs",
+    b"bnone", b"beq", b"blt", b"bltu", b"ball", b"bbc", b"", b"", b"bany", b"bne", b"bge", b"bgeu",
+    b"bnall", b"bbs",
 ];
 
 fn qstr_eq_name(q: Qstr, name: &[u8]) -> bool {
     qstr::qstr_data(q)
         .map(|(d, _)| {
-            let s = if d.last() == Some(&0) { &d[..d.len() - 1] } else { d.as_slice() };
+            let s = if d.last() == Some(&0) {
+                &d[..d.len() - 1]
+            } else {
+                d.as_slice()
+            };
             s == name
         })
         .unwrap_or(false)
@@ -461,7 +465,13 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
                 let r0 = get_arg_reg(emit, op_str, unsafe { *pn_args });
                 let r1 = get_arg_reg(emit, op_str, unsafe { *pn_args.add(1) });
                 let label = get_arg_label(emit, op_str, unsafe { *pn_args.add(2) }) as usize;
-                asmxtensa::bcc_reg_reg_label(&mut emit.as_, index as u32, r0 as u32, r1 as u32, label);
+                asmxtensa::bcc_reg_reg_label(
+                    &mut emit.as_,
+                    index as u32,
+                    r0 as u32,
+                    r1 as u32,
+                    label,
+                );
                 return;
             }
         }
@@ -477,9 +487,22 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
         } else if qstr_eq_name(op, b"addmi") {
             let r0 = get_arg_reg(emit, op_str, unsafe { *pn_args });
             let r1 = get_arg_reg(emit, op_str, unsafe { *pn_args.add(1) });
-            let imm8 = get_arg_i(emit, op_str, unsafe { *pn_args.add(2) }, -128 * 256, 127 * 256) as i32;
+            let imm8 = get_arg_i(
+                emit,
+                op_str,
+                unsafe { *pn_args.add(2) },
+                -128 * 256,
+                127 * 256,
+            ) as i32;
             if (imm8 & 0xff) != 0 {
-                error_exc(emit, objexcept::new_exception_args(objexcept::type_syntax_error(), 1, &[objstr::new_str(b"not a multiple of 256")]));
+                error_exc(
+                    emit,
+                    objexcept::new_exception_args(
+                        objexcept::type_syntax_error(),
+                        1,
+                        &[objstr::new_str(b"not a multiple of 256")],
+                    ),
+                );
             } else {
                 asmxtensa::op24(
                     &mut emit.as_,
@@ -502,7 +525,14 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
             let bits = 32 - get_arg_i(emit, op_str, unsafe { *pn_args.add(2) }, 1, 31);
             asmxtensa::op24(
                 &mut emit.as_,
-                asmxtensa::encode_rrr(0, 1, 0 | (((bits >> 4) & 0x01) as u32), r0 as u32, r1 as u32, bits & 0x0f),
+                asmxtensa::encode_rrr(
+                    0,
+                    1,
+                    0 | (((bits >> 4) & 0x01) as u32),
+                    r0 as u32,
+                    r1 as u32,
+                    bits & 0x0f,
+                ),
             );
         } else if qstr_eq_name(op, b"srai") {
             let r0 = get_arg_reg(emit, op_str, unsafe { *pn_args });
@@ -510,7 +540,14 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
             let bits = get_arg_i(emit, op_str, unsafe { *pn_args.add(2) }, 0, 31);
             asmxtensa::op24(
                 &mut emit.as_,
-                asmxtensa::encode_rrr(0, 1, 2 | (((bits >> 4) & 0x01) as u32), r0 as u32, bits & 0x0f, r1 as u32),
+                asmxtensa::encode_rrr(
+                    0,
+                    1,
+                    2 | (((bits >> 4) & 0x01) as u32),
+                    r0 as u32,
+                    bits & 0x0f,
+                    r1 as u32,
+                ),
             );
         } else if qstr_eq_name(op, b"srli") {
             let r0 = get_arg_reg(emit, op_str, unsafe { *pn_args });
@@ -525,7 +562,14 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
             let r1 = get_arg_reg(emit, op_str, unsafe { *pn_args.add(1) });
             let imm = get_arg_i(emit, op_str, unsafe { *pn_args.add(2) }, 0, 60);
             if (imm & 0x03) != 0 {
-                error_exc(emit, objexcept::new_exception_args(objexcept::type_syntax_error(), 1, &[objstr::new_str(b"not a multiple of 4")]));
+                error_exc(
+                    emit,
+                    objexcept::new_exception_args(
+                        objexcept::type_syntax_error(),
+                        1,
+                        &[objstr::new_str(b"not a multiple of 4")],
+                    ),
+                );
             } else {
                 asmxtensa::op_l32i_n(&mut emit.as_, r0 as u32, r1 as u32, imm >> 2);
             }
@@ -534,7 +578,14 @@ pub fn op(emit: *mut EmitInlineAsm, op: Qstr, n_args: usize, pn_args: *mut Parse
             let r1 = get_arg_reg(emit, op_str, unsafe { *pn_args.add(1) });
             let imm = get_arg_i(emit, op_str, unsafe { *pn_args.add(2) }, 0, 60);
             if (imm & 0x03) != 0 {
-                error_exc(emit, objexcept::new_exception_args(objexcept::type_syntax_error(), 1, &[objstr::new_str(b"not a multiple of 4")]));
+                error_exc(
+                    emit,
+                    objexcept::new_exception_args(
+                        objexcept::type_syntax_error(),
+                        1,
+                        &[objstr::new_str(b"not a multiple of 4")],
+                    ),
+                );
             } else {
                 asmxtensa::op_s32i_n(&mut emit.as_, r0 as u32, r1 as u32, imm >> 2);
             }

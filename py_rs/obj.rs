@@ -7,11 +7,12 @@ use crate::map::{self, Map};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::objbool;
+use crate::objexcept;
 use crate::objint;
+use crate::objlist;
 use crate::objnone;
 use crate::objstr;
 use crate::objtuple;
-use crate::objlist;
 use crate::objtype;
 use crate::qstr::{self, Qstr};
 use crate::raise::{self, MpRaise};
@@ -88,7 +89,8 @@ pub struct ObjIterBuf {
     pub buf: [Obj; 3],
 }
 
-pub const ITER_BUF_NSLOTS: usize = (std::mem::size_of::<ObjIterBuf>() + std::mem::size_of::<Obj>() - 1)
+pub const ITER_BUF_NSLOTS: usize = (std::mem::size_of::<ObjIterBuf>() + std::mem::size_of::<Obj>()
+    - 1)
     / std::mem::size_of::<Obj>();
 
 /// Buffer protocol descriptor (`mp_buffer_info_t`).
@@ -97,6 +99,26 @@ pub struct BufferInfo {
     pub buf: *mut u8,
     pub len: usize,
     pub typecode: i32,
+}
+
+impl BufferInfo {
+    /// Safe view of buffer bytes. Empty / null buffers yield `&[]` (empty
+    /// `bytearray`/`bytes` use a null `items` pointer with `len == 0`).
+    pub fn as_bytes(&self) -> &[u8] {
+        if self.len == 0 || self.buf.is_null() {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(self.buf as *const u8, self.len) }
+        }
+    }
+
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        if self.len == 0 || self.buf.is_null() {
+            &mut []
+        } else {
+            unsafe { std::slice::from_raw_parts_mut(self.buf, self.len) }
+        }
+    }
 }
 
 pub const BUFFER_READ: u32 = 1;
@@ -189,7 +211,11 @@ pub const WORD_MSBIT_HIGH: Uint = 1usize << (usize::BITS - 1);
 
 #[inline]
 pub fn new_bool(x: bool) -> Obj {
-    if x { CONST_TRUE } else { CONST_FALSE }
+    if x {
+        CONST_TRUE
+    } else {
+        CONST_FALSE
+    }
 }
 
 #[inline]
@@ -472,20 +498,39 @@ pub fn is_dict_or_ordereddict(o: Obj) -> bool {
 
 // --- well-known types -------------------------------------------------------
 
-pub fn type_none() -> &'static ObjType { objnone::type_none() }
-pub fn type_bool() -> &'static ObjType { objbool::type_bool() }
-pub fn type_int() -> &'static ObjType { objint::type_int() }
-pub fn type_str() -> &'static ObjType { objstr::type_str() }
-pub fn type_type() -> &'static ObjType { objtype::type_type() }
-pub fn type_object() -> &'static ObjType { objtype::type_object() }
-pub fn type_tuple() -> &'static ObjType { objtuple::type_tuple() }
-pub fn type_list() -> &'static ObjType { objlist::type_list() }
+pub fn type_none() -> &'static ObjType {
+    objnone::type_none()
+}
+pub fn type_bool() -> &'static ObjType {
+    objbool::type_bool()
+}
+pub fn type_int() -> &'static ObjType {
+    objint::type_int()
+}
+pub fn type_str() -> &'static ObjType {
+    objstr::type_str()
+}
+pub fn type_type() -> &'static ObjType {
+    objtype::type_type()
+}
+pub fn type_object() -> &'static ObjType {
+    objtype::type_object()
+}
+pub fn type_tuple() -> &'static ObjType {
+    objtuple::type_tuple()
+}
+pub fn type_list() -> &'static ObjType {
+    objlist::type_list()
+}
 
 // --- allocation -------------------------------------------------------------
 
 pub fn malloc_helper(num_bytes: usize, type_: &'static ObjType) -> *mut ObjBase {
-    let base = gc::alloc(num_bytes, std::mem::align_of::<ObjBase>()).expect("gc alloc") as *mut ObjBase;
-    unsafe { (*base).type_ = type_ as *const ObjType; }
+    let base =
+        gc::alloc(num_bytes, std::mem::align_of::<ObjBase>()).expect("gc alloc") as *mut ObjBase;
+    unsafe {
+        (*base).type_ = type_ as *const ObjType;
+    }
     base
 }
 
@@ -518,7 +563,11 @@ pub fn get_type(o: Obj) -> &'static ObjType {
     } else if is_qstr(o) {
         type_str()
     } else if mpconfig::OBJ_IMMEDIATE_OBJS && is_immediate(o) {
-        if immediate_value(o) & 1 == 0 { type_none() } else { type_bool() }
+        if immediate_value(o) & 1 == 0 {
+            type_none()
+        } else {
+            type_bool()
+        }
     } else {
         let type_ptr = unsafe { (*(as_ptr(o) as *const ObjBase)).type_ };
         if type_ptr.is_null() {
@@ -552,6 +601,38 @@ pub fn print(o: Obj, kind: PrintKind) {
 }
 
 pub fn print_exception(print: &Print, exc: Obj) {
+    if objexcept::is_exception_instance(exc) {
+        let mut n = 0usize;
+        let mut values = core::ptr::null_mut();
+        objexcept::exception_get_traceback(exc, &mut n, &mut values);
+        if n > 0 {
+            debug_assert!(n % 3 == 0);
+            mpprint::print_str(print, "Traceback (most recent call last):\n");
+            let mut i = n as isize - 3;
+            while i >= 0 {
+                unsafe {
+                    let file = *values.add(i as usize);
+                    let line = *values.add(i as usize + 1);
+                    let block = *values.add(i as usize + 2);
+                    if mpconfig::ENABLE_SOURCE_LINE {
+                        mpprint::printf(
+                            print,
+                            "  File \"%q\", line %d",
+                            [mpprint::VaArg::Qstr(file), mpprint::VaArg::Int(line as i32)],
+                        );
+                    } else {
+                        mpprint::printf(print, "  File \"%q\"", [mpprint::VaArg::Qstr(file)]);
+                    }
+                    if block == qstr::QSTR_NULL {
+                        mpprint::print_str(print, "\n");
+                    } else {
+                        mpprint::printf(print, ", in %q\n", [mpprint::VaArg::Qstr(block)]);
+                    }
+                }
+                i -= 3;
+            }
+        }
+    }
     print_helper(print, exc, PrintKind::Exc);
     mpprint::print_str(print, "\n");
 }
@@ -586,8 +667,16 @@ pub fn is_callable(o: Obj) -> bool {
 }
 
 pub fn equal_not_equal(op: BinaryOp, o1: Obj, o2: Obj) -> Obj {
-    let local_true = if op == BinaryOp::NotEqual { CONST_FALSE } else { CONST_TRUE };
-    let local_false = if op == BinaryOp::NotEqual { CONST_TRUE } else { CONST_FALSE };
+    let local_true = if op == BinaryOp::NotEqual {
+        CONST_FALSE
+    } else {
+        CONST_TRUE
+    };
+    let local_false = if op == BinaryOp::NotEqual {
+        CONST_TRUE
+    } else {
+        CONST_FALSE
+    };
 
     if o1 == o2 && (is_small_int(o1) || (get_type(o1).flags & TYPE_FLAG_EQ_NOT_REFLEXIVE) == 0) {
         return local_true;
@@ -595,7 +684,11 @@ pub fn equal_not_equal(op: BinaryOp, o1: Obj, o2: Obj) -> Obj {
 
     if is_str(o1) {
         if is_str(o2) {
-            return if objstr::str_equal(o1, o2) { local_true } else { local_false };
+            return if objstr::str_equal(o1, o2) {
+                local_true
+            } else {
+                local_false
+            };
         }
         return local_false;
     }
@@ -610,7 +703,9 @@ pub fn equal_not_equal(op: BinaryOp, o1: Obj, o2: Obj) -> Obj {
     while pass_number < 2 {
         let t = get_type(o1);
         if let Some(binary) = type_get_binary_op(t) {
-            if (t.flags & TYPE_FLAG_EQ_CHECKS_OTHER_TYPE) != 0 || get_type(o2) as *const ObjType == t as *const ObjType {
+            if (t.flags & TYPE_FLAG_EQ_CHECKS_OTHER_TYPE) != 0
+                || get_type(o2) as *const ObjType == t as *const ObjType
+            {
                 if op == BinaryOp::NotEqual && (t.flags & TYPE_FLAG_EQ_HAS_NEQ_TEST) != 0 {
                     let r = binary(BinaryOp::NotEqual, o1, o2);
                     if r != OBJ_NULL {
@@ -619,14 +714,24 @@ pub fn equal_not_equal(op: BinaryOp, o1: Obj, o2: Obj) -> Obj {
                 }
                 let r = binary(BinaryOp::Equal, o1, o2);
                 if r != OBJ_NULL {
-                    return if op == BinaryOp::Equal { r } else { new_bool(is_true(r)) };
+                    return if op == BinaryOp::Equal {
+                        r
+                    } else if is_true(r) {
+                        local_true
+                    } else {
+                        local_false
+                    };
                 }
             }
         }
         pass_number += 1;
         std::mem::swap(&mut o1, &mut o2);
     }
-    if o1 == o2 { local_true } else { local_false }
+    if o1 == o2 {
+        local_true
+    } else {
+        local_false
+    }
 }
 
 pub fn equal(o1: Obj, o2: Obj) -> bool {
@@ -688,7 +793,11 @@ pub fn len_maybe(o: Obj) -> Option<Obj> {
         Some(new_small_int(objstr::str_len(o) as Int))
     } else if let Some(unary) = type_get_unary_op(get_type(o)) {
         let r = unary(UnaryOp::Len, o);
-        if r == OBJ_NULL { None } else { Some(r) }
+        if r == OBJ_NULL {
+            None
+        } else {
+            Some(r)
+        }
     } else {
         None
     }
@@ -761,9 +870,13 @@ pub fn get_index(type_: &ObjType, len: usize, index: Obj, is_slice: bool) -> usi
         i += len as Int;
     }
     if is_slice {
-        if i < 0 { i = 0; } else if i as usize > len { i = len as Int; }
+        if i < 0 {
+            i = 0;
+        } else if i as usize > len {
+            i = len as Int;
+        }
     } else if i < 0 || i as usize >= len {
-        raise::raise(MpRaise::TypeError("index out of range"));
+        raise::raise(MpRaise::IndexError("index out of range"));
     }
     i as usize
 }
@@ -783,7 +896,8 @@ pub fn debug_str(o: Obj) -> String {
         return small_int_value(o).to_string();
     }
     if is_qstr(o) {
-        return qstr::str_from_qstr(qstr_value(o)).unwrap_or_else(|| format!("qstr({})", qstr_value(o)));
+        return qstr::str_from_qstr(qstr_value(o))
+            .unwrap_or_else(|| format!("qstr({})", qstr_value(o)));
     }
     if o == OBJ_NULL {
         return "null".into();

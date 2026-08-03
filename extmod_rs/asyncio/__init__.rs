@@ -5,7 +5,9 @@ pub use super::core::*;
 pub use super::event::{Event, ThreadSafeFlag};
 pub use super::funcs::{gather, wait_for, wait_for_ms, GatherResult, WaitForOutcome};
 pub use super::lock::Lock;
-pub use super::stream::{open_connection, start_server, Server, Stream, StreamReader, StreamWriter};
+pub use super::stream::{
+    open_connection, start_server, Server, Stream, StreamReader, StreamWriter,
+};
 
 pub const VERSION: (u8, u8, u8) = (3, 0, 0);
 

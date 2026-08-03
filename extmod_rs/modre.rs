@@ -3,8 +3,8 @@
 
 use crate::re15::{compilecode, dumpcode, recursiveloopprog, sizecode, ByteProg, Subject};
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
@@ -47,7 +47,9 @@ static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut FV: [*const (); 1] = [callv as *const ()];
 static T1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -65,7 +67,9 @@ static T1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static T2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -83,7 +87,9 @@ static T2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -111,7 +117,13 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk1(f: BuiltinFn1) -> Obj {
@@ -198,11 +210,7 @@ fn build_subject(str_obj: Obj, startpos: Option<i32>, endpos: Option<i32>) -> Su
 
 fn match_print(print: &Print, self_in: Obj, _kind: PrintKind) {
     let self_ = unsafe { &*match_ptr(self_in) };
-    let _ = mpprint::printf(
-        print,
-        "<match num=%d>",
-        [VaArg::Int(self_.num_matches)],
-    );
+    let _ = mpprint::printf(print, "<match num=%d>", [VaArg::Int(self_.num_matches)]);
 }
 
 fn match_group(self_in: Obj, no_in: Obj) -> Obj {
@@ -275,11 +283,7 @@ fn match_end(n_args: usize, args: &[Obj]) -> Obj {
 }
 
 fn re_print(print: &Print, self_in: Obj, _kind: PrintKind) {
-    let _ = mpprint::printf(
-        print,
-        "<re %x>",
-        [VaArg::USize(re_ptr(self_in) as usize)],
-    );
+    let _ = mpprint::printf(print, "<re %x>", [VaArg::USize(re_ptr(self_in) as usize)]);
 }
 
 fn mod_re_compile(n_args: usize, args: &[Obj]) -> Obj {
@@ -329,7 +333,10 @@ fn re_exec_helper(is_anchored: bool, n_args: usize, args: &[Obj]) -> Obj {
     }
     let subj = build_subject(args[1], startpos, endpos);
     let caps_num = ((prog.sub + 1) * 2) as usize;
-    let match_obj = obj::malloc_var::<ObjMatch>(caps_num * core::mem::size_of::<*const u8>(), init_match_type());
+    let match_obj = obj::malloc_var::<ObjMatch>(
+        caps_num * core::mem::size_of::<*const u8>(),
+        init_match_type(),
+    );
     unsafe {
         let caps = match_caps(match_obj, caps_num);
         core::ptr::write_bytes(caps, 0, caps_num);
@@ -417,7 +424,10 @@ fn re_sub_helper(n_args: usize, args: &[Obj]) -> Obj {
     let prog = unsafe { &(*re_ptr(self_)).prog };
     let mut subj = build_subject(where_obj, None, None);
     let caps_num = ((prog.sub + 1) * 2) as usize;
-    let match_obj = obj::malloc_var::<ObjMatch>(caps_num * core::mem::size_of::<*const u8>(), init_match_type());
+    let match_obj = obj::malloc_var::<ObjMatch>(
+        caps_num * core::mem::size_of::<*const u8>(),
+        init_match_type(),
+    );
     unsafe {
         (*match_obj).base.type_ = init_match_type();
         (*match_obj).num_matches = (caps_num / 2) as i32;
@@ -448,7 +458,10 @@ fn re_sub_helper(n_args: usize, args: &[Obj]) -> Obj {
             std::slice::from_raw_parts(subj.begin, pre_len)
         });
         let repl_obj = if obj::is_callable(replace) {
-            runtime::call_function_1(replace, obj::from_ptr(match_obj as *const ObjMatch as *const ()))
+            runtime::call_function_1(
+                replace,
+                obj::from_ptr(match_obj as *const ObjMatch as *const ()),
+            )
         } else {
             replace
         };
@@ -523,7 +536,9 @@ fn re_sub_helper(n_args: usize, args: &[Obj]) -> Obj {
 
 static mut MATCH_SLOTS: [*const (); 2] = [core::ptr::null(), core::ptr::null()];
 static mut TYPE_MATCH: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -574,7 +589,8 @@ fn init_match_type() -> &'static ObjType {
                 },
             ]);
         }
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             MATCH_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -599,7 +615,9 @@ fn match_groups_impl(self_in: Obj) -> Obj {
 
 static mut RE_SLOTS: [*const (); 2] = [core::ptr::null(), core::ptr::null()];
 static mut TYPE_RE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -644,7 +662,8 @@ fn init_re_type() -> &'static ObjType {
                 value: mkv(3, 5, re_sub_helper),
             });
         }
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             RE_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

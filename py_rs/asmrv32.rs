@@ -130,7 +130,11 @@ const fn encode_type_b(op: u32, ft3: u32, rs1: u32, rs2: u32, imm: i32) -> u32 {
 
 #[inline]
 const fn encode_type_i(op: u32, ft3: u32, rd: u32, rs: u32, imm: i32) -> u32 {
-    (op & 0x7f) | ((rd & 0x1f) << 7) | ((ft3 & 0x07) << 12) | ((rs & 0x1f) << 15) | ((imm as u32 & 0xfff) << 20)
+    (op & 0x7f)
+        | ((rd & 0x1f) << 7)
+        | ((ft3 & 0x07) << 12)
+        | ((rs & 0x1f) << 15)
+        | ((imm as u32 & 0xfff) << 20)
 }
 
 #[inline]
@@ -393,7 +397,9 @@ rv32_word_r!(opcode_sltu, 0x33, 0x03, 0x00);
 macro_rules! rv32_word_b {
     ($name:ident, $ft3:expr) => {
         pub fn $name(state: &mut AsmRv32, rs1: u32, rs2: u32, offset: i32) {
-            if !ENABLED { return; }
+            if !ENABLED {
+                return;
+            }
             emit_word_opcode(state, encode_type_b(0x63, $ft3, rs1, rs2, offset));
         }
     };
@@ -423,63 +429,87 @@ rv32_word_r!(opcode_sh2add, 0x33, 0x04, 0x10);
 rv32_word_r!(opcode_sh3add, 0x33, 0x06, 0x10);
 
 pub fn opcode_jal(state: &mut AsmRv32, rd: u32, offset: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_j(0x6f, rd, offset));
 }
 
 pub fn opcode_ebreak(state: &mut AsmRv32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, 0x0010_0073);
 }
 
 pub fn opcode_ecall(state: &mut AsmRv32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, 0x0000_0073);
 }
 
 pub fn opcode_cmv(state: &mut AsmRv32, rd: u32, rs: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_cr(0x02, 0x08, rd, rs));
 }
 
 pub fn opcode_cnop(state: &mut AsmRv32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, 0x0001);
 }
 
 pub fn opcode_cebreak(state: &mut AsmRv32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, 0x9002);
 }
 
 pub fn opcode_cjal(state: &mut AsmRv32, offset: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_cj(0x01, 0x01, offset));
 }
 
 pub fn opcode_cand(state: &mut AsmRv32, rd: u32, rs: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_ca(0x01, 0x23, 0x03, rd, rs));
 }
 
 pub fn opcode_candi(state: &mut AsmRv32, rd: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     let imm = ((immediate & 0x20) << 2) | (immediate & 0x1f) | 0x40;
     emit_halfword_opcode(state, encode_type_cb(0x01, 0x04, rd, imm));
 }
 
 pub fn opcode_cor(state: &mut AsmRv32, rd: u32, rs: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_ca(0x01, 0x23, 0x02, rd, rs));
 }
 
 pub fn opcode_csub(state: &mut AsmRv32, rd: u32, rs: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_ca(0x01, 0x23, 0x03, rd, rs));
 }
 
 pub fn opcode_cxor(state: &mut AsmRv32, rd: u32, rs: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_ca(0x01, 0x23, 0x01, rd, rs));
 }
 
@@ -488,66 +518,103 @@ rv32_half_ci!(opcode_csrai, 0x02, 0x01);
 rv32_half_ci!(opcode_csrli, 0x02, 0x02);
 
 pub fn opcode_srai(state: &mut AsmRv32, rd: u32, rs: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_i(0x13, 0x05, rd, rs, immediate & 0x1f));
 }
 
 pub fn opcode_srli(state: &mut AsmRv32, rd: u32, rs: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_i(0x13, 0x05, rd, rs, immediate & 0x1f));
 }
 
 pub fn opcode_csrrc(state: &mut AsmRv32, rd: u32, rs: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_i(0x73, 0x03, rd, rs, immediate));
 }
 
 pub fn opcode_csrrs(state: &mut AsmRv32, rd: u32, rs: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_i(0x73, 0x02, rd, rs, immediate));
 }
 
 pub fn opcode_csrrw(state: &mut AsmRv32, rd: u32, rs: u32, immediate: i32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_word_opcode(state, encode_type_i(0x73, 0x01, rd, rs, immediate));
 }
 
 pub fn opcode_csrrci(state: &mut AsmRv32, rd: u32, csr: u32, immediate: i32) {
-    if !ENABLED { return; }
-    emit_word_opcode(state, encode_type_csri(0x73, 0x07, rd, csr, immediate as u32));
+    if !ENABLED {
+        return;
+    }
+    emit_word_opcode(
+        state,
+        encode_type_csri(0x73, 0x07, rd, csr, immediate as u32),
+    );
 }
 
 pub fn opcode_csrrsi(state: &mut AsmRv32, rd: u32, csr: u32, immediate: i32) {
-    if !ENABLED { return; }
-    emit_word_opcode(state, encode_type_csri(0x73, 0x06, rd, csr, immediate as u32));
+    if !ENABLED {
+        return;
+    }
+    emit_word_opcode(
+        state,
+        encode_type_csri(0x73, 0x06, rd, csr, immediate as u32),
+    );
 }
 
 pub fn opcode_csrrwi(state: &mut AsmRv32, rd: u32, csr: u32, immediate: i32) {
-    if !ENABLED { return; }
-    emit_word_opcode(state, encode_type_csri(0x73, 0x05, rd, csr, immediate as u32));
+    if !ENABLED {
+        return;
+    }
+    emit_word_opcode(
+        state,
+        encode_type_csri(0x73, 0x05, rd, csr, immediate as u32),
+    );
 }
 
 pub fn opcode_cmpop(state: &mut AsmRv32, reg_list: u32, immediate: u32) {
-    if !ENABLED { return; }
-    emit_halfword_opcode(state, encode_type_cmpp(0x02, 0x2e, 0x02, reg_list, immediate));
+    if !ENABLED {
+        return;
+    }
+    emit_halfword_opcode(
+        state,
+        encode_type_cmpp(0x02, 0x2e, 0x02, reg_list, immediate),
+    );
 }
 
 pub fn opcode_cmpopretz(state: &mut AsmRv32, reg_list: u32, immediate: u32) {
-    if !ENABLED { return; }
-    emit_halfword_opcode(state, encode_type_cmpp(0x02, 0x2f, 0x00, reg_list, immediate));
+    if !ENABLED {
+        return;
+    }
+    emit_halfword_opcode(
+        state,
+        encode_type_cmpp(0x02, 0x2f, 0x00, reg_list, immediate),
+    );
 }
 
 pub fn opcode_cmmva01s(state: &mut AsmRv32, r1s: u32, r2s: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_cmmv(0x02, 0x2b, 0x03, r1s, r2s));
 }
 
 pub fn opcode_cmmvsa01(state: &mut AsmRv32, r1s: u32, r2s: u32) {
-    if !ENABLED { return; }
+    if !ENABLED {
+        return;
+    }
     emit_halfword_opcode(state, encode_type_cmmv(0x02, 0x2b, 0x01, r1s, r2s));
 }
-
-
 
 pub fn opcode_auipc(state: &mut AsmRv32, rd: u32, offset: i32) {
     if !ENABLED {
@@ -701,14 +768,20 @@ pub fn opcode_cmpush(state: &mut AsmRv32, reg_list: u32, immediate: u32) {
     if !ENABLED {
         return;
     }
-    emit_halfword_opcode(state, encode_type_cmpp(0x02, 0x2e, 0x00, reg_list, immediate));
+    emit_halfword_opcode(
+        state,
+        encode_type_cmpp(0x02, 0x2e, 0x00, reg_list, immediate),
+    );
 }
 
 pub fn opcode_cmpopret(state: &mut AsmRv32, reg_list: u32, immediate: u32) {
     if !ENABLED {
         return;
     }
-    emit_halfword_opcode(state, encode_type_cmpp(0x02, 0x2f, 0x02, reg_list, immediate));
+    emit_halfword_opcode(
+        state,
+        encode_type_cmpp(0x02, 0x2f, 0x02, reg_list, immediate),
+    );
 }
 
 fn split_immediate(immediate: i32, upper: &mut u32, lower: &mut u32) {
@@ -793,12 +866,7 @@ fn adjust_stack(state: &mut AsmRv32, stack_size: i32) {
         return;
     }
     if fit_signed(12, stack_size) {
-        opcode_addi(
-            state,
-            ASM_RV32_REG_SP,
-            ASM_RV32_REG_SP,
-            stack_size,
-        );
+        opcode_addi(state, ASM_RV32_REG_SP, ASM_RV32_REG_SP, stack_size);
         return;
     }
     load_full_immediate(state, REG_TEMP0, stack_size);
@@ -868,10 +936,7 @@ fn emit_compressed_function_epilogue(state: &mut AsmRv32, registers_mask: u32) {
 fn calculate_displacement_for_label(state: &AsmRv32, label: usize) -> (bool, isize) {
     let label_offset = unsafe { *state.base.label_offsets.add(label) };
     let displacement = label_offset as isize - state.base.code_offset as isize;
-    (
-        label_offset != usize::MAX && displacement < 0,
-        displacement,
-    )
+    (label_offset != usize::MAX && displacement < 0, displacement)
 }
 
 pub fn entry(state: &mut AsmRv32, locals: u32) {
@@ -879,10 +944,8 @@ pub fn entry(state: &mut AsmRv32, locals: u32) {
         return;
     }
     state.locals_count = locals;
-    state.saved_registers_mask |= (1 << REG_FUN_TABLE)
-        | (1 << REG_LOCAL_1)
-        | (1 << REG_LOCAL_2)
-        | (1 << REG_LOCAL_3);
+    state.saved_registers_mask |=
+        (1 << REG_FUN_TABLE) | (1 << REG_LOCAL_1) | (1 << REG_LOCAL_2) | (1 << REG_LOCAL_3);
     if allow_zcmp_opcodes() {
         emit_compressed_function_prologue(state, state.saved_registers_mask);
     } else {
@@ -967,11 +1030,13 @@ pub fn emit_jump_if_reg_nonzero(state: &mut AsmRv32, rs: u32, label: usize) {
     }
     let (can_emit_short_jump, mut displacement) = calculate_displacement_for_label(state, label);
 
-    if can_emit_short_jump
-        && fit_signed(8, displacement as i32)
-        && rv32_is_in_c_register_window(rs)
+    if can_emit_short_jump && fit_signed(8, displacement as i32) && rv32_is_in_c_register_window(rs)
     {
-        opcode_cbnez(state, rv32_map_in_c_register_window(rs), displacement as i32);
+        opcode_cbnez(
+            state,
+            rv32_map_in_c_register_window(rs),
+            displacement as i32,
+        );
         return;
     }
 
@@ -1042,10 +1107,7 @@ pub fn emit_mov_reg_local_addr(state: &mut AsmRv32, rd: u32, local: u32) {
         return;
     }
     let offset = state.locals_stack_offset + (local * ASM_WORD_SIZE as u32);
-    if fit_unsigned(10, offset)
-        && offset != 0
-        && rv32_is_in_c_register_window(rd)
-    {
+    if fit_unsigned(10, offset) && offset != 0 && rv32_is_in_c_register_window(rd) {
         opcode_caddi4spn(state, rv32_map_in_c_register_window(rd), offset);
         return;
     }
@@ -1202,14 +1264,7 @@ fn fix_up_scaled_reg_reg_reg(state: &mut AsmRv32, rs1: u32, rs2: u32, operation_
     if operation_size > 0 && allow_zba_opcodes() {
         emit_word_opcode(
             state,
-            encode_type_r(
-                0x33,
-                1 << operation_size,
-                0x10,
-                REG_TEMP2,
-                rs2,
-                rs1,
-            ),
+            encode_type_r(0x33, 1 << operation_size, 0x10, REG_TEMP2, rs2, rs1),
         );
     } else if operation_size > 0 {
         opcode_slli(state, REG_TEMP2, rs2, operation_size as i32);

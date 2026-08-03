@@ -12,10 +12,16 @@ pub fn hci_poll() -> bool {
 }
 
 #[cfg(feature = "bluetooth_btstack_h4")]
-pub fn hci_poll_h4() { super::mpbtstackport_h4::hci_poll_h4(); }
+pub fn hci_poll_h4() {
+    super::mpbtstackport_h4::hci_poll_h4();
+}
 
 #[cfg(feature = "bluetooth_btstack_h4")]
-pub fn port_init_h4() { super::mpbtstackport_h4::port_init_h4(); }
+pub fn port_init_h4() {
+    super::mpbtstackport_h4::port_init_h4();
+}
 
 #[cfg(feature = "bluetooth_btstack_usb")]
-pub fn port_init_usb() { super::mpbtstackport_usb::port_init_usb(); }
+pub fn port_init_usb() {
+    super::mpbtstackport_usb::port_init_usb();
+}

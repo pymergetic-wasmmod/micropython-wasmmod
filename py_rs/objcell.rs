@@ -5,6 +5,7 @@ use crate::malloc;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{self, Obj, ObjBase, ObjType};
+use crate::qstr;
 
 #[repr(C)]
 pub struct ObjCell {
@@ -14,8 +15,10 @@ pub struct ObjCell {
 
 static mut CELL_SLOTS: [*const (); 1] = [cell_print as *const ()];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -37,8 +40,13 @@ static TYPE: ObjType = ObjType {
     slots: unsafe { CELL_SLOTS.as_ptr() },
 };
 
+static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
 pub fn type_cell() -> &'static ObjType {
-    &TYPE
+    INIT.get_or_init(|| unsafe {
+        TYPE.name = qstr::from_str("cell");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE) }
 }
 
 fn cell_print(print: &Print, o_in: Obj, _kind: PrintKind) {

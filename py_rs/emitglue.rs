@@ -55,7 +55,9 @@ pub fn proto_fun_is_bytecode(proto_fun: ProtoFun) -> bool {
     let header = proto_fun as *const u8;
     unsafe {
         let header = u16::from(header.read()) | (u16::from(header.add(1).read()) << 8);
-        header != (PROTO_FUN_INDICATOR_RAW_CODE_0 as u16 | ((PROTO_FUN_INDICATOR_RAW_CODE_1 as u16) << 8))
+        header
+            != (PROTO_FUN_INDICATOR_RAW_CODE_0 as u16
+                | ((PROTO_FUN_INDICATOR_RAW_CODE_1 as u16) << 8))
     }
 }
 
@@ -88,7 +90,12 @@ pub fn new_raw_code() -> *mut RawCode {
 }
 
 /// `mp_emit_glue_assign_bytecode`
-pub fn assign_bytecode(rc: *mut RawCode, code: *const u8, children: *mut *mut RawCode, scope_flags: u16) {
+pub fn assign_bytecode(
+    rc: *mut RawCode,
+    code: *const u8,
+    children: *mut *mut RawCode,
+    scope_flags: u16,
+) {
     assign_bytecode_ex(rc, code, children, scope_flags, 0, 0);
 }
 
@@ -148,7 +155,8 @@ pub fn make_function_from_proto_fun(
 ) -> Obj {
     debug_assert!(!proto_fun.is_null());
 
-    if mpconfig::MODULE_FROZEN_MPY || mpconfig::PY_BUILTINS_CODE >= mpconfig::PY_BUILTINS_CODE_BASIC {
+    if mpconfig::MODULE_FROZEN_MPY || mpconfig::PY_BUILTINS_CODE >= mpconfig::PY_BUILTINS_CODE_BASIC
+    {
         if proto_fun_is_bytecode(proto_fun) {
             let bc = proto_fun as *const u8;
             let fun = objfun::new_fun_bc(def_args, bc, context, core::ptr::null());
@@ -176,7 +184,8 @@ pub fn make_function_from_proto_fun(
                 );
                 if (*rc).is_generator {
                     let base = obj::as_ptr(fun) as *mut obj::ObjBase;
-                    (*base).type_ = crate::objgenerator::type_native_gen_wrap() as *const obj::ObjType;
+                    (*base).type_ =
+                        crate::objgenerator::type_native_gen_wrap() as *const obj::ObjType;
                 }
                 fun
             }
@@ -216,12 +225,23 @@ pub fn make_closure_from_proto_fun(
     args: &[Obj],
 ) -> Obj {
     let ffun = if n_closed_over & 0x100 != 0 {
-        let def: [Obj; 2] = [args[0], if args.len() > 1 { args[1] } else { obj::OBJ_NULL }];
+        let def: [Obj; 2] = [
+            args[0],
+            if args.len() > 1 {
+                args[1]
+            } else {
+                obj::OBJ_NULL
+            },
+        ];
         make_function_from_proto_fun(proto_fun, context, Some(&def))
     } else {
         make_function_from_proto_fun(proto_fun, context, None)
     };
-    objclosure::new_closure(ffun, n_closed_over & 0xff, &args[(n_closed_over >> 7) & 2..])
+    objclosure::new_closure(
+        ffun,
+        n_closed_over & 0xff,
+        &args[(n_closed_over >> 7) & 2..],
+    )
 }
 
 /// Allocate module context tables (`mp_module_context_alloc_tables`).

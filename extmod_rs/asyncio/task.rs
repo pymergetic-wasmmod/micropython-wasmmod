@@ -207,7 +207,10 @@ fn ph_meld(h1: Rc<RefCell<Task>>, h2: Rc<RefCell<Task>>) -> Rc<RefCell<Task>> {
     }
 }
 
-fn ph_meld_opt(h1: Option<Rc<RefCell<Task>>>, h2: Option<Rc<RefCell<Task>>>) -> Option<Rc<RefCell<Task>>> {
+fn ph_meld_opt(
+    h1: Option<Rc<RefCell<Task>>>,
+    h2: Option<Rc<RefCell<Task>>>,
+) -> Option<Rc<RefCell<Task>>> {
     match (h1, h2) {
         (None, h) | (h, None) => h,
         (Some(a), Some(b)) => Some(ph_meld(a, b)),

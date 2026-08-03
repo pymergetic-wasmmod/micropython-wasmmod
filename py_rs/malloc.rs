@@ -38,7 +38,12 @@ pub fn del_obj<T>(ptr: *mut T) {
 }
 
 /// Grow or shrink a GC block in place when possible (`m_renew_maybe`).
-pub fn renew_maybe<T>(ptr: *mut T, old_bytes: usize, new_bytes: usize, allow_move: bool) -> Option<*mut T> {
+pub fn renew_maybe<T>(
+    ptr: *mut T,
+    old_bytes: usize,
+    new_bytes: usize,
+    allow_move: bool,
+) -> Option<*mut T> {
     if new_bytes <= old_bytes {
         return Some(ptr);
     }

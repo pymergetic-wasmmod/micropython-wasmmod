@@ -99,7 +99,10 @@ pub const fn encode_rrrn(op0: u32, r: u32, s: u32, t: u32) -> u16 {
 
 #[inline]
 const fn encode_ri7(op0: u32, s: u32, imm7: i32) -> u16 {
-    (((imm7 as u32) & 0xf) << 12) as u16 | (s << 8) as u16 | ((imm7 as u32) & 0x70) as u16 | op0 as u16
+    (((imm7 as u32) & 0xf) << 12) as u16
+        | (s << 8) as u16
+        | ((imm7 as u32) & 0x70) as u16
+        | op0 as u16
 }
 
 #[inline]
@@ -241,7 +244,11 @@ pub fn op_l32i_n(state: &mut AsmXtensa, reg_dest: u32, reg_base: u32, word_offse
 pub fn op_l32r(state: &mut AsmXtensa, reg_dest: u32, op_off: u32, dest_off: u32) {
     op24(
         state,
-        encode_ri16(1, reg_dest, ((dest_off - ((op_off + 3) & !3)) >> 2) & 0xffff),
+        encode_ri16(
+            1,
+            reg_dest,
+            ((dest_off - ((op_off + 3) & !3)) >> 2) & 0xffff,
+        ),
     );
 }
 
@@ -380,12 +387,7 @@ pub fn entry(state: &mut AsmXtensa, num_locals: i32) {
 
     op_s32i_n(state, ASM_XTENSA_REG_A0, ASM_XTENSA_REG_A1, 0);
     for i in 1..ASM_XTENSA_NUM_REGS_SAVED {
-        op_s32i_n(
-            state,
-            ASM_XTENSA_REG_A11 + i,
-            ASM_XTENSA_REG_A1,
-            i,
-        );
+        op_s32i_n(state, ASM_XTENSA_REG_A11 + i, ASM_XTENSA_REG_A1, i);
     }
 }
 
@@ -394,12 +396,7 @@ pub fn exit(state: &mut AsmXtensa) {
         return;
     }
     for i in (1..ASM_XTENSA_NUM_REGS_SAVED).rev() {
-        op_l32i_n(
-            state,
-            ASM_XTENSA_REG_A11 + i,
-            ASM_XTENSA_REG_A1,
-            i,
-        );
+        op_l32i_n(state, ASM_XTENSA_REG_A11 + i, ASM_XTENSA_REG_A1, i);
     }
     op_l32i_n(state, ASM_XTENSA_REG_A0, ASM_XTENSA_REG_A1, 0);
 
@@ -412,7 +409,12 @@ pub fn exit(state: &mut AsmXtensa) {
         );
     } else {
         op_movi(state, ASM_XTENSA_REG_A9, state.stack_adjust as i32);
-        op_add_n(state, ASM_XTENSA_REG_A1, ASM_XTENSA_REG_A1, ASM_XTENSA_REG_A9);
+        op_add_n(
+            state,
+            ASM_XTENSA_REG_A1,
+            ASM_XTENSA_REG_A1,
+            ASM_XTENSA_REG_A9,
+        );
     }
     op_ret_n(state);
 }
@@ -477,13 +479,7 @@ pub fn bccz_reg_label(state: &mut AsmXtensa, cond: u32, reg: u32, label: usize) 
     op_j(state, rel - 3);
 }
 
-pub fn bcc_reg_reg_label(
-    state: &mut AsmXtensa,
-    cond: u32,
-    reg1: u32,
-    reg2: u32,
-    label: usize,
-) {
+pub fn bcc_reg_reg_label(state: &mut AsmXtensa, cond: u32, reg1: u32, reg2: u32, label: usize) {
     if !ENABLED {
         return;
     }
@@ -640,10 +636,7 @@ pub fn load_reg_reg_offset(
     if operation_size == 2 {
         op_l32i_n(state, reg_dest, reg_dest, 0);
     } else {
-        op24(
-            state,
-            encode_rri8(2, operation_size, reg_dest, reg_dest, 0),
-        );
+        op24(state, encode_rri8(2, operation_size, reg_dest, reg_dest, 0));
     }
 }
 
@@ -700,20 +693,16 @@ pub fn call_ind_win(state: &mut AsmXtensa, idx: u32) {
     op_callx8(state, ASM_XTENSA_REG_A8);
 }
 
-pub fn bit_branch(
-    state: &mut AsmXtensa,
-    reg: usize,
-    bit: usize,
-    label: usize,
-    condition: u32,
-) {
+pub fn bit_branch(state: &mut AsmXtensa, reg: usize, bit: usize, label: usize, condition: u32) {
     if !ENABLED {
         return;
     }
     let dest = get_label_dest(state, label);
     let rel = dest as i32 - state.base.code_offset as i32 - 4;
     if state.base.pass == MP_ASM_PASS_EMIT && !signed_fit8(rel) {
-        raise::raise(MpRaise::RuntimeError("ERROR: xtensa bit_branch out of range"));
+        raise::raise(MpRaise::RuntimeError(
+            "ERROR: xtensa bit_branch out of range",
+        ));
     }
     op24(
         state,
@@ -735,10 +724,14 @@ pub fn call0(state: &mut AsmXtensa, label: usize) {
     let rel = dest as i32 - state.base.code_offset as i32 - 3;
     if state.base.pass == MP_ASM_PASS_EMIT {
         if (dest & 0x03) != 0 {
-            raise::raise(MpRaise::RuntimeError("ERROR: call0 target not word-aligned"));
+            raise::raise(MpRaise::RuntimeError(
+                "ERROR: call0 target not word-aligned",
+            ));
         }
         if (rel & 0x03) != 0 {
-            raise::raise(MpRaise::RuntimeError("ERROR: call0 location not word-aligned"));
+            raise::raise(MpRaise::RuntimeError(
+                "ERROR: call0 location not word-aligned",
+            ));
         }
         if !signed_fit18(rel) {
             raise::raise(MpRaise::RuntimeError("ERROR: xtensa call0 out of range"));
@@ -758,7 +751,9 @@ pub fn l32r(state: &mut AsmXtensa, reg: usize, label: usize) {
             raise::raise(MpRaise::RuntimeError("ERROR: l32r target not word-aligned"));
         }
         if (rel & 0x03) != 0 {
-            raise::raise(MpRaise::RuntimeError("ERROR: l32r location not word-aligned"));
+            raise::raise(MpRaise::RuntimeError(
+                "ERROR: l32r location not word-aligned",
+            ));
         }
         if !signed_fit18(rel) || rel >= 0 {
             raise::raise(MpRaise::RuntimeError("ERROR: xtensa l32r out of range"));

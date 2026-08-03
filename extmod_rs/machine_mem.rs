@@ -22,10 +22,7 @@ fn default_mem_get_addr(addr_o: Obj, align: usize) -> usize {
 }
 
 fn mem_get_read_addr(addr_o: Obj, align: usize) -> usize {
-    MEM_GET_ADDR
-        .get()
-        .copied()
-        .unwrap_or(default_mem_get_addr)(addr_o, align)
+    MEM_GET_ADDR.get().copied().unwrap_or(default_mem_get_addr)(addr_o, align)
 }
 
 fn mem_get_write_addr(addr_o: Obj, align: usize) -> usize {
@@ -85,8 +82,7 @@ fn mem_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     obj::CONST_NONE
 }
 
-static mut MEM_SLOTS: [*const (); 2] =
-    [mem_print as *const (), mem_subscr as *const ()];
+static mut MEM_SLOTS: [*const (); 2] = [mem_print as *const (), mem_subscr as *const ()];
 static mut MEM_TYPE: ObjType = ObjType {
     base: ObjBase {
         type_: core::ptr::null(),
@@ -130,13 +126,11 @@ static mut MEM32: MachineMemObj = MachineMemObj {
 static INIT: OnceLock<()> = OnceLock::new();
 
 fn init_mem() {
-    INIT.get_or_init(|| {
-        unsafe {
-            MEM_TYPE.name = qstr::from_str("mem");
-            MEM8.base.type_ = &MEM_TYPE;
-            MEM16.base.type_ = &MEM_TYPE;
-            MEM32.base.type_ = &MEM_TYPE;
-        }
+    INIT.get_or_init(|| unsafe {
+        MEM_TYPE.name = qstr::from_str("mem");
+        MEM8.base.type_ = &MEM_TYPE;
+        MEM16.base.type_ = &MEM_TYPE;
+        MEM32.base.type_ = &MEM_TYPE;
     });
 }
 

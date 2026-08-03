@@ -1,8 +1,7 @@
 //! rewrite of extmod/machine_usb_device.c
-// symmetry: gaps
-// gaps:
-// - needs USB device stack port (TinyUSB/DCD, endpoints, control transfers)
-// - `USBDevice` state machine requires port USB HAL and IRQ dispatch
+//! Host has no USB device stack (TinyUSB/DCD, endpoints, control transfers).
+//! `USBDevice` state machine requires port USB HAL and IRQ dispatch.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

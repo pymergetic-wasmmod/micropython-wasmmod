@@ -11,42 +11,74 @@ pub type Uint = u32;
 
 #[inline]
 pub const fn min_i32(a: i32, b: i32) -> i32 {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn max_i32(a: i32, b: i32) -> i32 {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn min_u32(a: u32, b: u32) -> u32 {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn max_u32(a: u32, b: u32) -> u32 {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn min_usize(a: usize, b: usize) -> usize {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn max_usize(a: usize, b: usize) -> usize {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn min_isize(a: isize, b: isize) -> isize {
-    if a < b { a } else { b }
+    if a < b {
+        a
+    } else {
+        b
+    }
 }
 
 #[inline]
 pub const fn max_isize(a: isize, b: isize) -> isize {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 /// MicroPython `MP_STRINGIFY(x)` — use Rust's `stringify!` at call sites, or this alias.
@@ -169,14 +201,12 @@ pub fn utf8_charlen(str: &[u8], len: usize) -> usize {
 
 // ASCII attribute table from py/unicode.c (128 entries).
 const ATTR: [u8; 128] = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1,
-    1, 0x59, 0x59, 0x59, 0x59, 0x59, 0x59, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19,
-    0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 1, 1, 1, 1, 1,
-    1, 0x69, 0x69, 0x69, 0x69, 0x69, 0x69, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29,
-    0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 1, 1, 1, 1, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0x45, 0x45, 0x45, 0x45, 0x45, 0x45, 0x45, 0x45,
+    0x45, 0x45, 1, 1, 1, 1, 1, 1, 1, 0x59, 0x59, 0x59, 0x59, 0x59, 0x59, 0x19, 0x19, 0x19, 0x19,
+    0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19, 0x19,
+    1, 1, 1, 1, 1, 1, 0x69, 0x69, 0x69, 0x69, 0x69, 0x69, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29,
+    0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 0x29, 1, 1, 1, 1, 0,
 ];
 
 const FL_SPACE: u8 = 0x02;
@@ -213,8 +243,7 @@ pub fn unichar_isxdigit(c: Unichar) -> bool {
 
 #[inline]
 pub fn unichar_isident(c: Unichar) -> bool {
-    (c as u32) < 128
-        && ((ATTR[c as usize] & (FL_ALPHA | FL_DIGIT)) != 0 || c == b'_' as Unichar)
+    (c as u32) < 128 && ((ATTR[c as usize] & (FL_ALPHA | FL_DIGIT)) != 0 || c == b'_' as Unichar)
 }
 
 #[inline]
@@ -338,7 +367,11 @@ pub const FLOAT_EXP_BIAS: u32 = (1 << (FLOAT_EXP_BITS - 1)) - 1;
 // --- overflow-checked arithmetic ---
 
 #[inline]
-pub fn mp_mul_mp_int_t_overflow(x: crate::obj::Int, y: crate::obj::Int, res: &mut crate::obj::Int) -> bool {
+pub fn mp_mul_mp_int_t_overflow(
+    x: crate::obj::Int,
+    y: crate::obj::Int,
+    res: &mut crate::obj::Int,
+) -> bool {
     if x > 0 {
         if y > 0 {
             if x > (crate::mpconfig::INT_MAX as crate::obj::Int / y) {

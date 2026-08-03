@@ -8,8 +8,8 @@ use crate::emitglue::{self, CompiledModule, ProtoFun, RawCode, RawCodeKind};
 use crate::gc;
 use crate::malloc;
 use crate::mpconfig;
-use crate::nativeglue;
 use crate::mpprint::{self, Print};
+use crate::nativeglue;
 use crate::obj::{self, Obj};
 use crate::objstr;
 use crate::objtuple;
@@ -19,11 +19,29 @@ use crate::raise::{self, MpRaise};
 use crate::reader::{self, Reader};
 use crate::smallint;
 use crate::vstr::{self, Vstr};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 pub const MPY_VERSION: u8 = 6;
 pub const MPY_SUB_VERSION: u8 = 3;
 
 const QSTR_LAST_STATIC: Qstr = qstr::QSTR_LAST_STATIC;
+
+/// Override for `.mpy` header small-int bits (0 = use `smallint::BITS`).
+static SAVE_SMALL_INT_BITS: AtomicU8 = AtomicU8::new(0);
+
+/// Set small-int bit width written into `.mpy` headers (`mp_dynamic_compiler.small_int_bits`).
+pub fn set_save_small_int_bits(bits: u8) {
+    SAVE_SMALL_INT_BITS.store(bits, Ordering::Relaxed);
+}
+
+fn save_small_int_bits() -> u8 {
+    let bits = SAVE_SMALL_INT_BITS.load(Ordering::Relaxed);
+    if bits == 0 {
+        smallint::BITS as u8
+    } else {
+        bits
+    }
+}
 
 const MPY_FEATURE_ENCODE_SUB_VERSION: fn(u8) -> u8 = |version| version;
 const MPY_FEATURE_DECODE_SUB_VERSION: fn(u8) -> u8 = |feat| feat & 3;
@@ -36,6 +54,59 @@ const MPY_FEATURE_ARCH_FLAGS_TEST: fn(u8) -> bool = |feat| feat & MPY_FEATURE_AR
 pub const MP_NATIVE_ARCH_NONE: u8 = 0;
 pub const MP_NATIVE_ARCH_X86: u8 = 1;
 pub const MP_NATIVE_ARCH_X64: u8 = 2;
+pub const MP_NATIVE_ARCH_ARMV6: u8 = 3;
+pub const MP_NATIVE_ARCH_ARMV6M: u8 = 4;
+pub const MP_NATIVE_ARCH_ARMV7M: u8 = 5;
+pub const MP_NATIVE_ARCH_ARMV7EM: u8 = 6;
+pub const MP_NATIVE_ARCH_ARMV7EMSP: u8 = 7;
+pub const MP_NATIVE_ARCH_ARMV7EMDP: u8 = 8;
+pub const MP_NATIVE_ARCH_XTENSA: u8 = 9;
+pub const MP_NATIVE_ARCH_XTENSAWIN: u8 = 10;
+pub const MP_NATIVE_ARCH_RV32IMC: u8 = 11;
+pub const MP_NATIVE_ARCH_RV64IMC: u8 = 12;
+pub const MP_NATIVE_ARCH_DEBUG: u8 = 13;
+
+/// Cross-compiler target selection (`mp_dynamic_compiler`).
+static CROSS_NATIVE_ARCH: std::sync::atomic::AtomicU8 =
+    std::sync::atomic::AtomicU8::new(MP_NATIVE_ARCH_NONE);
+
+/// Set `-march=` target for `.mpy` native feature byte / emit selection.
+pub fn set_cross_native_arch(arch: u8) {
+    CROSS_NATIVE_ARCH.store(arch, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn cross_native_arch() -> u8 {
+    CROSS_NATIVE_ARCH.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Parse upstream `-march=` arch names; returns `None` if unknown.
+pub fn parse_march(name: &str) -> Option<u8> {
+    Some(match name {
+        "x86" => MP_NATIVE_ARCH_X86,
+        "x64" => MP_NATIVE_ARCH_X64,
+        "armv6" => MP_NATIVE_ARCH_ARMV6,
+        "armv6m" => MP_NATIVE_ARCH_ARMV6M,
+        "armv7m" => MP_NATIVE_ARCH_ARMV7M,
+        "armv7em" => MP_NATIVE_ARCH_ARMV7EM,
+        "armv7emsp" => MP_NATIVE_ARCH_ARMV7EMSP,
+        "armv7emdp" => MP_NATIVE_ARCH_ARMV7EMDP,
+        "xtensa" => MP_NATIVE_ARCH_XTENSA,
+        "xtensawin" => MP_NATIVE_ARCH_XTENSAWIN,
+        "rv32imc" => MP_NATIVE_ARCH_RV32IMC,
+        "rv64imc" => MP_NATIVE_ARCH_RV64IMC,
+        "debug" => MP_NATIVE_ARCH_DEBUG,
+        "host" => {
+            if cfg!(target_arch = "x86_64") {
+                MP_NATIVE_ARCH_X64
+            } else if cfg!(target_arch = "x86") {
+                MP_NATIVE_ARCH_X86
+            } else {
+                MP_NATIVE_ARCH_NONE
+            }
+        }
+        _ => return None,
+    })
+}
 
 const MP_PERSISTENT_OBJ_FUN_TABLE: u8 = 0;
 const MP_PERSISTENT_OBJ_NONE: u8 = 1;
@@ -81,13 +152,19 @@ fn track_root_pointer(_ptr: *mut u8) {
     }
 }
 
-const MPY_FEATURE_ARCH: u8 = if cfg!(target_arch = "x86_64") && mpconfig::PERSISTENT_CODE_LOAD_NATIVE {
-    MP_NATIVE_ARCH_X64
-} else if cfg!(target_arch = "x86") && mpconfig::PERSISTENT_CODE_LOAD_NATIVE {
-    MP_NATIVE_ARCH_X86
-} else {
-    MP_NATIVE_ARCH_NONE
-};
+const MPY_FEATURE_ARCH: u8 =
+    if cfg!(target_arch = "x86_64") && mpconfig::PERSISTENT_CODE_LOAD_NATIVE {
+        MP_NATIVE_ARCH_X64
+    } else if cfg!(target_arch = "x86") && mpconfig::PERSISTENT_CODE_LOAD_NATIVE {
+        MP_NATIVE_ARCH_X86
+    } else {
+        MP_NATIVE_ARCH_NONE
+    };
+
+/// Feature byte for `.mpy` / `sys.implementation._mpy` (`MPY_FILE_HEADER_INT` high byte).
+pub fn mpy_file_feature_byte() -> u8 {
+    MPY_FEATURE_ENCODE_SUB_VERSION(MPY_SUB_VERSION) | MPY_FEATURE_ENCODE_ARCH(MPY_FEATURE_ARCH)
+}
 
 fn mpy_feature_arch_test(arch: u8) -> bool {
     arch == MPY_FEATURE_ARCH
@@ -229,13 +306,19 @@ fn load_raw_code(reader: &mut Reader, context: *mut ModuleContext) -> *mut RawCo
     let fun_data = if kind == RawCodeKind::Bytecode as usize {
         let fun_data = malloc::new::<u8>(fun_data_len).expect("bytecode alloc");
         unsafe {
-            read_bytes(reader, std::slice::from_raw_parts_mut(fun_data, fun_data_len));
+            read_bytes(
+                reader,
+                std::slice::from_raw_parts_mut(fun_data, fun_data_len),
+            );
         }
         fun_data
     } else if mpconfig::ENABLE_NATIVE_CODE || mpconfig::EMIT_INLINE_ASM {
         let fun_data = malloc::new::<u8>(fun_data_len).expect("native code alloc");
         unsafe {
-            read_bytes(reader, std::slice::from_raw_parts_mut(fun_data, fun_data_len));
+            read_bytes(
+                reader,
+                std::slice::from_raw_parts_mut(fun_data, fun_data_len),
+            );
         }
         if kind == RawCodeKind::NativePy as usize {
             let po = read_uint(reader);
@@ -243,7 +326,9 @@ fn load_raw_code(reader: &mut Reader, context: *mut ModuleContext) -> *mut RawCo
             let mut ip = unsafe { fun_data.add(po) as *const u8 };
             let sig = bc::prelude_sig_decode_into(&mut ip);
             scope_flags = sig.scope_flags as u16;
-        } else if kind == RawCodeKind::NativeViper as usize || kind == RawCodeKind::NativeAsm as usize {
+        } else if kind == RawCodeKind::NativeViper as usize
+            || kind == RawCodeKind::NativeAsm as usize
+        {
             scope_flags = read_uint(reader) as u16;
             if kind == RawCodeKind::NativeAsm as usize && mpconfig::EMIT_INLINE_ASM {
                 asm_n_pos_args = read_uint(reader) as u32;
@@ -276,10 +361,7 @@ fn load_raw_code(reader: &mut Reader, context: *mut ModuleContext) -> *mut RawCo
                 bss = data;
                 rodata = data.add(bss_size);
                 if scope_flags & SCOPE_FLAG_VIPERRODATA != 0 {
-                    read_bytes(
-                        reader,
-                        std::slice::from_raw_parts_mut(rodata, rodata_size),
-                    );
+                    read_bytes(reader, std::slice::from_raw_parts_mut(rodata, rodata_size));
                 }
             }
             if mpconfig::PERSISTENT_CODE_TRACK_BSS_RODATA {
@@ -552,7 +634,8 @@ fn save_raw_code(print: &Print, rc: *const RawCode) {
         if mpconfig::EMIT_MACHINE_CODE {
             if (*rc).kind == RawCodeKind::NativePy {
                 print_uint(print, (*rc).prelude_offset as usize);
-            } else if (*rc).kind == RawCodeKind::NativeViper || (*rc).kind == RawCodeKind::NativeAsm {
+            } else if (*rc).kind == RawCodeKind::NativeViper || (*rc).kind == RawCodeKind::NativeAsm
+            {
                 print_uint(print, 0);
                 if (*rc).kind == RawCodeKind::NativeAsm && mpconfig::EMIT_INLINE_ASM {
                     print_uint(print, (*rc).asm_n_pos_args as usize);
@@ -569,6 +652,30 @@ fn save_raw_code(print: &Print, rc: *const RawCode) {
     }
 }
 
+extern "C" fn file_print_strn(env: *mut (), str: *const u8, len: usize) {
+    use std::io::Write;
+    let file = unsafe { &mut *(env as *mut std::fs::File) };
+    let slice = unsafe { std::slice::from_raw_parts(str, len) };
+    let _ = file.write_all(slice);
+}
+
+pub fn raw_code_save_file(cm: &CompiledModule, filename: Qstr) {
+    if !(mpconfig::PERSISTENT_CODE_SAVE && mpconfig::PERSISTENT_CODE_SAVE_FILE) {
+        return;
+    }
+    let path = qstr::str_data(filename)
+        .and_then(|v| String::from_utf8(v).ok())
+        .unwrap_or_default();
+    let mut file = std::fs::File::create(&path).unwrap_or_else(|e| {
+        raise::raise(MpRaise::OSError(e.raw_os_error().unwrap_or(0)));
+    });
+    let print = Print {
+        data: &mut file as *mut std::fs::File as *mut (),
+        print_strn: Some(file_print_strn),
+    };
+    raw_code_save(cm, &print);
+}
+
 pub fn raw_code_save(cm: &CompiledModule, print: &Print) {
     if !mpconfig::PERSISTENT_CODE_SAVE {
         return;
@@ -581,11 +688,12 @@ pub fn raw_code_save(cm: &CompiledModule, print: &Print) {
         } else {
             0
         }) | (if cm.has_native {
-            MPY_FEATURE_ENCODE_SUB_VERSION(MPY_SUB_VERSION) | MPY_FEATURE_ENCODE_ARCH(MPY_FEATURE_ARCH)
+            MPY_FEATURE_ENCODE_SUB_VERSION(MPY_SUB_VERSION)
+                | MPY_FEATURE_ENCODE_ARCH(MPY_FEATURE_ARCH)
         } else {
             0
         }),
-        smallint::BITS as u8,
+        save_small_int_bits(),
     ];
     print_bytes(print, &header);
     if cm.arch_flags != 0 {
@@ -662,8 +770,8 @@ fn proto_fun_to_raw_code_simplified(
         }
     };
     let fun_data_top = unsafe { fun_data.add(gc::gc_nbytes(fun_data as *const u8)) };
-        let mut ip = fun_data as *const u8;
-        let sig = bc::prelude_sig_decode_into(&mut ip);
+    let mut ip = fun_data as *const u8;
+    let sig = bc::prelude_sig_decode_into(&mut ip);
     let (n_info, n_cell) = bc::prelude_size_decode(&mut ip);
     let simple_name = bc::decode_uint_value(ip);
     qstr_table_used.set(simple_name);
@@ -745,10 +853,9 @@ fn save_raw_code_simplified(print: &Print, rcs: &RawCodeSimplified) {
         print,
         (rcs.fun_data_len << 3) | ((rcs.n_children != 0) as usize) << 2,
     );
-    print_bytes(
-        print,
-        unsafe { std::slice::from_raw_parts(rcs.fun_data, rcs.fun_data_len) },
-    );
+    print_bytes(print, unsafe {
+        std::slice::from_raw_parts(rcs.fun_data, rcs.fun_data_len)
+    });
     if rcs.n_children != 0 {
         print_uint(print, rcs.n_children);
         for child in &rcs.children {
@@ -772,7 +879,12 @@ pub fn raw_code_save_fun_to_bytes(consts: &bc::ModuleConstants, proto_fun: Proto
         n_children: 0,
         children: Vec::new(),
     };
-    proto_fun_to_raw_code_simplified(proto_fun, &mut qstr_table_used, &mut obj_table_used, &mut rcs);
+    proto_fun_to_raw_code_simplified(
+        proto_fun,
+        &mut qstr_table_used,
+        &mut obj_table_used,
+        &mut rcs,
+    );
 
     let mut v = Vstr {
         alloc: 0,
@@ -875,6 +987,250 @@ mod tests {
         };
         reader::reader_new_mem(&mut reader, data.as_ptr(), data.len(), 0);
         reader
+    }
+
+    #[test]
+    fn save_header_uses_configured_small_int_bits() {
+        let _ = crate::gc::init();
+        let _ = crate::qstr::init();
+
+        let src = b"x = 1\n";
+        let lex = crate::lexer::Lexer::new_from_str_len(
+            qstr::from_str("bits.py"),
+            src,
+            reader::READER_IS_ROM,
+        );
+        let mut tree = crate::parse::parse(lex, crate::parse::ParseInputKind::FileInput);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("context");
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        crate::compile::compile_to_raw_code(&mut tree, qstr::from_str("bits.py"), false, &mut cm);
+
+        set_save_small_int_bits(31);
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        let print = Print {
+            data: &mut v as *mut Vstr as *mut (),
+            print_strn: Some(vstr::vstr_add_strn_print),
+        };
+        raw_code_save(&cm, &print);
+        let saved = unsafe { std::slice::from_raw_parts(v.buf, v.len) }.to_vec();
+        vstr::clear(&mut v);
+        assert_eq!(saved[3], 31);
+        set_save_small_int_bits(0);
+    }
+
+    #[test]
+    fn save_load_bytecode_roundtrip() {
+        let _ = crate::gc::init();
+        let _ = crate::qstr::init();
+
+        let src = b"def f():\n    return 1\n";
+        let lex = crate::lexer::Lexer::new_from_str_len(
+            qstr::from_str("foo.py"),
+            src,
+            reader::READER_IS_ROM,
+        );
+        let mut tree = crate::parse::parse(lex, crate::parse::ParseInputKind::FileInput);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("context");
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        crate::compile::compile_to_raw_code(&mut tree, qstr::from_str("foo.py"), false, &mut cm);
+
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        let print = Print {
+            data: &mut v as *mut Vstr as *mut (),
+            print_strn: Some(vstr::vstr_add_strn_print),
+        };
+        raw_code_save(&cm, &print);
+        let saved = unsafe { std::slice::from_raw_parts(v.buf, v.len) }.to_vec();
+        vstr::clear(&mut v);
+        assert!(saved.len() > 4);
+        assert_eq!(saved[0], b'M');
+
+        let mut cm2 = CompiledModule {
+            context: malloc::new_obj::<ModuleContext>().expect("context"),
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut nlr_buf, || raw_code_load_mem(&saved, &mut cm2)).expect("load");
+        unsafe {
+            assert_eq!((*cm2.rc).kind, RawCodeKind::Bytecode);
+            assert!((*cm2.rc).fun_data_len > 0);
+        }
+    }
+
+    #[test]
+    fn save_load_execute_module_assignment() {
+        let _ = crate::gc::init();
+        let _ = crate::qstr::init();
+        crate::runtime::init();
+        let _ = crate::modbuiltins::init_builtins_module();
+
+        let src = b"y = 99\n";
+        let lex = crate::lexer::Lexer::new_from_str_len(
+            qstr::from_str("mod.py"),
+            src,
+            reader::READER_IS_ROM,
+        );
+        let mut tree = crate::parse::parse(lex, crate::parse::ParseInputKind::FileInput);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("context");
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        crate::compile::compile_to_raw_code(&mut tree, qstr::from_str("mod.py"), false, &mut cm);
+
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        let print = Print {
+            data: &mut v as *mut Vstr as *mut (),
+            print_strn: Some(vstr::vstr_add_strn_print),
+        };
+        raw_code_save(&cm, &print);
+        let saved = unsafe { std::slice::from_raw_parts(v.buf, v.len) }.to_vec();
+        vstr::clear(&mut v);
+
+        let module_obj = crate::objmodule::new_module(qstr::from_str("mod"));
+        let module_ctx = obj::as_ptr(module_obj) as *mut ModuleContext;
+        let mut cm2 = CompiledModule {
+            context: module_ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut nlr_buf, || raw_code_load_mem(&saved, &mut cm2)).expect("load");
+
+        let mod_globals = unsafe { (*module_ctx).module.globals };
+        let old_globals = crate::runtime::globals_get();
+        let old_locals = crate::runtime::locals_get();
+        crate::runtime::globals_set(obj::from_ptr(
+            mod_globals as *const crate::objdict::ObjDict as *const (),
+        ));
+        crate::runtime::locals_set(obj::from_ptr(
+            mod_globals as *const crate::objdict::ObjDict as *const (),
+        ));
+        let module_fun =
+            emitglue::make_function_from_proto_fun(cm2.rc as ProtoFun, module_ctx, None);
+        crate::runtime::call_function_0(module_fun);
+        crate::runtime::globals_set(old_globals);
+        crate::runtime::locals_set(old_locals);
+
+        let y = crate::runtime::load_attr(module_obj, qstr::from_str("y"));
+        assert_eq!(obj::small_int_value(y), 99);
+    }
+
+    #[test]
+    fn save_load_execute_module_assignment_nested_nlr() {
+        let _ = crate::gc::init();
+        let _ = crate::qstr::init();
+        crate::runtime::init();
+        let _ = crate::modbuiltins::init_builtins_module();
+
+        let src = b"y = 99\n";
+        let lex = crate::lexer::Lexer::new_from_str_len(
+            qstr::from_str("mod.py"),
+            src,
+            reader::READER_IS_ROM,
+        );
+        let mut tree = crate::parse::parse(lex, crate::parse::ParseInputKind::FileInput);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("context");
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        crate::compile::compile_to_raw_code(&mut tree, qstr::from_str("mod.py"), false, &mut cm);
+
+        let mut v = Vstr {
+            alloc: 0,
+            len: 0,
+            buf: core::ptr::null_mut(),
+            fixed_buf: false,
+        };
+        let print = Print {
+            data: &mut v as *mut Vstr as *mut (),
+            print_strn: Some(vstr::vstr_add_strn_print),
+        };
+        raw_code_save(&cm, &print);
+        let saved = unsafe { std::slice::from_raw_parts(v.buf, v.len) }.to_vec();
+        vstr::clear(&mut v);
+
+        let module_obj = crate::objmodule::new_module(qstr::from_str("mod"));
+        let module_ctx = obj::as_ptr(module_obj) as *mut ModuleContext;
+        let mut outer = crate::nlr::NlrBuf::default();
+        crate::nlr::protect(&mut outer, || {
+            let mut inner = crate::nlr::NlrBuf::default();
+            crate::nlr::protect(&mut inner, || {
+                let mut cm2 = CompiledModule {
+                    context: module_ctx,
+                    rc: core::ptr::null(),
+                    has_native: false,
+                    n_qstr: 0,
+                    n_obj: 0,
+                    arch_flags: 0,
+                };
+                raw_code_load_mem(&saved, &mut cm2);
+                let mod_globals = unsafe { (*module_ctx).module.globals };
+                let old_globals = crate::runtime::globals_get();
+                let old_locals = crate::runtime::locals_get();
+                crate::runtime::globals_set(obj::from_ptr(
+                    mod_globals as *const crate::objdict::ObjDict as *const (),
+                ));
+                crate::runtime::locals_set(obj::from_ptr(
+                    mod_globals as *const crate::objdict::ObjDict as *const (),
+                ));
+                let module_fun =
+                    emitglue::make_function_from_proto_fun(cm2.rc as ProtoFun, module_ctx, None);
+                crate::runtime::call_function_0(module_fun);
+                crate::runtime::globals_set(old_globals);
+                crate::runtime::locals_set(old_locals);
+            })
+            .expect("inner");
+        })
+        .expect("outer");
+
+        let y = crate::runtime::load_attr(module_obj, qstr::from_str("y"));
+        assert_eq!(obj::small_int_value(y), 99);
     }
 
     #[test]

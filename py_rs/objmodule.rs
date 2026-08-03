@@ -2,8 +2,8 @@
 // symmetry: done
 
 use crate::bc::{ModuleContext, ObjModule};
-use crate::map::{self, LookupKind, MapElem};
 use crate::malloc;
+use crate::map::{self, LookupKind, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::mpstate;
@@ -22,10 +22,7 @@ pub fn registered_builtins_globals() -> Option<Obj> {
     BUILTINS_GLOBALS.get().copied()
 }
 
-static mut MODULE_SLOTS: [*const (); 2] = [
-    module_print as *const (),
-    module_attr as *const (),
-];
+static mut MODULE_SLOTS: [*const (); 2] = [module_print as *const (), module_attr as *const ()];
 
 static mut TYPE: ObjType = ObjType {
     base: ObjBase {
@@ -51,10 +48,8 @@ static mut TYPE: ObjType = ObjType {
 static MODULE_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_module_type() {
-    MODULE_INIT.get_or_init(|| {
-        unsafe {
-            TYPE.name = qstr::from_str("module");
-        }
+    MODULE_INIT.get_or_init(|| unsafe {
+        TYPE.name = qstr::from_str("module");
     });
 }
 
@@ -77,8 +72,13 @@ pub fn register_builtins_globals(dict: Obj) {
     let _ = BUILTINS_GLOBALS.set(dict);
 }
 
-fn module_attr_try_delegation(_self_in: Obj, _attr: Qstr, _dest: &mut [Obj; 2]) {
-    // `MICROPY_MODULE_DELEGATIONS` table not populated in this port.
+fn module_attr_try_delegation(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
+    if mpconfig::PY_SYS
+        && (mpconfig::PY_SYS_PS1_PS2 || mpconfig::PY_SYS_ATTR_DELEGATION)
+        && crate::modsys::is_sys_module(self_in)
+    {
+        crate::modsys::attr(attr, dest);
+    }
 }
 
 fn module_print(print: &Print, self_in: Obj, _kind: PrintKind) {
@@ -93,7 +93,7 @@ fn module_print(print: &Print, self_in: Obj, _kind: PrintKind) {
         module_name = objstr::str_get_str(elem.value);
     }
 
-    if mpconfig::MODULE___FILE__ {
+    if mpconfig::MODULE_FILE {
         let file_key = obj::new_qstr(qstr::from_str("__file__"));
         if let Some(elem) = map::lookup(
             unsafe { &mut (*self_.module.globals).map },
@@ -155,8 +155,7 @@ fn module_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
                     if obj::from_ptr(dict as *const ObjDict as *const ()) == *builtins {
                         let override_dict = mpstate::with_vm(|vm| {
                             if vm.mp_module_builtins_override_dict.is_none() {
-                                vm.mp_module_builtins_override_dict =
-                                    Some(objdict::new_dict(1));
+                                vm.mp_module_builtins_override_dict = Some(objdict::new_dict(1));
                             }
                             vm.mp_module_builtins_override_dict.unwrap()
                         });
@@ -175,7 +174,10 @@ fn module_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
             }
         }
         if dest[1] == obj::OBJ_NULL {
-            objdict::dict_delete(obj::from_ptr(dict as *const ObjDict as *const ()), obj::new_qstr(attr));
+            objdict::dict_delete(
+                obj::from_ptr(dict as *const ObjDict as *const ()),
+                obj::new_qstr(attr),
+            );
         } else {
             objdict::dict_store(
                 obj::from_ptr(dict as *const ObjDict as *const ()),
@@ -244,20 +246,43 @@ fn lookup_builtin_map(name: Qstr, extensible: bool) -> Option<Obj> {
     })
 }
 
+fn maybe_call_module_init(m: Obj) -> Obj {
+    if mpconfig::MODULE_BUILTIN_INIT && obj::is_obj(m) {
+        let type_ptr = unsafe { (*(obj::as_ptr(m) as *const obj::ObjBase)).type_ };
+        if !type_ptr.is_null() {
+            let mut dest = [obj::OBJ_NULL, obj::OBJ_NULL];
+            runtime::load_method_maybe(m, qstr::from_str("__init__"), &mut dest);
+            if dest[0] != obj::OBJ_NULL {
+                runtime::call_method_n_kw(0, 0, &dest);
+            }
+        }
+    }
+    m
+}
+
 /// `mp_module_get_builtin`
 pub fn module_get_builtin(module_name: Qstr, extensible: bool) -> Obj {
     if let Some(m) = lookup_builtin_map(module_name, extensible) {
-        if mpconfig::MODULE_BUILTIN_INIT && obj::is_obj(m) {
-            let type_ptr = unsafe { (*(obj::as_ptr(m) as *const obj::ObjBase)).type_ };
-            if !type_ptr.is_null() {
-                let mut dest = [obj::OBJ_NULL, obj::OBJ_NULL];
-                runtime::load_method_maybe(m, qstr::from_str("__init__"), &mut dest);
-                if dest[0] != obj::OBJ_NULL {
-                    runtime::call_method_n_kw(0, 0, &dest);
+        return maybe_call_module_init(m);
+    }
+
+    // `usys` always aliases `sys` (C `mp_module_get_builtin`).
+    if mpconfig::PY_SYS && module_name == qstr::from_str("usys") {
+        if let Some(m) = lookup_builtin_map(qstr::from_str("sys"), false) {
+            return maybe_call_module_init(m);
+        }
+    }
+
+    // `ufoo` forces the extensible built-in `foo` (legacy MicroPython alias).
+    if !extensible {
+        if let Some(name) = qstr::str_data(module_name) {
+            if name.len() > 1 && name[0] == b'u' {
+                let rest = qstr::from_strn(&name[1..]);
+                if let Some(m) = lookup_builtin_map(rest, true) {
+                    return maybe_call_module_init(m);
                 }
             }
         }
-        return m;
     }
 
     obj::OBJ_NULL

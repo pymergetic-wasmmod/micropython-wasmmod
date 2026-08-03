@@ -1,8 +1,8 @@
 //! rewrite of py/mpprint.c + py/mpprint.h
 // symmetry: done
 
-use crate::mphal;
 use crate::mpconfig;
+use crate::mphal;
 use crate::obj::{self, Int, Obj, Uint};
 use crate::qstr::{self, Qstr};
 
@@ -108,13 +108,7 @@ pub fn print_str(print: &Print, str: &str) -> i32 {
 }
 
 /// `mp_print_strn`
-pub fn print_strn(
-    print: &Print,
-    str: &[u8],
-    flags: u32,
-    fill: u8,
-    width: i32,
-) -> i32 {
+pub fn print_strn(print: &Print, str: &[u8], flags: u32, fill: u8, width: i32) -> i32 {
     let len = str.len() as i32;
     let mut left_pad = 0;
     let mut right_pad = 0;
@@ -495,10 +489,13 @@ pub fn vprintf<'a>(print: &Print, fmt: &str, args: impl IntoIterator<Item = VaAr
             fmt = &fmt[1..];
             if fmt.starts_with('*') {
                 fmt = &fmt[1..];
-                prec = args.next().map(|a| match a {
-                    VaArg::Int(v) => v,
-                    _ => 0,
-                }).unwrap_or(0);
+                prec = args
+                    .next()
+                    .map(|a| match a {
+                        VaArg::Int(v) => v,
+                        _ => 0,
+                    })
+                    .unwrap_or(0);
             } else {
                 prec = 0;
                 while fmt.starts_with(|c: char| c.is_ascii_digit()) {
@@ -527,11 +524,14 @@ pub fn vprintf<'a>(print: &Print, fmt: &str, args: impl IntoIterator<Item = VaAr
 
         match spec {
             b'b' => {
-                let v = args.next().and_then(|a| match a {
-                    VaArg::Int(x) => Some(x != 0),
-                    VaArg::Bool(b) => Some(b),
-                    _ => None,
-                }).unwrap_or(false);
+                let v = args
+                    .next()
+                    .and_then(|a| match a {
+                        VaArg::Int(x) => Some(x != 0),
+                        VaArg::Bool(b) => Some(b),
+                        _ => None,
+                    })
+                    .unwrap_or(false);
                 chrs += print_strn(
                     print,
                     if v { b"true" } else { b"false" },
@@ -541,18 +541,24 @@ pub fn vprintf<'a>(print: &Print, fmt: &str, args: impl IntoIterator<Item = VaAr
                 );
             }
             b'c' => {
-                let ch = args.next().and_then(|a| match a {
-                    VaArg::Int(v) => Some(v as u8),
-                    VaArg::Char(v) => Some(v),
-                    _ => None,
-                }).unwrap_or(0);
+                let ch = args
+                    .next()
+                    .and_then(|a| match a {
+                        VaArg::Int(v) => Some(v as u8),
+                        VaArg::Char(v) => Some(v),
+                        _ => None,
+                    })
+                    .unwrap_or(0);
                 chrs += print_strn(print, &[ch], flags, fill, width);
             }
             b'q' => {
-                let q = args.next().and_then(|a| match a {
-                    VaArg::Qstr(q) => Some(q),
-                    _ => None,
-                }).unwrap_or(0);
+                let q = args
+                    .next()
+                    .and_then(|a| match a {
+                        VaArg::Qstr(q) => Some(q),
+                        _ => None,
+                    })
+                    .unwrap_or(0);
                 let data = qstr::str_data(q).unwrap_or_default();
                 let mut len = data.len();
                 if prec >= 0 && (prec as usize) < len {
@@ -561,10 +567,13 @@ pub fn vprintf<'a>(print: &Print, fmt: &str, args: impl IntoIterator<Item = VaAr
                 chrs += print_strn(print, &data[..len], flags, fill, width);
             }
             b's' => {
-                let s = args.next().and_then(|a| match a {
-                    VaArg::Str(s) => Some(s),
-                    _ => None,
-                }).unwrap_or("");
+                let s = args
+                    .next()
+                    .and_then(|a| match a {
+                        VaArg::Str(s) => Some(s),
+                        _ => None,
+                    })
+                    .unwrap_or("");
                 let mut len = s.len();
                 if prec >= 0 && (prec as usize) < len {
                     len = prec as usize;
@@ -657,11 +666,7 @@ mod tests {
             data: &mut out as *mut Vec<u8> as *mut (),
             print_strn: Some(collect_print),
         };
-        vprintf(
-            &print,
-            "x=%d",
-            [VaArg::Int(42)],
-        );
+        vprintf(&print, "x=%d", [VaArg::Int(42)]);
         assert_eq!(out, b"x=42");
     }
 

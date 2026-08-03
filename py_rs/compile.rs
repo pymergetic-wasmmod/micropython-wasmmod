@@ -16,12 +16,12 @@ use crate::grammar::Rule;
 use crate::lexer::TokenKind;
 use crate::malloc;
 use crate::map::{self, LookupKind, Map};
-use crate::objdict;
 use crate::mpconfig;
 use crate::mpstate;
 use crate::nativeglue;
 use crate::nlr;
 use crate::obj::{self, Int, Obj};
+use crate::objdict;
 use crate::objexcept;
 use crate::objstr;
 use crate::parse::{self, ParseNode, ParseNodeStruct};
@@ -113,8 +113,12 @@ fn parse_node_testlist_comp_has_comp_for(pns: *mut ParseNodeStruct) -> bool {
 fn emit_common_init(emit: &mut EmitCommon, source_file: Qstr) {
     if mpconfig::EMIT_BYTECODE_USES_QSTR_TABLE {
         map::init(&mut emit.qstr_map, 1);
-        let elem = map::lookup(&mut emit.qstr_map, obj::new_qstr(source_file), LookupKind::AddIfNotFound)
-            .expect("qstr");
+        let elem = map::lookup(
+            &mut emit.qstr_map,
+            obj::new_qstr(source_file),
+            LookupKind::AddIfNotFound,
+        )
+        .expect("qstr");
         elem.value = obj::new_small_int(0);
     }
     emit.const_obj_list.clear();
@@ -132,9 +136,17 @@ fn emit_common_start_pass(emit: &mut EmitCommon, pass: PassKind) {
     emit.ct_cur_child = 0;
 }
 
-fn emit_common_populate_module_context(emit: &mut EmitCommon, _source_file: Qstr, context: *mut ModuleContext) {
+fn emit_common_populate_module_context(
+    emit: &mut EmitCommon,
+    _source_file: Qstr,
+    context: *mut ModuleContext,
+) {
     if mpconfig::EMIT_BYTECODE_USES_QSTR_TABLE {
-        emitglue::module_context_alloc_tables(context, emit.qstr_map.used, emit.const_obj_list.len());
+        emitglue::module_context_alloc_tables(
+            context,
+            emit.qstr_map.used,
+            emit.const_obj_list.len(),
+        );
         unsafe {
             let ctx = &mut *context;
             for (i, elem) in emit.qstr_map.table.iter().enumerate() {
@@ -184,7 +196,12 @@ fn reserve_labels_for_native(comp: &mut Compiler, n: usize) {
     }
 }
 
-fn scope_new_and_link(comp: &mut Compiler, kind: ScopeKind, pn: ParseNode, emit_options: u16) -> *mut Scope {
+fn scope_new_and_link(
+    comp: &mut Compiler,
+    kind: ScopeKind,
+    pn: ParseNode,
+    emit_options: u16,
+) -> *mut Scope {
     let scope = scope::new(kind, pn, emit_options);
     unsafe {
         (*scope).parent = comp.scope_cur;
@@ -262,32 +279,78 @@ fn compile_id_op(comp: &mut Compiler, ops: EmitIdOps, qst: Qstr) {
         match id.kind {
             scope::IdInfoKind::GlobalImplicit | scope::IdInfoKind::GlobalImplicitAssigned => {
                 match ops {
-                    EmitIdOps::Load => emitdispatch::native::load_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_NAME),
-                    EmitIdOps::Store => emitdispatch::native::store_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_NAME),
-                    EmitIdOps::Delete => emitdispatch::native::delete_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_NAME),
+                    EmitIdOps::Load => emitdispatch::native::load_global(
+                        comp.emit,
+                        qst,
+                        emit::EMIT_IDOP_GLOBAL_NAME,
+                    ),
+                    EmitIdOps::Store => emitdispatch::native::store_global(
+                        comp.emit,
+                        qst,
+                        emit::EMIT_IDOP_GLOBAL_NAME,
+                    ),
+                    EmitIdOps::Delete => emitdispatch::native::delete_global(
+                        comp.emit,
+                        qst,
+                        emit::EMIT_IDOP_GLOBAL_NAME,
+                    ),
                 }
             }
-            scope::IdInfoKind::GlobalExplicit => {
-                match ops {
-                    EmitIdOps::Load => emitdispatch::native::load_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_GLOBAL),
-                    EmitIdOps::Store => emitdispatch::native::store_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_GLOBAL),
-                    EmitIdOps::Delete => emitdispatch::native::delete_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_GLOBAL),
+            scope::IdInfoKind::GlobalExplicit => match ops {
+                EmitIdOps::Load => {
+                    emitdispatch::native::load_global(comp.emit, qst, emit::EMIT_IDOP_GLOBAL_GLOBAL)
                 }
-            }
-            scope::IdInfoKind::Local => {
-                match ops {
-                    EmitIdOps::Load => emitdispatch::native::load_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_FAST),
-                    EmitIdOps::Store => emitdispatch::native::store_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_FAST),
-                    EmitIdOps::Delete => emitdispatch::native::delete_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_FAST),
-                }
-            }
-            scope::IdInfoKind::Cell | scope::IdInfoKind::Free => {
-                match ops {
-                    EmitIdOps::Load => emitdispatch::native::load_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_DEREF),
-                    EmitIdOps::Store => emitdispatch::native::store_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_DEREF),
-                    EmitIdOps::Delete => emitdispatch::native::delete_local(comp.emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_DEREF),
-                }
-            }
+                EmitIdOps::Store => emitdispatch::native::store_global(
+                    comp.emit,
+                    qst,
+                    emit::EMIT_IDOP_GLOBAL_GLOBAL,
+                ),
+                EmitIdOps::Delete => emitdispatch::native::delete_global(
+                    comp.emit,
+                    qst,
+                    emit::EMIT_IDOP_GLOBAL_GLOBAL,
+                ),
+            },
+            scope::IdInfoKind::Local => match ops {
+                EmitIdOps::Load => emitdispatch::native::load_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_FAST,
+                ),
+                EmitIdOps::Store => emitdispatch::native::store_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_FAST,
+                ),
+                EmitIdOps::Delete => emitdispatch::native::delete_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_FAST,
+                ),
+            },
+            scope::IdInfoKind::Cell | scope::IdInfoKind::Free => match ops {
+                EmitIdOps::Load => emitdispatch::native::load_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_DEREF,
+                ),
+                EmitIdOps::Store => emitdispatch::native::store_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_DEREF,
+                ),
+                EmitIdOps::Delete => emitdispatch::native::delete_local(
+                    comp.emit,
+                    qst,
+                    id.local_num as usize,
+                    emit::EMIT_IDOP_LOCAL_DEREF,
+                ),
+            },
             _ => unreachable!("unexpected id kind"),
         }
     } else {
@@ -317,7 +380,8 @@ fn scope_compute_things(scope: *mut Scope) {
                         scope.id_info[i] = temp;
                     }
                     break;
-                } else if id_param.is_none() && id.flags & scope::ID_FLAG_IS_PARAM != 0 {
+                } else if id_param.is_none() && id.flags == scope::ID_FLAG_IS_PARAM {
+                    // Exact match like C: plain params only (not *args/**kwargs).
                     id_param = Some(i);
                 }
             }
@@ -455,7 +519,9 @@ fn compile_comprehension_scope(comp: &mut Compiler, scope: *mut Scope) {
         match s.kind {
             ScopeKind::ListComp => EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_LIST),
             ScopeKind::DictComp => EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_MAP),
-            ScopeKind::SetComp if mpconfig::PY_BUILTINS_SET => EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_SET),
+            ScopeKind::SetComp if mpconfig::PY_BUILTINS_SET => {
+                EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_SET)
+            }
             _ => {}
         }
         if s.kind == ScopeKind::GenExpr {
@@ -484,7 +550,11 @@ fn compile_class_scope(comp: &mut Compiler, scope: *mut Scope) {
         }
         compile_load_id(comp, qstr::from_str("__name__"));
         compile_store_id(comp, qstr::from_str("__module__"));
-        EMIT_ARG!(comp, load_const_str, parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0)));
+        EMIT_ARG!(
+            comp,
+            load_const_str,
+            parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0))
+        );
         compile_store_id(comp, qstr::from_str("__qualname__"));
         compile_node(comp, parse::parse_node_struct_node(pns, 2));
         if let Some(id) = scope::find(&*scope, qstr::from_str("__class__")) {
@@ -498,31 +568,52 @@ fn compile_class_scope(comp: &mut Compiler, scope: *mut Scope) {
     }
 }
 
-fn compile_scope_comp_iter(comp: &mut Compiler, pns_comp_for: *mut ParseNodeStruct, pn_inner: ParseNode, for_depth: i32) {
+fn compile_scope_comp_iter(
+    comp: &mut Compiler,
+    pns_comp_for: *mut ParseNodeStruct,
+    pn_inner: ParseNode,
+    for_depth: i32,
+) {
     let l_top = comp_next_label(comp);
     let l_end = comp_next_label(comp);
     EMIT_ARG!(comp, label_assign, l_top);
     EMIT_ARG!(comp, for_iter, l_end);
-    c_assign(comp, parse::parse_node_struct_node(pns_comp_for, 0), AssignKind::Store);
-    let pn_iter = parse::parse_node_struct_node(pns_comp_for, 2);
-    if parse::parse_node_is_null(pn_iter) {
-        compile_node(comp, pn_inner);
-        if unsafe { (*comp.scope_cur.unwrap()).kind } == ScopeKind::GenExpr {
-            EMIT_ARG!(comp, yield_, emit::EMIT_YIELD_VALUE);
-            reserve_labels_for_native(comp, 2);
-            EMIT!(comp, pop_top);
+    c_assign(
+        comp,
+        parse::parse_node_struct_node(pns_comp_for, 0),
+        AssignKind::Store,
+    );
+    let mut pn_iter = parse::parse_node_struct_node(pns_comp_for, 2);
+    // C uses `goto tail_recursion` after `comp_if` so we don't re-enter the same
+    // `comp_for` (which would recurse forever on `[x for x in xs if cond]`).
+    loop {
+        if parse::parse_node_is_null(pn_iter) {
+            compile_node(comp, pn_inner);
+            if unsafe { (*comp.scope_cur.unwrap()).kind } == ScopeKind::GenExpr {
+                EMIT_ARG!(comp, yield_, emit::EMIT_YIELD_VALUE);
+                reserve_labels_for_native(comp, 2);
+                EMIT!(comp, pop_top);
+            } else {
+                EMIT_ARG!(
+                    comp,
+                    store_comp,
+                    unsafe { (*comp.scope_cur.unwrap()).kind },
+                    (4 * for_depth + 5) as usize
+                );
+            }
+            break;
+        } else if parse::parse_node_is_struct_kind(pn_iter, Rule::CompIf) {
+            let pns_if = pn_iter as *mut ParseNodeStruct;
+            c_if_cond(comp, parse::parse_node_struct_node(pns_if, 0), false, l_top);
+            pn_iter = parse::parse_node_struct_node(pns_if, 1);
+            continue;
         } else {
-            EMIT_ARG!(comp, store_comp, unsafe { (*comp.scope_cur.unwrap()).kind }, (4 * for_depth + 5) as usize);
+            let pns_for2 = pn_iter as *mut ParseNodeStruct;
+            compile_node(comp, parse::parse_node_struct_node(pns_for2, 1));
+            EMIT_ARG!(comp, get_iter, true);
+            compile_scope_comp_iter(comp, pns_for2, pn_inner, for_depth + 1);
+            break;
         }
-    } else if parse::parse_node_is_struct_kind(pn_iter, Rule::CompIf) {
-        let pns_if = pn_iter as *mut ParseNodeStruct;
-        c_if_cond(comp, parse::parse_node_struct_node(pns_if, 0), false, l_top);
-        compile_scope_comp_iter(comp, pns_comp_for, pn_inner, for_depth);
-    } else {
-        let pns_for2 = pn_iter as *mut ParseNodeStruct;
-        compile_node(comp, parse::parse_node_struct_node(pns_for2, 1));
-        EMIT_ARG!(comp, get_iter, true);
-        compile_scope_comp_iter(comp, pns_for2, pn_inner, for_depth + 1);
     }
     EMIT_ARG!(comp, jump, l_top);
     EMIT_ARG!(comp, label_assign, l_end);
@@ -550,9 +641,19 @@ fn c_if_cond(comp: &mut Compiler, pn: ParseNode, jump_if: bool, label: usize) {
             if !jump_if {
                 let label2 = comp_next_label(comp);
                 for i in 0..n - 1 {
-                    c_if_cond(comp, parse::parse_node_struct_node(pns, i), !jump_if, label2);
+                    c_if_cond(
+                        comp,
+                        parse::parse_node_struct_node(pns, i),
+                        !jump_if,
+                        label2,
+                    );
                 }
-                c_if_cond(comp, parse::parse_node_struct_node(pns, n - 1), jump_if, label);
+                c_if_cond(
+                    comp,
+                    parse::parse_node_struct_node(pns, n - 1),
+                    jump_if,
+                    label,
+                );
                 EMIT_ARG!(comp, label_assign, label2);
             } else {
                 for i in 0..n {
@@ -569,9 +670,19 @@ fn c_if_cond(comp: &mut Compiler, pn: ParseNode, jump_if: bool, label: usize) {
             } else {
                 let label2 = comp_next_label(comp);
                 for i in 0..n - 1 {
-                    c_if_cond(comp, parse::parse_node_struct_node(pns, i), !jump_if, label2);
+                    c_if_cond(
+                        comp,
+                        parse::parse_node_struct_node(pns, i),
+                        !jump_if,
+                        label2,
+                    );
                 }
-                c_if_cond(comp, parse::parse_node_struct_node(pns, n - 1), jump_if, label);
+                c_if_cond(
+                    comp,
+                    parse::parse_node_struct_node(pns, n - 1),
+                    jump_if,
+                    label,
+                );
                 EMIT_ARG!(comp, label_assign, label2);
             }
             return;
@@ -594,20 +705,74 @@ fn c_assign(comp: &mut Compiler, pn: ParseNode, assign_kind: AssignKind) {
         }
         return;
     }
-    if parse::parse_node_is_struct(pn) {
-        let pns = pn as *mut ParseNodeStruct;
-        match parse::parse_node_struct_kind(pns) as u8 {
-            k if k == Rule::AtomExprNormal as u8 => c_assign_atom_expr(comp, pns, assign_kind),
-            k if k == Rule::TestlistStarExpr as u8 || k == Rule::Exprlist as u8 => {
-                if assign_kind == AssignKind::Store {
-                    c_assign_tuple(comp, pns);
-                } else {
-                    compile_syntax_error(comp, pn, b"can't assign to expression");
-                }
-            }
-            _ => compile_syntax_error(comp, pn, b"can't assign to expression"),
-        }
+    if parse::parse_node_is_leaf(pn) {
+        compile_syntax_error(comp, pn, b"can't assign to expression");
+        return;
     }
+    let pns = pn as *mut ParseNodeStruct;
+    match parse::parse_node_struct_kind(pns) as u8 {
+        k if k == Rule::AtomExprNormal as u8 => c_assign_atom_expr(comp, pns, assign_kind),
+        k if k == Rule::TestlistStarExpr as u8 || k == Rule::Exprlist as u8 => {
+            // lhs is a tuple
+            if assign_kind != AssignKind::Store {
+                compile_syntax_error(comp, pn, b"can't assign to expression");
+                return;
+            }
+            let n = parse::parse_node_struct_num_nodes(pns);
+            let nodes: Vec<ParseNode> = (0..n)
+                .map(|i| parse::parse_node_struct_node(pns, i))
+                .collect();
+            c_assign_tuple(comp, &nodes);
+        }
+        k if k == Rule::AtomParen as u8 => {
+            // lhs is something in parenthesis
+            let inner = parse::parse_node_struct_node(pns, 0);
+            if parse::parse_node_is_null(inner) {
+                // empty tuple
+                compile_syntax_error(comp, pn, b"can't assign to expression");
+            } else if assign_kind != AssignKind::Store {
+                compile_syntax_error(comp, pn, b"can't assign to expression");
+            } else if parse::parse_node_is_struct_kind(inner, Rule::TestlistComp) {
+                let pns2 = inner as *mut ParseNodeStruct;
+                c_assign_testlist_comp(comp, pn, pns2);
+            } else {
+                // parens around a single item (not const-folded into a tuple)
+                c_assign(comp, inner, assign_kind);
+            }
+        }
+        k if k == Rule::AtomBracket as u8 => {
+            // lhs is something in brackets
+            if assign_kind != AssignKind::Store {
+                compile_syntax_error(comp, pn, b"can't assign to expression");
+                return;
+            }
+            let inner = parse::parse_node_struct_node(pns, 0);
+            if parse::parse_node_is_null(inner) {
+                // empty list, assignment allowed
+                c_assign_tuple(comp, &[]);
+            } else if parse::parse_node_is_struct_kind(inner, Rule::TestlistComp) {
+                let pns2 = inner as *mut ParseNodeStruct;
+                c_assign_testlist_comp(comp, pn, pns2);
+            } else {
+                // brackets around 1 item
+                c_assign_tuple(comp, &[inner]);
+            }
+        }
+        _ => compile_syntax_error(comp, pn, b"can't assign to expression"),
+    }
+}
+
+fn c_assign_testlist_comp(comp: &mut Compiler, pn: ParseNode, pns: *mut ParseNodeStruct) {
+    // lhs is a sequence
+    if parse_node_testlist_comp_has_comp_for(pns) {
+        compile_syntax_error(comp, pn, b"can't assign to expression");
+        return;
+    }
+    let n = parse::parse_node_struct_num_nodes(pns);
+    let nodes: Vec<ParseNode> = (0..n)
+        .map(|i| parse::parse_node_struct_node(pns, i))
+        .collect();
+    c_assign_tuple(comp, &nodes);
 }
 
 fn c_assign_atom_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct, assign_kind: AssignKind) {
@@ -660,11 +825,31 @@ fn c_assign_atom_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct, assign_kin
     compile_syntax_error(comp, pns as ParseNode, b"can't assign to expression");
 }
 
-fn c_assign_tuple(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    let n = parse::parse_node_struct_num_nodes(pns);
-    EMIT_ARG!(comp, unpack_sequence, n);
-    for i in 0..n {
-        c_assign(comp, parse::parse_node_struct_node(pns, i), AssignKind::Store);
+fn c_assign_tuple(comp: &mut Compiler, nodes_tail: &[ParseNode]) {
+    // look for star expression
+    let n = nodes_tail.len();
+    let mut have_star_index: Option<usize> = None;
+    for (i, &node) in nodes_tail.iter().enumerate() {
+        if parse::parse_node_is_struct_kind(node, Rule::StarExpr) {
+            if have_star_index.is_none() {
+                EMIT_ARG!(comp, unpack_ex, i, n - i - 1);
+                have_star_index = Some(i);
+            } else {
+                compile_syntax_error(comp, node, b"multiple *x in assignment");
+                return;
+            }
+        }
+    }
+    if have_star_index.is_none() {
+        EMIT_ARG!(comp, unpack_sequence, n);
+    }
+    for (i, &node) in nodes_tail.iter().enumerate() {
+        if Some(i) == have_star_index {
+            let inner = parse::parse_node_struct_node(node as *mut ParseNodeStruct, 0);
+            c_assign(comp, inner, AssignKind::Store);
+        } else {
+            c_assign(comp, node, AssignKind::Store);
+        }
     }
 }
 
@@ -694,7 +879,11 @@ fn compile_yield_from(comp: &mut Compiler) {
 }
 
 fn compile_const_object(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    EMIT_ARG!(comp, load_const_obj, parse::parse_node_extract_const_object(pns));
+    EMIT_ARG!(
+        comp,
+        load_const_obj,
+        parse::parse_node_extract_const_object(pns)
+    );
 }
 
 type CompileFn = fn(&mut Compiler, *mut ParseNodeStruct);
@@ -702,8 +891,15 @@ type CompileFn = fn(&mut Compiler, *mut ParseNodeStruct);
 fn compile_dispatch(comp: &mut Compiler, pns: *mut ParseNodeStruct, kind: u8) {
     let rule = unsafe { core::mem::transmute::<u8, Rule>(kind) };
     match rule {
-        Rule::FileInput | Rule::FileInput2 | Rule::FileInput3 | Rule::SimpleStmt2 | Rule::PassStmt | Rule::SuiteBlockStmts => compile_generic_all_nodes(comp, pns),
-        Rule::Testlist | Rule::Subscriptlist | Rule::TestlistStarExpr => compile_generic_tuple(comp, pns),
+        Rule::FileInput
+        | Rule::FileInput2
+        | Rule::FileInput3
+        | Rule::SimpleStmt2
+        | Rule::PassStmt
+        | Rule::SuiteBlockStmts => compile_generic_all_nodes(comp, pns),
+        Rule::Testlist | Rule::Subscriptlist | Rule::TestlistStarExpr => {
+            compile_generic_tuple(comp, pns)
+        }
         Rule::ConstObject => compile_const_object(comp, pns),
         Rule::OrTest | Rule::AndTest => compile_or_and_test(comp, pns),
         Rule::NotTest2 => compile_not_test_2(comp, pns),
@@ -755,17 +951,25 @@ fn compile_node(comp: &mut Compiler, pn: ParseNode) {
         return;
     }
     if parse::parse_node_is_small_int(pn) {
-        EMIT_ARG!(comp, load_const_small_int, parse::parse_node_leaf_small_int(pn) as i64);
+        EMIT_ARG!(
+            comp,
+            load_const_small_int,
+            parse::parse_node_leaf_small_int(pn) as i64
+        );
         return;
     }
     if parse::parse_node_is_leaf(pn) {
         match parse::parse_node_leaf_kind(pn) {
             parse::PARSE_NODE_ID => compile_load_id(comp, parse::parse_node_leaf_arg(pn)),
-            parse::PARSE_NODE_STRING => EMIT_ARG!(comp, load_const_str, parse::parse_node_leaf_arg(pn)),
+            parse::PARSE_NODE_STRING => {
+                EMIT_ARG!(comp, load_const_str, parse::parse_node_leaf_arg(pn))
+            }
             parse::PARSE_NODE_TOKEN => {
                 let arg = parse::parse_node_leaf_arg(pn);
                 if arg != TokenKind::Newline as usize {
-                    EMIT_ARG!(comp, load_const_tok, unsafe { core::mem::transmute::<u8, TokenKind>(arg as u8) });
+                    EMIT_ARG!(comp, load_const_tok, unsafe {
+                        core::mem::transmute::<u8, TokenKind>(arg as u8)
+                    });
                 }
             }
             _ => {}
@@ -777,7 +981,7 @@ fn compile_node(comp: &mut Compiler, pn: ParseNode) {
         EMIT_ARG!(comp, set_source_line, (*pns).source_line as usize);
     }
     let kind = parse::parse_node_struct_kind(pns) as u8;
-    debug_assert!(kind <= Rule::ConstObject as u8);
+    debug_assert!(kind <= Rule::YieldArgFrom as u8);
     compile_dispatch(comp, pns, kind);
 }
 
@@ -858,7 +1062,9 @@ fn compile_star_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
 
 fn binary_op_for_rule(kind: u32) -> BinaryOp {
     unsafe {
-        core::mem::transmute::<u8, BinaryOp>((BinaryOp::Or as u8) + (kind - Rule::Expr as u32) as u8)
+        core::mem::transmute::<u8, BinaryOp>(
+            (BinaryOp::Or as u8) + (kind - Rule::Expr as u32) as u8,
+        )
     }
 }
 
@@ -895,9 +1101,7 @@ fn compile_factor_2(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     let op = if tok == TokenKind::OpTilde as usize {
         UnaryOp::Invert
     } else {
-        unsafe {
-            core::mem::transmute::<u8, UnaryOp>((tok - TokenKind::OpPlus as usize) as u8)
-        }
+        unsafe { core::mem::transmute::<u8, UnaryOp>((tok - TokenKind::OpPlus as usize) as u8) }
     };
     EMIT_ARG!(comp, unary_op, op);
 }
@@ -907,7 +1111,12 @@ fn compile_power(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     EMIT_ARG!(comp, binary_op, BinaryOp::Power);
 }
 
-fn compile_trailer_paren_helper(comp: &mut Compiler, mut pn_arglist: ParseNode, is_method_call: bool, n_positional_extra: usize) {
+fn compile_trailer_paren_helper(
+    comp: &mut Compiler,
+    mut pn_arglist: ParseNode,
+    is_method_call: bool,
+    n_positional_extra: usize,
+) {
     let mut nodes_ptr: *mut ParseNode = core::ptr::null_mut();
     let n_args = parse::parse_node_extract_list(&mut pn_arglist, Rule::Arglist, &mut nodes_ptr);
     let mut n_positional = n_positional_extra;
@@ -941,16 +1150,23 @@ fn compile_trailer_paren_helper(comp: &mut Compiler, mut pn_arglist: ParseNode, 
                 }
                 k if k == Rule::Argument as u32 => {
                     if mpconfig::PY_ASSIGN_EXPR
-                        && parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns_arg, 1), Rule::Argument3)
+                        && parse::parse_node_is_struct_kind(
+                            parse::parse_node_struct_node(pns_arg, 1),
+                            Rule::Argument3,
+                        )
                     {
-                        let pns3 = parse::parse_node_struct_node(pns_arg, 1) as *mut ParseNodeStruct;
+                        let pns3 =
+                            parse::parse_node_struct_node(pns_arg, 1) as *mut ParseNodeStruct;
                         compile_namedexpr_helper(
                             comp,
                             parse::parse_node_struct_node(pns_arg, 0),
                             parse::parse_node_struct_node(pns3, 0),
                         );
                         n_positional += 1;
-                    } else if !parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns_arg, 1), Rule::CompFor) {
+                    } else if !parse::parse_node_is_struct_kind(
+                        parse::parse_node_struct_node(pns_arg, 1),
+                        Rule::CompFor,
+                    ) {
                         if !parse::parse_node_is_id(parse::parse_node_struct_node(pns_arg, 0)) {
                             compile_syntax_error(comp, arg, b"LHS of keyword arg must be an id");
                             return;
@@ -1021,52 +1237,124 @@ fn compile_comprehension(comp: &mut Compiler, pns: *mut ParseNodeStruct, kind: S
 }
 
 fn compile_atom_expr_normal(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    compile_node(comp, parse::parse_node_struct_node(pns, 0));
+    let node0 = parse::parse_node_struct_node(pns, 0);
+    // Compile the subject of the expression. Note: for the special super()
+    // case below this pushes a (dead, unused) lookup of the "super" global;
+    // that matches py/compile.c exactly, which relies on this to reserve the
+    // stack slot that LOAD_SUPER_METHOD later collapses onto, so that
+    // anything already on the value stack below this expression (e.g. `1` in
+    // `1 + super().f()`) is not clobbered.
+    compile_node(comp, node0);
     let trail_root = parse::parse_node_struct_node(pns, 1);
     if parse::parse_node_is_null(trail_root) {
         return;
     }
-    let (num_trail, trail_pns) = if parse::parse_node_is_struct_kind(trail_root, Rule::AtomExprTrailers) {
+    let is_trailers = parse::parse_node_is_struct_kind(trail_root, Rule::AtomExprTrailers);
+    let (num_trail, trail_pns) = if is_trailers {
         let ps = trail_root as *mut ParseNodeStruct;
         (parse::parse_node_struct_num_nodes(ps), ps)
     } else {
         (1usize, trail_root as *mut ParseNodeStruct)
     };
-    let mut i = 0usize;
-    while i < num_trail {
-        let pns_t = if parse::parse_node_is_struct_kind(trail_root, Rule::AtomExprTrailers) {
-            parse::parse_node_struct_node(trail_pns, i) as *mut ParseNodeStruct
+    let get_trail = |idx: usize| -> *mut ParseNodeStruct {
+        if is_trailers {
+            parse::parse_node_struct_node(trail_pns, idx) as *mut ParseNodeStruct
         } else {
             trail_pns
-        };
+        }
+    };
+
+    let mut i = 0usize;
+
+    // handle special super() call (mirrors py/compile.c compile_atom_expr_normal)
+    if unsafe { (*comp.scope_cur.unwrap()).kind } == ScopeKind::Function
+        && parse::parse_node_is_id(node0)
+        && parse::parse_node_leaf_arg(node0) == qstr::from_str("super")
+        && parse::parse_node_struct_kind(get_trail(0)) == Rule::TrailerParen as u32
+        && parse::parse_node_is_null(parse::parse_node_struct_node(get_trail(0), 0))
+    {
+        // at this point we have matched "super()" within a function
+
+        // load the class for super to search for a parent
+        compile_load_id(comp, qstr::from_str("__class__"));
+
+        // look for first argument to function (assumes it's "self")
+        let mut found = false;
+        unsafe {
+            for id in &(*comp.scope_cur.unwrap()).id_info {
+                if id.flags & scope::ID_FLAG_IS_PARAM != 0 {
+                    compile_load_id(comp, id.qst);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if !found {
+            compile_syntax_error(
+                comp,
+                get_trail(0) as ParseNode,
+                b"super() can't find self", // really a TypeError
+            );
+            return;
+        }
+
+        if num_trail >= 3
+            && parse::parse_node_struct_kind(get_trail(1)) == Rule::TrailerPeriod as u32
+            && parse::parse_node_struct_kind(get_trail(2)) == Rule::TrailerParen as u32
+        {
+            // optimisation for method calls super().f(...), to eliminate heap allocation
+            let pns_period = get_trail(1);
+            let pns_paren = get_trail(2);
+            EMIT_ARG!(
+                comp,
+                load_method,
+                parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns_period, 0)),
+                true
+            );
+            compile_trailer_paren_helper(
+                comp,
+                parse::parse_node_struct_node(pns_paren, 0),
+                true,
+                0,
+            );
+            i = 3;
+        } else {
+            // a super() call
+            EMIT_ARG!(comp, call_function, 2, 0, 0);
+            i = 1;
+        }
+    }
+
+    while i < num_trail {
+        let pns_t = get_trail(i);
         if i + 1 < num_trail
             && parse::parse_node_struct_kind(pns_t) == Rule::TrailerPeriod as u32
-            && parse::parse_node_struct_kind(
-                if parse::parse_node_is_struct_kind(trail_root, Rule::AtomExprTrailers) {
-                    parse::parse_node_struct_node(trail_pns, i + 1) as *mut ParseNodeStruct
-                } else {
-                    trail_pns
-                },
-            ) == Rule::TrailerParen as u32
+            && parse::parse_node_struct_kind(get_trail(i + 1)) == Rule::TrailerParen as u32
         {
-            let pns_paren = if parse::parse_node_is_struct_kind(trail_root, Rule::AtomExprTrailers) {
-                parse::parse_node_struct_node(trail_pns, i + 1) as *mut ParseNodeStruct
-            } else {
-                trail_pns
-            };
+            let pns_paren = get_trail(i + 1);
             EMIT_ARG!(
                 comp,
                 load_method,
                 parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns_t, 0)),
                 false
             );
-            compile_trailer_paren_helper(comp, parse::parse_node_struct_node(pns_paren, 0), true, 0);
+            compile_trailer_paren_helper(
+                comp,
+                parse::parse_node_struct_node(pns_paren, 0),
+                true,
+                0,
+            );
             i += 2;
             continue;
         }
         match parse::parse_node_struct_kind(pns_t) {
             k if k == Rule::TrailerParen as u32 => {
-                compile_trailer_paren_helper(comp, parse::parse_node_struct_node(pns_t, 0), false, 0);
+                compile_trailer_paren_helper(
+                    comp,
+                    parse::parse_node_struct_node(pns_t, 0),
+                    false,
+                    0,
+                );
             }
             k if k == Rule::TrailerBracket as u32 => {
                 compile_node(comp, parse::parse_node_struct_node(pns_t, 0));
@@ -1105,7 +1393,16 @@ fn compile_atom_paren(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
         EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_TUPLE);
     } else {
         let inner = parse::parse_node_struct_node(pns, 0);
-        if parse::parse_node_is_struct_kind(inner, Rule::Testlist) {
+        // py/compile.c's compile_atom_paren asserts this is PN_testlist_comp
+        // (not PN_testlist, a distinct rule): a parenthesized multi-item
+        // expression list is parsed as `testlist_comp`. Checking the wrong
+        // rule here meant this branch was never taken for e.g. `(a, b)`
+        // (only constant-folded tuples like `(1, 2)` happened to work,
+        // since those are folded away entirely at parse time before
+        // reaching here) — the elements got compiled by the generic
+        // fallback dispatch, which pushes each item but never emits
+        // BUILD_TUPLE, leaving the value stack unbalanced.
+        if parse::parse_node_is_struct_kind(inner, Rule::TestlistComp) {
             let pns2 = inner as *mut ParseNodeStruct;
             if parse_node_testlist_comp_has_comp_for(pns2) {
                 compile_comprehension(comp, pns2, ScopeKind::GenExpr);
@@ -1121,13 +1418,21 @@ fn compile_atom_paren(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
 fn compile_atom_bracket(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     if parse::parse_node_is_null(parse::parse_node_struct_node(pns, 0)) {
         EMIT_ARG!(comp, build, 0, emit::EMIT_BUILD_LIST);
-    } else if parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns, 0), Rule::Testlist) {
+    } else if parse::parse_node_is_struct_kind(
+        parse::parse_node_struct_node(pns, 0),
+        Rule::TestlistComp,
+    ) {
         let pns2 = parse::parse_node_struct_node(pns, 0) as *mut ParseNodeStruct;
         if parse_node_testlist_comp_has_comp_for(pns2) {
             compile_comprehension(comp, pns2, ScopeKind::ListComp);
         } else {
             compile_generic_all_nodes(comp, pns2);
-            EMIT_ARG!(comp, build, parse::parse_node_struct_num_nodes(pns2), emit::EMIT_BUILD_LIST);
+            EMIT_ARG!(
+                comp,
+                build,
+                parse::parse_node_struct_num_nodes(pns2),
+                emit::EMIT_BUILD_LIST
+            );
         }
     } else {
         compile_node(comp, parse::parse_node_struct_node(pns, 0));
@@ -1159,7 +1464,10 @@ fn compile_atom_brace_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, cre
                     &mut nodes_ptr,
                 );
                 let is_dict = !mpconfig::PY_BUILTINS_SET
-                    || parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns_inner, 0), Rule::DictorsetmakerItem);
+                    || parse::parse_node_is_struct_kind(
+                        parse::parse_node_struct_node(pns_inner, 0),
+                        Rule::DictorsetmakerItem,
+                    );
                 if is_dict {
                     if create_map {
                         EMIT_ARG!(comp, build, 1 + n, emit::EMIT_BUILD_MAP);
@@ -1171,16 +1479,25 @@ fn compile_atom_brace_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, cre
                 }
                 for i in 0..n {
                     let pn_i = unsafe { *nodes_ptr.add(i) };
-                    let is_key_value = parse::parse_node_is_struct_kind(pn_i, Rule::DictorsetmakerItem);
+                    let is_key_value =
+                        parse::parse_node_is_struct_kind(pn_i, Rule::DictorsetmakerItem);
                     compile_node(comp, pn_i);
                     if is_dict {
                         if !is_key_value {
-                            compile_syntax_error(comp, pns as ParseNode, b"expecting key:value for dict");
+                            compile_syntax_error(
+                                comp,
+                                pns as ParseNode,
+                                b"expecting key:value for dict",
+                            );
                             return;
                         }
                         EMIT!(comp, store_map);
                     } else if is_key_value {
-                        compile_syntax_error(comp, pns as ParseNode, b"expecting just a value for set");
+                        compile_syntax_error(
+                            comp,
+                            pns as ParseNode,
+                            b"expecting just a value for set",
+                        );
                         return;
                     }
                 }
@@ -1190,7 +1507,10 @@ fn compile_atom_brace_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, cre
             } else {
                 debug_assert!(parse::parse_node_struct_kind(pns1) == Rule::CompFor as u32);
                 if !mpconfig::PY_BUILTINS_SET
-                    || parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns_inner, 0), Rule::DictorsetmakerItem)
+                    || parse::parse_node_is_struct_kind(
+                        parse::parse_node_struct_node(pns_inner, 0),
+                        Rule::DictorsetmakerItem,
+                    )
                 {
                     compile_comprehension(comp, pns_inner, ScopeKind::DictComp);
                 } else {
@@ -1218,7 +1538,12 @@ fn compile_trailer_bracket(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
 }
 
 fn compile_trailer_period(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    EMIT_ARG!(comp, attr, parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0)), emit::EMIT_ATTR_LOAD);
+    EMIT_ARG!(
+        comp,
+        attr,
+        parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0)),
+        emit::EMIT_ATTR_LOAD
+    );
 }
 
 fn compile_subscript(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
@@ -1278,12 +1603,24 @@ fn compile_dictorsetmaker_item(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     compile_node(comp, parse::parse_node_struct_node(pns, 0));
 }
 
-fn close_over_variables_etc(comp: &mut Compiler, this_scope: *mut Scope, n_pos_defaults: i32, n_kw_defaults: i32) {
+fn close_over_variables_etc(
+    comp: &mut Compiler,
+    this_scope: *mut Scope,
+    n_pos_defaults: i32,
+    n_kw_defaults: i32,
+) {
     unsafe {
         if n_kw_defaults > 0 {
             (*this_scope).scope_flags |= bc0::SCOPE_FLAG_DEFKWARGS as u16;
         }
         (*this_scope).num_def_pos_args = n_pos_defaults as u16;
+    }
+    if mpconfig::EMIT_NATIVE {
+        // When creating a function/closure it will take a reference to the current globals.
+        unsafe {
+            (*comp.scope_cur.unwrap()).scope_flags |=
+                (bc0::SCOPE_FLAG_REFGLOBALS | bc0::SCOPE_FLAG_HASCONSTS) as u16;
+        }
     }
     let mut nfree = 0usize;
     unsafe {
@@ -1301,9 +1638,22 @@ fn close_over_variables_etc(comp: &mut Compiler, this_scope: *mut Scope, n_pos_d
         }
     }
     if nfree == 0 {
-        EMIT_ARG!(comp, make_function, this_scope, n_pos_defaults as usize, n_kw_defaults as usize);
+        EMIT_ARG!(
+            comp,
+            make_function,
+            this_scope,
+            n_pos_defaults as usize,
+            n_kw_defaults as usize
+        );
     } else {
-        EMIT_ARG!(comp, make_closure, this_scope, nfree, n_pos_defaults as usize, n_kw_defaults as usize);
+        EMIT_ARG!(
+            comp,
+            make_closure,
+            this_scope,
+            nfree,
+            n_pos_defaults as usize,
+            n_kw_defaults as usize
+        );
     }
 }
 
@@ -1381,7 +1731,11 @@ fn compile_scope_func_lambda_param(
         }
     }
     if param_name != qstr::QSTR_NULL {
-        let id_info = scope::find_or_add_id(unsafe { &mut *comp.scope_cur.unwrap() }, param_name, IdInfoKind::Undecided);
+        let id_info = scope::find_or_add_id(
+            unsafe { &mut *comp.scope_cur.unwrap() },
+            param_name,
+            IdInfoKind::Undecided,
+        );
         if id_info.kind != IdInfoKind::Undecided {
             compile_syntax_error(comp, pn, b"argument name reused");
             return;
@@ -1434,17 +1788,25 @@ fn compile_funcdef_lambdef_param(comp: &mut Compiler, pn: ParseNode) {
     };
     if pn_kind == Rule::TypedargslistStar as i32 || pn_kind == Rule::VarargslistStar as i32 {
         comp.have_star = true;
-    } else if pn_kind == Rule::TypedargslistDblStar as i32 || pn_kind == Rule::VarargslistDblStar as i32 {
+    } else if pn_kind == Rule::TypedargslistDblStar as i32
+        || pn_kind == Rule::VarargslistDblStar as i32
+    {
         // named double star
     } else {
         let (pn_id, pn_equal) = if pn_kind == -1 {
             (pn, parse::PARSE_NODE_NULL)
         } else if pn_kind == Rule::TypedargslistName as i32 {
             let pns = pn as *mut ParseNodeStruct;
-            (parse::parse_node_struct_node(pns, 0), parse::parse_node_struct_node(pns, 2))
+            (
+                parse::parse_node_struct_node(pns, 0),
+                parse::parse_node_struct_node(pns, 2),
+            )
         } else {
             let pns = pn as *mut ParseNodeStruct;
-            (parse::parse_node_struct_node(pns, 0), parse::parse_node_struct_node(pns, 1))
+            (
+                parse::parse_node_struct_node(pns, 0),
+                parse::parse_node_struct_node(pns, 1),
+            )
         };
         if parse::parse_node_is_null(pn_equal) {
             if !comp.have_star && comp.num_default_params != 0 {
@@ -1455,7 +1817,12 @@ fn compile_funcdef_lambdef_param(comp: &mut Compiler, pn: ParseNode) {
             comp.num_dict_params += 1;
             if comp.num_dict_params == 1 {
                 if comp.num_default_params > 0 {
-                    EMIT_ARG!(comp, build, comp.num_default_params as usize, emit::EMIT_BUILD_TUPLE);
+                    EMIT_ARG!(
+                        comp,
+                        build,
+                        comp.num_default_params as usize,
+                        emit::EMIT_BUILD_TUPLE
+                    );
                 } else {
                     EMIT!(comp, load_null);
                 }
@@ -1471,7 +1838,12 @@ fn compile_funcdef_lambdef_param(comp: &mut Compiler, pn: ParseNode) {
     }
 }
 
-fn compile_funcdef_lambdef(comp: &mut Compiler, scope: *mut Scope, pn_params: ParseNode, list_rule: Rule) {
+fn compile_funcdef_lambdef(
+    comp: &mut Compiler,
+    scope: *mut Scope,
+    pn_params: ParseNode,
+    list_rule: Rule,
+) {
     let orig_have_star = comp.have_star;
     let orig_num_dict_params = comp.num_dict_params;
     let orig_num_default_params = comp.num_default_params;
@@ -1483,22 +1855,41 @@ fn compile_funcdef_lambdef(comp: &mut Compiler, scope: *mut Scope, pn_params: Pa
         return;
     }
     if comp.num_default_params > 0 && comp.num_dict_params == 0 {
-        EMIT_ARG!(comp, build, comp.num_default_params as usize, emit::EMIT_BUILD_TUPLE);
+        EMIT_ARG!(
+            comp,
+            build,
+            comp.num_default_params as usize,
+            emit::EMIT_BUILD_TUPLE
+        );
         EMIT!(comp, load_null);
     }
-    close_over_variables_etc(comp, scope, comp.num_default_params as i32, comp.num_dict_params as i32);
+    close_over_variables_etc(
+        comp,
+        scope,
+        comp.num_default_params as i32,
+        comp.num_dict_params as i32,
+    );
     comp.have_star = orig_have_star;
     comp.num_dict_params = orig_num_dict_params;
     comp.num_default_params = orig_num_default_params;
 }
 
-fn compile_funcdef_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, emit_options: u16) -> Qstr {
+fn compile_funcdef_helper(
+    comp: &mut Compiler,
+    pns: *mut ParseNodeStruct,
+    emit_options: u16,
+) -> Qstr {
     if comp.pass == PassKind::Scope {
         let s = scope_new_and_link(comp, ScopeKind::Function, pns as ParseNode, emit_options);
         parse::parse_node_struct_set_node(pns, 4, s as ParseNode);
     }
     let fscope = unsafe { parse::parse_node_struct_node(pns, 4) as *mut Scope };
-    compile_funcdef_lambdef(comp, fscope, parse::parse_node_struct_node(pns, 1), Rule::Typedargslist);
+    compile_funcdef_lambdef(
+        comp,
+        fscope,
+        parse::parse_node_struct_node(pns, 1),
+        Rule::Typedargslist,
+    );
     unsafe { (*fscope).simple_name }
 }
 
@@ -1530,7 +1921,11 @@ fn compile_viper_type_annotation(comp: &mut Compiler, pn_annotation: ParseNode) 
     0
 }
 
-fn compile_classdef_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, emit_options: u16) -> Qstr {
+fn compile_classdef_helper(
+    comp: &mut Compiler,
+    pns: *mut ParseNodeStruct,
+    emit_options: u16,
+) -> Qstr {
     if comp.pass == PassKind::Scope {
         let s = scope_new_and_link(comp, ScopeKind::Class, pns as ParseNode, emit_options);
         parse::parse_node_struct_set_node(pns, 3, s as ParseNode);
@@ -1548,7 +1943,9 @@ fn compile_classdef_helper(comp: &mut Compiler, pns: *mut ParseNodeStruct, emit_
 }
 
 fn compile_classdef(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    let cname = compile_classdef_helper(comp, pns, unsafe { (*comp.scope_cur.unwrap()).emit_options });
+    let cname = compile_classdef_helper(comp, pns, unsafe {
+        (*comp.scope_cur.unwrap()).emit_options
+    });
     compile_store_id(comp, cname);
 }
 
@@ -1619,7 +2016,9 @@ fn compile_decorated(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     let pns_body = parse::parse_node_struct_node(pns, 1) as *mut ParseNodeStruct;
     let body_name = if parse::parse_node_struct_kind(pns_body) == Rule::Funcdef as u32 {
         compile_funcdef_helper(comp, pns_body, emit_options)
-    } else if mpconfig::PY_ASYNC_AWAIT && parse::parse_node_struct_kind(pns_body) == Rule::AsyncFuncdef as u32 {
+    } else if mpconfig::PY_ASYNC_AWAIT
+        && parse::parse_node_struct_kind(pns_body) == Rule::AsyncFuncdef as u32
+    {
         let pns0 = parse::parse_node_struct_node(pns_body, 0) as *mut ParseNodeStruct;
         let name = compile_funcdef_helper(comp, pns0, emit_options);
         unsafe {
@@ -1693,7 +2092,12 @@ fn c_del_stmt(comp: &mut Compiler, pn: ParseNode) {
 }
 
 fn compile_del_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    apply_to_single_or_list(comp, parse::parse_node_struct_node(pns, 0), Rule::Exprlist, c_del_stmt);
+    apply_to_single_or_list(
+        comp,
+        parse::parse_node_struct_node(pns, 0),
+        Rule::Exprlist,
+        c_del_stmt,
+    );
 }
 
 fn compile_break_cont_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
@@ -1706,11 +2110,17 @@ fn compile_break_cont_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
         compile_syntax_error(comp, pns as ParseNode, b"'break'/'continue' outside loop");
         return;
     }
-    EMIT_ARG!(comp, unwind_jump, label as usize, (comp.cur_except_level - comp.break_continue_except_level) as usize);
+    EMIT_ARG!(
+        comp,
+        unwind_jump,
+        label as usize,
+        (comp.cur_except_level - comp.break_continue_except_level) as usize
+    );
 }
 
 fn compile_return_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    if mpconfig::CPYTHON_COMPAT && unsafe { (*comp.scope_cur.unwrap()).kind } != ScopeKind::Function {
+    if mpconfig::CPYTHON_COMPAT && unsafe { (*comp.scope_cur.unwrap()).kind } != ScopeKind::Function
+    {
         compile_syntax_error(comp, pns as ParseNode, b"'return' outside function");
         return;
     }
@@ -1720,9 +2130,15 @@ fn compile_return_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
         && parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns, 0), Rule::TestIfExpr)
     {
         let pns_test_if_expr = parse::parse_node_struct_node(pns, 0) as *mut ParseNodeStruct;
-        let pns_test_if_else = parse::parse_node_struct_node(pns_test_if_expr, 1) as *mut ParseNodeStruct;
+        let pns_test_if_else =
+            parse::parse_node_struct_node(pns_test_if_expr, 1) as *mut ParseNodeStruct;
         let l_fail = comp_next_label(comp);
-        c_if_cond(comp, parse::parse_node_struct_node(pns_test_if_else, 0), false, l_fail);
+        c_if_cond(
+            comp,
+            parse::parse_node_struct_node(pns_test_if_else, 0),
+            false,
+            l_fail,
+        );
         compile_node(comp, parse::parse_node_struct_node(pns_test_if_expr, 0));
         EMIT!(comp, return_value);
         EMIT_ARG!(comp, label_assign, l_fail);
@@ -1743,7 +2159,10 @@ fn compile_yield_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
         EMIT_ARG!(comp, load_const_tok, TokenKind::KwNone);
         EMIT_ARG!(comp, yield_, emit::EMIT_YIELD_VALUE);
         reserve_labels_for_native(comp, 2);
-    } else if parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns, 0), Rule::YieldArgFrom) {
+    } else if parse::parse_node_is_struct_kind(
+        parse::parse_node_struct_node(pns, 0),
+        Rule::YieldArgFrom,
+    ) {
         let pns_from = parse::parse_node_struct_node(pns, 0) as *mut ParseNodeStruct;
         compile_node(comp, parse::parse_node_struct_node(pns_from, 0));
         compile_yield_from(comp);
@@ -1757,7 +2176,10 @@ fn compile_yield_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
 fn compile_raise_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     if parse::parse_node_is_null(parse::parse_node_struct_node(pns, 0)) {
         EMIT_ARG!(comp, raise_varargs, 0);
-    } else if parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns, 0), Rule::RaiseStmtArg) {
+    } else if parse::parse_node_is_struct_kind(
+        parse::parse_node_struct_node(pns, 0),
+        Rule::RaiseStmtArg,
+    ) {
         let pns_arg = parse::parse_node_struct_node(pns, 0) as *mut ParseNodeStruct;
         compile_node(comp, parse::parse_node_struct_node(pns_arg, 0));
         compile_node(comp, parse::parse_node_struct_node(pns_arg, 1));
@@ -1797,7 +2219,9 @@ fn do_import_name(comp: &mut Compiler, pn: ParseNode, q_base: &mut Qstr) {
             if i > 0 {
                 buf.push(b'.');
             }
-            if let Some((data, _)) = qstr::qstr_data(parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, i))) {
+            if let Some((data, _)) = qstr::qstr_data(parse::parse_node_leaf_arg(
+                parse::parse_node_struct_node(pns, i),
+            )) {
                 buf.extend_from_slice(&data);
             }
         }
@@ -1825,7 +2249,12 @@ fn compile_dotted_as_name(comp: &mut Compiler, pn: ParseNode) {
 }
 
 fn compile_import_name(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
-    apply_to_single_or_list(comp, parse::parse_node_struct_node(pns, 0), Rule::DottedAsNames, compile_dotted_as_name);
+    apply_to_single_or_list(
+        comp,
+        parse::parse_node_struct_node(pns, 0),
+        Rule::DottedAsNames,
+        compile_dotted_as_name,
+    );
 }
 
 fn compile_import_from(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
@@ -1844,7 +2273,11 @@ fn compile_import_from(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
             break;
         };
         let mut nodes_ptr: *mut ParseNode = core::ptr::null_mut();
-        let n = parse::parse_node_extract_list(&mut pn_rel, Rule::OneOrMorePeriodOrEllipsis, &mut nodes_ptr);
+        let n = parse::parse_node_extract_list(
+            &mut pn_rel,
+            Rule::OneOrMorePeriodOrEllipsis,
+            &mut nodes_ptr,
+        );
         for i in 0..n {
             let node = unsafe { *nodes_ptr.add(i) };
             if parse::parse_node_is_token_kind(node, TokenKind::DelPeriod) {
@@ -1888,7 +2321,10 @@ fn compile_import_from(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
             if parse::parse_node_is_null(parse::parse_node_struct_node(pns3, 1)) {
                 compile_store_id(comp, id2);
             } else {
-                compile_store_id(comp, parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns3, 1)));
+                compile_store_id(
+                    comp,
+                    parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns3, 1)),
+                );
             }
         }
         EMIT!(comp, pop_top);
@@ -1927,7 +2363,11 @@ fn compile_global_nonlocal_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) 
     if comp.pass == PassKind::Scope {
         let is_global = parse::parse_node_struct_kind(pns) == Rule::GlobalStmt as u32;
         if !is_global && unsafe { (*comp.scope_cur.unwrap()).kind } == ScopeKind::Module {
-            compile_syntax_error(comp, pns as ParseNode, b"can't declare nonlocal in outer code");
+            compile_syntax_error(
+                comp,
+                pns as ParseNode,
+                b"can't declare nonlocal in outer code",
+            );
             return;
         }
         let mut nodes_ptr: *mut ParseNode = core::ptr::null_mut();
@@ -1939,7 +2379,11 @@ fn compile_global_nonlocal_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) 
         for i in 0..n {
             let pn = unsafe { *nodes_ptr.add(i) };
             let qst = parse::parse_node_leaf_arg(pn);
-            let id_info = scope::find_or_add_id(unsafe { &mut *comp.scope_cur.unwrap() }, qst, IdInfoKind::Undecided);
+            let id_info = scope::find_or_add_id(
+                unsafe { &mut *comp.scope_cur.unwrap() },
+                qst,
+                IdInfoKind::Undecided,
+            );
             if is_global {
                 compile_declare_global(comp, pn, id_info);
             } else {
@@ -1992,7 +2436,12 @@ fn compile_if_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
         let pns_elif = unsafe { *pn_elif.add(i) } as *mut ParseNodeStruct;
         if !parse::parse_node_is_const_false(parse::parse_node_struct_node(pns_elif, 0)) {
             let l_fail = comp_next_label(comp);
-            c_if_cond(comp, parse::parse_node_struct_node(pns_elif, 0), false, l_fail);
+            c_if_cond(
+                comp,
+                parse::parse_node_struct_node(pns_elif, 0),
+                false,
+                l_fail,
+            );
             compile_node(comp, parse::parse_node_struct_node(pns_elif, 1));
             if parse::parse_node_is_const_true(parse::parse_node_struct_node(pns_elif, 0)) {
                 EMIT_ARG!(comp, label_assign, l_end);
@@ -2104,46 +2553,72 @@ fn compile_for_stmt_optimised_range(
 
 fn compile_for_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     if parse::parse_node_is_id(parse::parse_node_struct_node(pns, 0))
-        && parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns, 1), Rule::AtomExprNormal)
+        && parse::parse_node_is_struct_kind(
+            parse::parse_node_struct_node(pns, 1),
+            Rule::AtomExprNormal,
+        )
     {
         let pns_it = parse::parse_node_struct_node(pns, 1) as *mut ParseNodeStruct;
         if parse::parse_node_is_id(parse::parse_node_struct_node(pns_it, 0))
-            && parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns_it, 0)) == qstr::from_str("range")
-            && parse::parse_node_is_struct_kind(parse::parse_node_struct_node(pns_it, 1), Rule::TrailerParen)
+            && parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns_it, 0))
+                == qstr::from_str("range")
+            && parse::parse_node_is_struct_kind(
+                parse::parse_node_struct_node(pns_it, 1),
+                Rule::TrailerParen,
+            )
         {
             let mut pn_range_args = parse::parse_node_struct_node(
                 parse::parse_node_struct_node(pns_it, 1) as *mut ParseNodeStruct,
                 0,
             );
             let mut args_ptr: *mut ParseNode = core::ptr::null_mut();
-            let n_args = parse::parse_node_extract_list(&mut pn_range_args, Rule::Arglist, &mut args_ptr);
-            let (pn_range_start, pn_range_end, pn_range_step, optimize) = if n_args >= 1 && n_args <= 3 {
-                let (start, end, step) = if n_args == 1 {
-                    (parse::parse_node_new_small_int(0), unsafe { *args_ptr }, parse::parse_node_new_small_int(1))
-                } else if n_args == 2 {
-                    (unsafe { *args_ptr }, unsafe { *args_ptr.add(1) }, parse::parse_node_new_small_int(1))
-                } else {
-                    (unsafe { *args_ptr }, unsafe { *args_ptr.add(1) }, unsafe { *args_ptr.add(2) })
-                };
-                let mut ok = true;
-                if !parse::parse_node_is_small_int(step) || parse::parse_node_leaf_small_int(step) == 0 {
-                    ok = false;
-                }
-                for pn in [start, end] {
-                    if parse::parse_node_is_struct(pn) {
-                        let k = parse::parse_node_struct_kind(pn as *mut ParseNodeStruct);
-                        if k == Rule::ArglistStar as u32
-                            || k == Rule::ArglistDblStar as u32
-                            || k == Rule::Argument as u32
-                        {
-                            ok = false;
+            let n_args =
+                parse::parse_node_extract_list(&mut pn_range_args, Rule::Arglist, &mut args_ptr);
+            let (pn_range_start, pn_range_end, pn_range_step, optimize) =
+                if n_args >= 1 && n_args <= 3 {
+                    let (start, end, step) = if n_args == 1 {
+                        (
+                            parse::parse_node_new_small_int(0),
+                            unsafe { *args_ptr },
+                            parse::parse_node_new_small_int(1),
+                        )
+                    } else if n_args == 2 {
+                        (
+                            unsafe { *args_ptr },
+                            unsafe { *args_ptr.add(1) },
+                            parse::parse_node_new_small_int(1),
+                        )
+                    } else {
+                        (unsafe { *args_ptr }, unsafe { *args_ptr.add(1) }, unsafe {
+                            *args_ptr.add(2)
+                        })
+                    };
+                    let mut ok = true;
+                    if !parse::parse_node_is_small_int(step)
+                        || parse::parse_node_leaf_small_int(step) == 0
+                    {
+                        ok = false;
+                    }
+                    for pn in [start, end] {
+                        if parse::parse_node_is_struct(pn) {
+                            let k = parse::parse_node_struct_kind(pn as *mut ParseNodeStruct);
+                            if k == Rule::ArglistStar as u32
+                                || k == Rule::ArglistDblStar as u32
+                                || k == Rule::Argument as u32
+                            {
+                                ok = false;
+                            }
                         }
                     }
-                }
-                (start, end, step, ok)
-            } else {
-                (parse::PARSE_NODE_NULL, parse::PARSE_NODE_NULL, parse::PARSE_NODE_NULL, false)
-            };
+                    (start, end, step, ok)
+                } else {
+                    (
+                        parse::PARSE_NODE_NULL,
+                        parse::PARSE_NODE_NULL,
+                        parse::PARSE_NODE_NULL,
+                        false,
+                    )
+                };
             if optimize {
                 compile_for_stmt_optimised_range(
                     comp,
@@ -2172,7 +2647,11 @@ fn compile_for_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     EMIT_ARG!(comp, get_iter, true);
     EMIT_ARG!(comp, label_assign, continue_label as usize);
     EMIT_ARG!(comp, for_iter, pop_label);
-    c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+    c_assign(
+        comp,
+        parse::parse_node_struct_node(pns, 0),
+        AssignKind::Store,
+    );
     compile_node(comp, parse::parse_node_struct_node(pns, 2));
     EMIT_ARG!(comp, jump, continue_label as usize);
     EMIT_ARG!(comp, label_assign, pop_label);
@@ -2205,7 +2684,11 @@ fn compile_try_except(
         let end_finally_label = comp_next_label(comp);
         if parse::parse_node_is_null(parse::parse_node_struct_node(pns_except, 0)) {
             if i + 1 != n_except {
-                compile_syntax_error(comp, unsafe { *pn_excepts.add(i) }, b"default 'except' must be last");
+                compile_syntax_error(
+                    comp,
+                    unsafe { *pn_excepts.add(i) },
+                    b"default 'except' must be last",
+                );
                 compile_decrease_except_level(comp);
                 return;
             }
@@ -2215,7 +2698,8 @@ fn compile_try_except(
                 let pns3 = pns_exception_expr as *mut ParseNodeStruct;
                 if parse::parse_node_struct_kind(pns3) == Rule::TryStmtAsName as u32 {
                     pns_exception_expr = parse::parse_node_struct_node(pns3, 0);
-                    qstr_exception_local = parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns3, 1));
+                    qstr_exception_local =
+                        parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns3, 1));
                 }
             }
             EMIT!(comp, dup_top);
@@ -2283,7 +2767,14 @@ fn compile_try_finally(
 fn compile_try_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     let pns2 = parse::parse_node_struct_node(pns, 1) as *mut ParseNodeStruct;
     if parse::parse_node_struct_kind(pns2) == Rule::TryStmtFinally as u32 {
-        compile_try_finally(comp, parse::parse_node_struct_node(pns, 0), 0, core::ptr::null_mut(), parse::PARSE_NODE_NULL, parse::parse_node_struct_node(pns2, 0));
+        compile_try_finally(
+            comp,
+            parse::parse_node_struct_node(pns, 0),
+            0,
+            core::ptr::null_mut(),
+            parse::PARSE_NODE_NULL,
+            parse::parse_node_struct_node(pns2, 0),
+        );
     } else if parse::parse_node_struct_kind(pns2) == Rule::TryStmtExceptAndMore as u32 {
         let mut pn_excepts: *mut ParseNode = core::ptr::null_mut();
         let n_except = parse::parse_node_extract_list(
@@ -2292,7 +2783,13 @@ fn compile_try_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
             &mut pn_excepts,
         );
         if parse::parse_node_is_null(parse::parse_node_struct_node(pns2, 2)) {
-            compile_try_except(comp, parse::parse_node_struct_node(pns, 0), n_except, pn_excepts, parse::parse_node_struct_node(pns2, 1));
+            compile_try_except(
+                comp,
+                parse::parse_node_struct_node(pns, 0),
+                n_except,
+                pn_excepts,
+                parse::parse_node_struct_node(pns2, 1),
+            );
         } else {
             let pns_fin = parse::parse_node_struct_node(pns2, 2) as *mut ParseNodeStruct;
             compile_try_finally(
@@ -2311,7 +2808,13 @@ fn compile_try_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
             Rule::TryStmtExceptList,
             &mut pn_excepts,
         );
-        compile_try_except(comp, parse::parse_node_struct_node(pns, 0), n_except, pn_excepts, parse::PARSE_NODE_NULL);
+        compile_try_except(
+            comp,
+            parse::parse_node_struct_node(pns, 0),
+            n_except,
+            pn_excepts,
+            parse::PARSE_NODE_NULL,
+        );
     }
 }
 
@@ -2325,7 +2828,11 @@ fn compile_with_stmt_helper(comp: &mut Compiler, n: usize, nodes: *mut ParseNode
             let pns = node0 as *mut ParseNodeStruct;
             compile_node(comp, parse::parse_node_struct_node(pns, 0));
             compile_increase_except_level(comp, l_end, emit::EMIT_SETUP_BLOCK_WITH);
-            c_assign(comp, parse::parse_node_struct_node(pns, 1), AssignKind::Store);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 1),
+                AssignKind::Store,
+            );
         } else {
             compile_node(comp, node0);
             compile_increase_except_level(comp, l_end, emit::EMIT_SETUP_BLOCK_WITH);
@@ -2378,7 +2885,11 @@ fn compile_async_for_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     compile_increase_except_level(comp, try_exception_label, emit::EMIT_SETUP_BLOCK_EXCEPT);
     EMIT!(comp, dup_top);
     compile_await_object_method(comp, qstr::from_str("__anext__"));
-    c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+    c_assign(
+        comp,
+        parse::parse_node_struct_node(pns, 0),
+        AssignKind::Store,
+    );
     EMIT_ARG!(comp, pop_except_jump, try_else_label, false);
 
     EMIT_ARG!(comp, label_assign, try_exception_label);
@@ -2409,7 +2920,12 @@ fn compile_async_for_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     EMIT!(comp, pop_top);
 }
 
-fn compile_async_with_stmt_helper(comp: &mut Compiler, n: usize, nodes: *mut ParseNode, body: ParseNode) {
+fn compile_async_with_stmt_helper(
+    comp: &mut Compiler,
+    n: usize,
+    nodes: *mut ParseNode,
+    body: ParseNode,
+) {
     if n == 0 {
         compile_node(comp, body);
     } else {
@@ -2424,7 +2940,11 @@ fn compile_async_with_stmt_helper(comp: &mut Compiler, n: usize, nodes: *mut Par
             compile_node(comp, parse::parse_node_struct_node(pns, 0));
             EMIT!(comp, dup_top);
             compile_await_object_method(comp, qstr::from_str("__aenter__"));
-            c_assign(comp, parse::parse_node_struct_node(pns, 1), AssignKind::Store);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 1),
+                AssignKind::Store,
+            );
         } else {
             compile_node(comp, node0);
             EMIT!(comp, dup_top);
@@ -2453,7 +2973,12 @@ fn compile_async_with_stmt_helper(comp: &mut Compiler, n: usize, nodes: *mut Par
         EMIT!(comp, rot_three);
         EMIT!(comp, dup_top);
         if mpconfig::CPYTHON_COMPAT {
-            EMIT_ARG!(comp, attr, qstr::from_str("__class__"), emit::EMIT_ATTR_LOAD);
+            EMIT_ARG!(
+                comp,
+                attr,
+                qstr::from_str("__class__"),
+                emit::EMIT_ATTR_LOAD
+            );
         } else {
             compile_load_id(comp, qstr::from_str("type"));
             EMIT!(comp, rot_two);
@@ -2516,7 +3041,11 @@ fn compile_async_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     } else {
         let scope_flags = unsafe { (*comp.scope_cur.unwrap()).scope_flags };
         if scope_flags & bc0::SCOPE_FLAG_GENERATOR as u16 == 0 {
-            compile_syntax_error(comp, pns as ParseNode, b"async for/with outside async function");
+            compile_syntax_error(
+                comp,
+                pns as ParseNode,
+                b"async for/with outside async function",
+            );
             return;
         }
         if parse::parse_node_struct_kind(pns0) == Rule::ForStmt as u32 {
@@ -2555,15 +3084,27 @@ fn compile_expr_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
                 if unsafe { (*comp.scope_cur.unwrap()).kind } == ScopeKind::Function {
                     if parse::parse_node_is_id(parse::parse_node_struct_node(pns, 0)) {
                         let lhs = parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns, 0));
-                        scope::find_or_add_id(unsafe { &mut *comp.scope_cur.unwrap() }, lhs, IdInfoKind::Local);
+                        scope::find_or_add_id(
+                            unsafe { &mut *comp.scope_cur.unwrap() },
+                            lhs,
+                            IdInfoKind::Local,
+                        );
                     }
                 }
             } else {
                 compile_node(comp, parse::parse_node_struct_node(pns1, 1));
-                c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+                c_assign(
+                    comp,
+                    parse::parse_node_struct_node(pns, 0),
+                    AssignKind::Store,
+                );
             }
         } else if kind == Rule::ExprStmtAugassign as u32 {
-            c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::AugLoad);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 0),
+                AssignKind::AugLoad,
+            );
             compile_node(comp, parse::parse_node_struct_node(pns1, 1));
             let tok = parse::parse_node_leaf_arg(parse::parse_node_struct_node(pns1, 0));
             let op = unsafe {
@@ -2572,27 +3113,47 @@ fn compile_expr_stmt(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
                 )
             };
             EMIT_ARG!(comp, binary_op, op);
-            c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::AugStore);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 0),
+                AssignKind::AugStore,
+            );
         } else if kind == Rule::ExprStmtAssignList as u32 {
             let rhs = parse::parse_node_struct_num_nodes(pns1) - 1;
             compile_node(comp, parse::parse_node_struct_node(pns1, rhs));
             if rhs > 0 {
                 EMIT!(comp, dup_top);
             }
-            c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 0),
+                AssignKind::Store,
+            );
             for i in 0..rhs {
                 if i + 1 < rhs {
                     EMIT!(comp, dup_top);
                 }
-                c_assign(comp, parse::parse_node_struct_node(pns1, i), AssignKind::Store);
+                c_assign(
+                    comp,
+                    parse::parse_node_struct_node(pns1, i),
+                    AssignKind::Store,
+                );
             }
         } else {
             compile_node(comp, pn_rhs);
-            c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+            c_assign(
+                comp,
+                parse::parse_node_struct_node(pns, 0),
+                AssignKind::Store,
+            );
         }
     } else {
         compile_node(comp, pn_rhs);
-        c_assign(comp, parse::parse_node_struct_node(pns, 0), AssignKind::Store);
+        c_assign(
+            comp,
+            parse::parse_node_struct_node(pns, 0),
+            AssignKind::Store,
+        );
     }
 }
 
@@ -2600,7 +3161,12 @@ fn compile_test_if_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     let pns_test_if_else = parse::parse_node_struct_node(pns, 1) as *mut ParseNodeStruct;
     let l_fail = comp_next_label(comp);
     let l_end = comp_next_label(comp);
-    c_if_cond(comp, parse::parse_node_struct_node(pns_test_if_else, 0), false, l_fail);
+    c_if_cond(
+        comp,
+        parse::parse_node_struct_node(pns_test_if_else, 0),
+        false,
+        l_fail,
+    );
     compile_node(comp, parse::parse_node_struct_node(pns, 0));
     EMIT_ARG!(comp, jump, l_end);
     EMIT_ARG!(comp, label_assign, l_fail);
@@ -2611,11 +3177,18 @@ fn compile_test_if_expr(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
 
 fn compile_lambdef(comp: &mut Compiler, pns: *mut ParseNodeStruct) {
     if comp.pass == PassKind::Scope {
-        let s = scope_new_and_link(comp, ScopeKind::Lambda, pns as ParseNode, unsafe { (*comp.scope_cur.unwrap()).emit_options });
+        let s = scope_new_and_link(comp, ScopeKind::Lambda, pns as ParseNode, unsafe {
+            (*comp.scope_cur.unwrap()).emit_options
+        });
         parse::parse_node_struct_set_node(pns, 2, s as ParseNode);
     }
     let this_scope = unsafe { parse::parse_node_struct_node(pns, 2) as *mut Scope };
-    compile_funcdef_lambdef(comp, this_scope, parse::parse_node_struct_node(pns, 0), Rule::Varargslist);
+    compile_funcdef_lambdef(
+        comp,
+        this_scope,
+        parse::parse_node_struct_node(pns, 0),
+        Rule::Varargslist,
+    );
 }
 
 fn compile_namedexpr_helper(comp: &mut Compiler, pn_name: ParseNode, pn_expr: ParseNode) {
@@ -2676,7 +3249,12 @@ pub fn compile_to_raw_code(
     };
     emit_common_init(&mut comp.emit_common, source_file);
     let module_emit_opt = mpstate::with_vm(|vm| vm.default_emit_opt as u16);
-    let module_scope = scope_new_and_link(&mut comp, ScopeKind::Module, parse_tree.root, module_emit_opt);
+    let module_scope = scope_new_and_link(
+        &mut comp,
+        ScopeKind::Module,
+        parse_tree.root,
+        module_emit_opt,
+    );
     let emit_bc = emitbc::new(&mut comp.emit_common as *mut _);
     comp.emit = emit_bc;
     let mut max_num_labels = 0usize;
@@ -2764,6 +3342,8 @@ pub fn compile_to_raw_code(
     }
     cm.rc = unsafe { (*module_scope).raw_code };
     if comp.compile_error == obj::OBJ_NULL {
+        cm.n_qstr = comp.emit_common.qstr_map.used;
+        cm.n_obj = comp.emit_common.const_obj_list.len();
         emit_common_populate_module_context(&mut comp.emit_common, source_file, cm.context);
     }
     emitbc::free(emit_bc);
@@ -2807,8 +3387,8 @@ pub fn parse_compile_execute(
 ) -> Obj {
     let old_globals = mpstate::globals_get();
     let old_locals = mpstate::locals_get();
-    let globals = globals.unwrap_or(obj::OBJ_NULL);
-    let locals = locals.unwrap_or(obj::OBJ_NULL);
+    let globals = globals.unwrap_or(old_globals);
+    let locals = locals.unwrap_or(old_locals);
     mpstate::globals_set(globals);
     mpstate::locals_set(locals);
 
@@ -2825,6 +3405,8 @@ pub fn parse_compile_execute(
         && mpconfig::PY_BUILTINS_CODE == mpconfig::PY_BUILTINS_CODE_MINIMUM
         && globals == obj::OBJ_NULL
     {
+        module_fun
+    } else if mpstate::skip_compiled_execution() {
         module_fun
     } else {
         crate::runtime::call_function_0(module_fun)
@@ -2845,6 +3427,7 @@ mod compile_tests {
     use crate::objexcept;
     use crate::objfun;
     use crate::objstr;
+    use crate::objtuple;
     use crate::parse::{self, ParseInputKind};
     use crate::qstr;
     use crate::reader::READER_IS_ROM;
@@ -2862,7 +3445,11 @@ mod compile_tests {
             return;
         }
         let src = "@micropython.native\ndef f():\n    return 42\n";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -2881,7 +3468,11 @@ mod compile_tests {
             return;
         }
         let src = "@micropython.viper\ndef f() -> int:\n    return 42\n";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -2900,7 +3491,11 @@ mod compile_tests {
             return;
         }
         let src = "@micropython.viper\ndef f() -> int:\n    return 1 + 2\n";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -2910,11 +3505,65 @@ mod compile_tests {
         assert_eq!(obj::small_int_value(result), 3);
     }
 
+    // Regression test for a segfault where the JIT prologue's incoming-args
+    // pointer clobbered `REG_QSTR_TABLE` (both were aliased to the same
+    // physical register under `PERSISTENT_CODE_SAVE`). Any native/viper
+    // function that takes an argument reproduces it; earlier tests above only
+    // exercise zero-arg functions.
+    #[test]
+    fn compile_native_decorator_arg_plus_one() {
+        setup();
+        if !asmbase::machine_code_dispatch_supported() {
+            return;
+        }
+        let src = "@micropython.native\ndef f(x):\n    return x + 1\n";
+        let f_obj = compile_and_call_native(src, "f");
+        assert!(obj::is_exact_type(f_obj, objfun::type_fun_native()));
+        let result = runtime::call_function_n_kw(f_obj, 1, 0, &[obj::new_small_int(41)]);
+        assert_eq!(obj::small_int_value(result), 42);
+    }
+
+    #[test]
+    fn compile_viper_decorator_arg_plus_one() {
+        setup();
+        if !asmbase::machine_code_dispatch_supported() {
+            return;
+        }
+        let src = "@micropython.viper\ndef f(x: int) -> int:\n    return x + 1\n";
+        let f_obj = compile_and_call_native(src, "f");
+        assert!(obj::is_exact_type(f_obj, objfun::type_fun_viper()));
+        let result = runtime::call_function_n_kw(f_obj, 1, 0, &[obj::new_small_int(41)]);
+        assert_eq!(obj::small_int_value(result), 42);
+    }
+
+    // Regression test mirroring `-X emit=native`: the module's default emit
+    // option (not a per-function decorator) drives `SETUP_CODE_STATE` /
+    // `mp_code_state_native_t` setup for a plain top-level `def`.
+    #[test]
+    fn compile_module_default_emit_native_function_call_with_arg() {
+        setup();
+        if !asmbase::machine_code_dispatch_supported() {
+            return;
+        }
+        let prev_emit_opt = mpstate::with_vm(|vm| vm.default_emit_opt);
+        mpstate::with_vm(|vm| vm.default_emit_opt = EMIT_OPT_NATIVE_PYTHON as u8);
+        let src = "def f(x):\n    return x + 1\n";
+        let f_obj = compile_and_call_native(src, "f");
+        mpstate::with_vm(|vm| vm.default_emit_opt = prev_emit_opt);
+        assert!(obj::is_exact_type(f_obj, objfun::type_fun_native()));
+        let result = runtime::call_function_n_kw(f_obj, 1, 0, &[obj::new_small_int(41)]);
+        assert_eq!(obj::small_int_value(result), 42);
+    }
+
     #[test]
     fn compile_eval_one_plus_two_runs_in_vm() {
         setup();
         let src = "1+2";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::EvalInput);
         let fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         let result = runtime::call_function_n_kw(fun, 0, 0, &[]);
@@ -2922,7 +3571,11 @@ mod compile_tests {
     }
 
     fn compile_and_call_native(src: &str, name: &str) -> Obj {
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -2957,7 +3610,11 @@ async def f():
     finally:
         pass
 ";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -2977,9 +3634,15 @@ async def f():
         }
         let src = "@micropython.native\ndef g():\n    yield 7\n";
         let g_obj = compile_and_call_native(src, "g");
-        assert!(obj::is_exact_type(g_obj, crate::objgenerator::type_native_gen_wrap()));
+        assert!(obj::is_exact_type(
+            g_obj,
+            crate::objgenerator::type_native_gen_wrap()
+        ));
         let gen = runtime::call_function_n_kw(g_obj, 0, 0, &[]);
-        assert!(obj::is_exact_type(gen, crate::objgenerator::type_gen_instance()));
+        assert!(obj::is_exact_type(
+            gen,
+            crate::objgenerator::type_gen_instance()
+        ));
         let mut ret = obj::OBJ_NULL;
         let kind = crate::objgenerator::gen_resume(gen, obj::CONST_NONE, obj::OBJ_NULL, &mut ret);
         assert_eq!(kind, crate::runtime::VmReturnKind::Yield);
@@ -2996,9 +3659,15 @@ async def f():
         }
         let src = "@micropython.native\ndef inner():\n    yield 10\n    yield 20\n\n@micropython.native\ndef outer():\n    yield from inner()\n";
         let outer_obj = compile_and_call_native(src, "outer");
-        assert!(obj::is_exact_type(outer_obj, crate::objgenerator::type_native_gen_wrap()));
+        assert!(obj::is_exact_type(
+            outer_obj,
+            crate::objgenerator::type_native_gen_wrap()
+        ));
         let gen = runtime::call_function_n_kw(outer_obj, 0, 0, &[]);
-        assert!(obj::is_exact_type(gen, crate::objgenerator::type_gen_instance()));
+        assert!(obj::is_exact_type(
+            gen,
+            crate::objgenerator::type_gen_instance()
+        ));
         let mut ret = obj::OBJ_NULL;
         let kind = crate::objgenerator::gen_resume(gen, obj::CONST_NONE, obj::OBJ_NULL, &mut ret);
         assert_eq!(kind, crate::runtime::VmReturnKind::Yield);
@@ -3124,7 +3793,11 @@ class Ctx:
 
 x = Ctx()
 ";
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
@@ -3133,11 +3806,18 @@ x = Ctx()
     }
 
     fn run_async_with_e2e(src: &str, fun_name: &str) {
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
-        let f_obj = objdict::dict_get(mpstate::globals_get(), obj::new_qstr(qstr::from_str(fun_name)));
+        let f_obj = objdict::dict_get(
+            mpstate::globals_get(),
+            obj::new_qstr(qstr::from_str(fun_name)),
+        );
         let gen = runtime::call_function_n_kw(f_obj, 0, 0, &[]);
         let mut ret = obj::OBJ_NULL;
         let kind = crate::objgenerator::gen_resume(gen, obj::CONST_NONE, obj::OBJ_NULL, &mut ret);
@@ -3188,10 +3868,16 @@ async def f():
     }
 
     fn compile_expect_error(src: &str) -> Obj {
-        let lex = lexer::Lexer::new_from_str_len(qstr::from_str("<stdin>"), src.as_bytes(), READER_IS_ROM);
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
         let mut tree = parse::parse(lex, ParseInputKind::FileInput);
         let mut nlr_buf = crate::nlr::NlrBuf::default();
-        let err = crate::nlr::protect(&mut nlr_buf, || compile(&mut tree, qstr::from_str("<stdin>"), false));
+        let err = crate::nlr::protect(&mut nlr_buf, || {
+            compile(&mut tree, qstr::from_str("<stdin>"), false)
+        });
         assert!(err.is_err(), "expected compile error for {src:?}");
         Obj(err.unwrap_err())
     }
@@ -3219,7 +3905,10 @@ async def f():
         runtime::call_function_n_kw(module_fun, 0, 0, &[]);
         let f_obj = objdict::dict_get(mpstate::globals_get(), obj::new_qstr(qstr::from_str("f")));
         assert_ne!(f_obj, obj::OBJ_NULL);
-        assert!(obj::is_exact_type(f_obj, crate::objgenerator::type_native_gen_wrap()));
+        assert!(obj::is_exact_type(
+            f_obj,
+            crate::objgenerator::type_native_gen_wrap()
+        ));
     }
 
     #[test]
@@ -3231,7 +3920,9 @@ async def f():
         let exc = compile_expect_error("@micropython.viper\ndef g():\n    yield 1\n");
         assert!(objexcept::exception_match(
             exc,
-            obj::from_ptr(objexcept::type_not_implemented_error() as *const obj::ObjType as *const ()),
+            obj::from_ptr(
+                objexcept::type_not_implemented_error() as *const obj::ObjType as *const ()
+            ),
         ));
         let msg = objstr::str_get_str(objexcept::exception_get_value(exc));
         assert!(msg.contains("native yield"), "got {msg:?}");
@@ -3267,5 +3958,643 @@ async def f():
         ));
         let msg = objstr::str_get_str(objexcept::exception_get_value(exc));
         assert!(msg.contains("comparison of int and uint"), "got {msg:?}");
+    }
+
+    #[test]
+    fn compile_list_comprehension_runs() {
+        setup();
+        let src = "[i * i for i in range(4)]";
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
+        let mut tree = parse::parse(lex, ParseInputKind::EvalInput);
+        let fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
+        let result = runtime::call_function_n_kw(fun, 0, 0, &[]);
+        let (len, items) = crate::objlist::list_get(result);
+        assert_eq!(len, 4);
+        assert_eq!(obj::small_int_value(items[0]), 0);
+        assert_eq!(obj::small_int_value(items[1]), 1);
+        assert_eq!(obj::small_int_value(items[2]), 4);
+        assert_eq!(obj::small_int_value(items[3]), 9);
+    }
+
+    #[test]
+    fn compile_with_statement_runs() {
+        setup();
+        let src = "\
+class T:
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        pass
+
+with T() as x:
+    y = 1
+";
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
+        let mut tree = parse::parse(lex, ParseInputKind::FileInput);
+        let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
+        runtime::call_function_n_kw(module_fun, 0, 0, &[]);
+        let y = objdict::dict_get(mpstate::globals_get(), obj::new_qstr(qstr::from_str("y")));
+        assert_eq!(obj::small_int_value(y), 1);
+    }
+
+    #[test]
+    fn compile_dict_comprehension_runs() {
+        setup();
+        let src = "{i: i for i in range(3)}";
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
+        let mut tree = parse::parse(lex, ParseInputKind::EvalInput);
+        let fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
+        let result = runtime::call_function_n_kw(fun, 0, 0, &[]);
+        assert_eq!(
+            obj::small_int_value(objdict::dict_get(result, obj::new_small_int(0))),
+            0
+        );
+        assert_eq!(
+            obj::small_int_value(objdict::dict_get(result, obj::new_small_int(2))),
+            2
+        );
+    }
+
+    /// Run `src` as a module body (populating `mpstate::globals_get()`), then
+    /// call the named zero-arg global function and return its result.
+    fn run_and_call(src: &str, fun_name: &str) -> Obj {
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
+        let mut tree = parse::parse(lex, ParseInputKind::FileInput);
+        let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
+        runtime::call_function_n_kw(module_fun, 0, 0, &[]);
+        let f_obj = objdict::dict_get(
+            mpstate::globals_get(),
+            obj::new_qstr(qstr::from_str(fun_name)),
+        );
+        assert_ne!(f_obj, obj::OBJ_NULL, "global {fun_name:?} not defined");
+        runtime::call_function_n_kw(f_obj, 0, 0, &[])
+    }
+
+    // --- Bug #1: try/except must catch exceptions raised by opcodes -----------
+
+    #[test]
+    fn try_except_catches_zero_division_error() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    try:
+        1 / 0
+    except ZeroDivisionError as e:
+        return type(e) is ZeroDivisionError
+    return False
+",
+            "test",
+        );
+        assert_eq!(result, obj::CONST_TRUE, "ZeroDivisionError was not caught");
+    }
+
+    #[test]
+    fn try_except_matches_correct_type_and_skips_others() {
+        setup();
+        // A `try` with multiple `except` clauses must dispatch to the first
+        // matching clause and let non-matching ones fall through.
+        let result = run_and_call(
+            "\
+def test():
+    try:
+        [1, 2][10]
+    except ZeroDivisionError:
+        return 'wrong'
+    except IndexError:
+        return 'right'
+    return 'none'
+",
+            "test",
+        );
+        assert_eq!(objstr::str_get_str(result), "right");
+    }
+
+    #[test]
+    fn raise_from_still_raises_new_exception() {
+        setup();
+        // C micropython warns that exception chaining isn't supported but
+        // still raises the new (TypeError) exception; the original
+        // (ValueError) must not leak out instead.
+        let result = run_and_call(
+            "\
+def test():
+    try:
+        try:
+            raise ValueError(1)
+        except ValueError as e:
+            raise TypeError(2) from e
+    except TypeError as e2:
+        return e2.args[0]
+    return -1
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 2);
+    }
+
+    // --- Bug #2: keyword-only args and positional defaults ---------------------
+
+    #[test]
+    fn positional_default_and_kwonly_args() {
+        setup();
+        let result = run_and_call(
+            "\
+def f(a, b=2, *, c=3):
+    return a + b + c
+
+def test():
+    return f(1, c=4)
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 7);
+    }
+
+    #[test]
+    fn positional_default_arg_no_call_args() {
+        setup();
+        let result = run_and_call(
+            "\
+def f(a=1):
+    return a
+
+def test():
+    return f()
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 1);
+    }
+
+    #[test]
+    fn kwonly_default_arg_with_and_without_override() {
+        setup();
+        let result = run_and_call(
+            "\
+def g(*, x=1):
+    return x
+
+def test():
+    return (g(), g(x=2))
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 2);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 2);
+    }
+
+    #[test]
+    fn kwonly_missing_required_arg_raises_type_error() {
+        setup();
+        let src = "\
+def g(*, x):
+    return x
+
+def test():
+    return g()
+";
+        let lex = lexer::Lexer::new_from_str_len(
+            qstr::from_str("<stdin>"),
+            src.as_bytes(),
+            READER_IS_ROM,
+        );
+        let mut tree = parse::parse(lex, ParseInputKind::FileInput);
+        let module_fun = compile(&mut tree, qstr::from_str("<stdin>"), false);
+        runtime::call_function_n_kw(module_fun, 0, 0, &[]);
+        let f_obj = objdict::dict_get(
+            mpstate::globals_get(),
+            obj::new_qstr(qstr::from_str("test")),
+        );
+        let mut nlr_buf = crate::nlr::NlrBuf::default();
+        let err = crate::nlr::protect(&mut nlr_buf, || {
+            runtime::call_function_n_kw(f_obj, 0, 0, &[])
+        });
+        assert!(err.is_err(), "missing keyword-only arg should raise");
+        assert!(objexcept::exception_match(
+            Obj(err.unwrap_err()),
+            obj::from_ptr(objexcept::type_type_error() as *const obj::ObjType as *const ()),
+        ));
+    }
+
+    // --- Bug #3: super() ---------------------------------------------------
+
+    #[test]
+    fn basic_subclass_instantiation_and_isinstance() {
+        setup();
+        // Regression test for `class_lookup` incorrectly resolving a parent
+        // type's *metaclass* instead of the parent type itself, which broke
+        // even trivial single-inheritance subclass instantiation.
+        let result = run_and_call(
+            "\
+class A:
+    pass
+
+class B(A):
+    pass
+
+def test():
+    return isinstance(B(), A)
+",
+            "test",
+        );
+        assert_eq!(result, obj::CONST_TRUE);
+    }
+
+    #[test]
+    fn super_zero_arg_call_dispatches_to_parent_method() {
+        setup();
+        let result = run_and_call(
+            "\
+class A:
+    def f(self):
+        return 1
+
+class B(A):
+    def f(self):
+        return super().f() + 1
+
+def test():
+    return B().f()
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 2);
+    }
+
+    #[test]
+    fn super_init_and_attribute_expression_variants() {
+        setup();
+        // Covers super().__init__(...), a bare `super()` bound to a local,
+        // and super() used inside a larger expression (stack accounting).
+        let result = run_and_call(
+            "\
+class A:
+    def __init__(self, x):
+        self.x = x
+    def f(self):
+        return 1
+
+class B(A):
+    def __init__(self, x):
+        super().__init__(x * 2)
+    def f(self):
+        s = super()
+        return 1 + s.f()
+
+def test():
+    b = B(3)
+    return (b.x, b.f())
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 2);
+        assert_eq!(obj::small_int_value(items[0]), 6);
+        assert_eq!(obj::small_int_value(items[1]), 2);
+    }
+
+    // --- Bug #4: @property must act as a data descriptor -----------------------
+
+    #[test]
+    fn property_getter_returns_computed_value() {
+        setup();
+        let result = run_and_call(
+            "\
+class A:
+    @property
+    def x(self):
+        return 7
+
+def test():
+    return A().x
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 7);
+    }
+
+    #[test]
+    fn property_setter_via_decorator_syntax() {
+        setup();
+        // Exercises `@x.setter`, which requires property.setter to be
+        // reachable via attribute lookup on the property object, and
+        // requires plain (non-call) attribute lookup of a bound method to
+        // yield a bound-method value rather than immediately invoking it.
+        let result = run_and_call(
+            "\
+class A:
+    def __init__(self):
+        self._x = 0
+    @property
+    def x(self):
+        return self._x
+    @x.setter
+    def x(self, v):
+        self._x = v * 2
+
+def test():
+    a = A()
+    a.x = 5
+    return a.x
+",
+            "test",
+        );
+        assert_eq!(obj::small_int_value(result), 10);
+    }
+
+    // --- Regressions found while adding the above tests --------------------
+
+    #[test]
+    fn parenthesized_multi_element_tuple_of_identifiers() {
+        setup();
+        // Regression test for `compile_atom_paren` checking `Rule::Testlist`
+        // instead of `Rule::TestlistComp`: a parenthesized tuple whose items
+        // aren't constant-foldable (so it can't be short-circuited into a
+        // single `LOAD_CONST_OBJ`) fell through to a path that pushed each
+        // element but never emitted `BUILD_TUPLE`, unbalancing the value
+        // stack (`assertion failed: emit.stack_size == 0`).
+        let result = run_and_call(
+            "\
+def test():
+    a = 1
+    b = 2
+    return (a, b)
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 2);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 2);
+    }
+
+    #[test]
+    fn negative_small_int_literal_near_multi_encoding_boundary() {
+        setup();
+        // Regression test for `mp_emit_bc_load_const_small_int`'s multi-byte
+        // encoding: the C reference does `MP_BC_LOAD_CONST_SMALL_INT_MULTI +
+        // MP_BC_LOAD_CONST_SMALL_INT_MULTI_EXCESS + arg` in wide signed
+        // arithmetic and only truncates to a `byte` at the very end. Casting
+        // a negative `arg` to `u8` *before* adding (as an early version of
+        // the Rust port did) wraps e.g. -1 into 255 and then overflows the
+        // subsequent `u8 + u8` addition, panicking in debug builds.
+        //
+        // Note: a *tuple* literal of constants gets folded by the parser
+        // into a single `LOAD_CONST_OBJ`, which would bypass
+        // `mp_emit_bc_load_const_small_int` entirely and not exercise the
+        // bug. A list literal isn't constant-folded, so each element still
+        // goes through the per-element small-int emission path.
+        let result = run_and_call(
+            "\
+def test():
+    return [-1, -16, -17]
+",
+            "test",
+        );
+        let (len, items) = crate::objlist::list_get(result);
+        assert_eq!(len, 3);
+        assert_eq!(obj::small_int_value(items[0]), -1);
+        assert_eq!(obj::small_int_value(items[1]), -16);
+        assert_eq!(obj::small_int_value(items[2]), -17);
+    }
+
+    // --- Star unpack in assignment (`a, b, *c = ...`) --------------------------
+
+    #[test]
+    fn star_unpack_trailing_captures_remainder_as_list() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    a, b, *c = [1, 2, 3, 4]
+    return (a, b, c)
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 3);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 2);
+        let (clen, citems) = crate::objlist::list_get(items[2]);
+        assert_eq!(clen, 2);
+        assert_eq!(obj::small_int_value(citems[0]), 3);
+        assert_eq!(obj::small_int_value(citems[1]), 4);
+    }
+
+    #[test]
+    fn star_unpack_leading_captures_prefix_as_list() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    *a, b = [1, 2, 3]
+    return (a, b)
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 2);
+        let (alen, aitems) = crate::objlist::list_get(items[0]);
+        assert_eq!(alen, 2);
+        assert_eq!(obj::small_int_value(aitems[0]), 1);
+        assert_eq!(obj::small_int_value(aitems[1]), 2);
+        assert_eq!(obj::small_int_value(items[1]), 3);
+    }
+
+    // --- Star args in calls (`f(*(1,2), 3)`) ------------------------------------
+
+    #[test]
+    fn star_args_unpacked_in_call_middle_and_end() {
+        setup();
+        let result = run_and_call(
+            "\
+def f(a, b, c):
+    return a + b + c
+
+def test():
+    return (f(*(1, 2), 3), f(*[1, 2, 3]), f(1, *(2, 3)))
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 3);
+        assert_eq!(obj::small_int_value(items[0]), 6);
+        assert_eq!(obj::small_int_value(items[1]), 6);
+        assert_eq!(obj::small_int_value(items[2]), 6);
+    }
+
+    // --- List slice assign + del item / del dict key ----------------------------
+
+    #[test]
+    fn list_slice_assign_replaces_range() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    a = [1, 2, 3, 4]
+    a[1:3] = [9, 8]
+    return a
+",
+            "test",
+        );
+        let (len, items) = crate::objlist::list_get(result);
+        assert_eq!(len, 4);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 9);
+        assert_eq!(obj::small_int_value(items[2]), 8);
+        assert_eq!(obj::small_int_value(items[3]), 4);
+    }
+
+    #[test]
+    fn list_del_item_removes_element() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    a = [1, 2, 3]
+    del a[1]
+    return a
+",
+            "test",
+        );
+        let (len, items) = crate::objlist::list_get(result);
+        assert_eq!(len, 2);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 3);
+    }
+
+    #[test]
+    fn dict_del_item_removes_key() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    d = {1: 2}
+    del d[1]
+    return d
+",
+            "test",
+        );
+        assert_eq!(objdict::dict_len(result), 0);
+    }
+
+    // --- isinstance / issubclass -------------------------------------------------
+
+    #[test]
+    fn isinstance_of_small_int_against_int_type() {
+        setup();
+        let result = run_and_call("def test():\n    return isinstance(1, int)\n", "test");
+        assert_eq!(result, obj::CONST_TRUE);
+    }
+
+    #[test]
+    fn issubclass_bool_is_not_subclass_of_int() {
+        setup();
+        // MicroPython, unlike CPython, treats `bool` and `int` as unrelated
+        // builtin types: `issubclass(bool, int)` is `False`.
+        let result = run_and_call("def test():\n    return issubclass(bool, int)\n", "test");
+        assert_eq!(result, obj::CONST_FALSE);
+    }
+
+    #[test]
+    fn isinstance_true_against_bool_type() {
+        setup();
+        let result = run_and_call("def test():\n    return isinstance(True, bool)\n", "test");
+        assert_eq!(result, obj::CONST_TRUE);
+    }
+
+    // --- min/max multi-arg form ---------------------------------------------------
+
+    #[test]
+    fn min_max_accept_multiple_positional_args() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    return (min(3, 1, 2), max(3, 1, 2), min([3, 1, 2]))
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 3);
+        assert_eq!(obj::small_int_value(items[0]), 1);
+        assert_eq!(obj::small_int_value(items[1]), 3);
+        assert_eq!(obj::small_int_value(items[2]), 1);
+    }
+
+    // --- bytes literals must produce `bytes`, not `str` -------------------------
+
+    #[test]
+    fn bytes_literal_is_actual_bytes_type() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    return isinstance(b'hi', bytes)
+",
+            "test",
+        );
+        assert_eq!(result, obj::CONST_TRUE);
+    }
+
+    #[test]
+    fn bytes_repr_is_prefixed_with_b() {
+        setup();
+        let result = run_and_call("def test():\n    return repr(b'hi')\n", "test");
+        assert_eq!(objstr::str_get_str(result), "b'hi'");
+    }
+
+    #[test]
+    fn bytearray_from_bytes_literal_roundtrips() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    x = bytearray(b'hi')
+    return (repr(x), x[0], x[1])
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 3);
+        assert_eq!(objstr::str_get_str(items[0]), "bytearray(b'hi')");
+        assert_eq!(obj::small_int_value(items[1]), b'h' as obj::Int);
+        assert_eq!(obj::small_int_value(items[2]), b'i' as obj::Int);
+    }
+
+    #[test]
+    fn memoryview_of_bytes_literal_indexes_correctly() {
+        setup();
+        let result = run_and_call(
+            "\
+def test():
+    m = memoryview(b'ab')
+    return (m[0], m[1])
+",
+            "test",
+        );
+        let (len, items) = objtuple::tuple_get(result);
+        assert_eq!(len, 2);
+        assert_eq!(obj::small_int_value(items[0]), b'a' as obj::Int);
+        assert_eq!(obj::small_int_value(items[1]), b'b' as obj::Int);
     }
 }

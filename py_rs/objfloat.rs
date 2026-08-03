@@ -8,7 +8,10 @@ use crate::malloc;
 use crate::misc;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind, PF_FLAG_ALWAYS_DECIMAL};
-use crate::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_EQ_CHECKS_OTHER_TYPE, TYPE_FLAG_EQ_NOT_REFLEXIVE};
+use crate::obj::{
+    self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
+    TYPE_FLAG_EQ_NOT_REFLEXIVE,
+};
 use crate::objcomplex;
 use crate::objint_mpz;
 use crate::parsenum;
@@ -34,8 +37,10 @@ static mut FLOAT_SLOTS: [*const (); 4] = [
     float_binary_op as *const (),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_NOT_REFLEXIVE | TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
     name: 0,
     slot_index_make_new: 1,
@@ -53,8 +58,17 @@ static TYPE: ObjType = ObjType {
     slots: unsafe { FLOAT_SLOTS.as_ptr() },
 };
 
+static FLOAT_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
+fn init_float_type() {
+    FLOAT_INIT.get_or_init(|| unsafe {
+        TYPE.name = crate::qstr::from_str("float");
+    });
+}
+
 pub fn type_float() -> &'static ObjType {
-    &TYPE
+    init_float_type();
+    unsafe { &TYPE }
 }
 
 pub fn is_float(o: Obj) -> bool {
@@ -148,7 +162,8 @@ pub fn float_hash(src: MpFloat) -> obj::Int {
 
 fn float_hash_hq(src: MpFloat) -> obj::Int {
     let bits = src.to_bits();
-    let exp = ((bits >> misc::FLOAT_FRAC_BITS as u64) & ((1u64 << misc::FLOAT_EXP_BITS as u64) - 1)) as i32;
+    let exp = ((bits >> misc::FLOAT_FRAC_BITS as u64) & ((1u64 << misc::FLOAT_EXP_BITS as u64) - 1))
+        as i32;
     let adj_exp = exp - misc::FLOAT_EXP_BIAS as i32;
     let frac = bits & ((1u64 << misc::FLOAT_FRAC_BITS as u64) - 1);
     let mut val: obj::Int;
@@ -159,7 +174,9 @@ fn float_hash_hq(src: MpFloat) -> obj::Int {
         if adj_exp <= misc::FLOAT_FRAC_BITS as i32 {
             let shift = misc::FLOAT_FRAC_BITS as i32 - adj_exp;
             val = ((frc >> shift) ^ (frc & ((1u64 << shift) - 1))) as obj::Int;
-        } else if (adj_exp as u32) < mpconfig::BITS_PER_BYTE as u32 * size_of::<obj::Int>() as u32 - 1 {
+        } else if (adj_exp as u32)
+            < mpconfig::BITS_PER_BYTE as u32 * size_of::<obj::Int>() as u32 - 1
+        {
             val = (frc << (adj_exp - misc::FLOAT_FRAC_BITS as i32)) as obj::Int;
         } else {
             val = frc as obj::Int;
@@ -176,7 +193,11 @@ fn format_float(val: MpFloat) -> String {
         return "nan".into();
     }
     if val.is_infinite() {
-        return if val > 0.0 { "inf".into() } else { "-inf".into() };
+        return if val > 0.0 {
+            "inf".into()
+        } else {
+            "-inf".into()
+        };
     }
     let mut s = format!("{:.12}", val);
     if PF_FLAG_ALWAYS_DECIMAL != 0 && !s.contains('.') && !s.contains('e') && !s.contains('E') {
@@ -205,7 +226,7 @@ pub fn float_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
         _ => {
             let mut bufinfo = BufferInfo::default();
             if obj::get_buffer(args[0], &mut bufinfo, obj::BUFFER_READ) {
-                let slice = unsafe { std::slice::from_raw_parts(bufinfo.buf, bufinfo.len) };
+                let slice = bufinfo.as_bytes();
                 return parsenum::parse_num_float(slice, false, None);
             } else if is_float(args[0]) {
                 args[0]
@@ -229,6 +250,10 @@ pub fn float_unary_op(op: UnaryOp, o_in: Obj) -> Obj {
             } else {
                 o_in
             }
+        }
+        UnaryOp::IntMaybe => {
+            // Truncate toward zero like CPython `int(float)`.
+            crate::objint::new_int(val as i64 as crate::obj::Int)
         }
         _ => obj::OBJ_NULL,
     }

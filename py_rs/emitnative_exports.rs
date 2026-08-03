@@ -33,7 +33,10 @@ macro_rules! export_emit_native {
             EmitNativeBackend::start_pass(emit, pass, scope);
         }
 
-        pub fn paste_emit_native_set_source_line(emit: *mut $crate::emit::Emit, source_line: usize) {
+        pub fn paste_emit_native_set_source_line(
+            emit: *mut $crate::emit::Emit,
+            source_line: usize,
+        ) {
             EmitNativeBackend::set_source_line(emit, source_line);
         }
 
@@ -50,7 +53,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::load_local(emit, qst, local_num, kind);
         }
 
-        pub fn paste_emit_native_load_global(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, kind: i32) {
+        pub fn paste_emit_native_load_global(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            kind: i32,
+        ) {
             EmitNativeBackend::load_global(emit, qst, kind);
         }
 
@@ -63,7 +70,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::store_local(emit, qst, local_num, kind);
         }
 
-        pub fn paste_emit_native_store_global(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, kind: i32) {
+        pub fn paste_emit_native_store_global(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            kind: i32,
+        ) {
             EmitNativeBackend::store_global(emit, qst, kind);
         }
 
@@ -76,7 +87,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::delete_local(emit, qst, local_num, kind);
         }
 
-        pub fn paste_emit_native_delete_global(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, kind: i32) {
+        pub fn paste_emit_native_delete_global(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            kind: i32,
+        ) {
             EmitNativeBackend::delete_global(emit, qst, kind);
         }
 
@@ -84,11 +99,18 @@ macro_rules! export_emit_native {
             EmitNativeBackend::label_assign(emit, l);
         }
 
-        pub fn paste_emit_native_import(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, kind: i32) {
+        pub fn paste_emit_native_import(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            kind: i32,
+        ) {
             EmitNativeBackend::import(emit, qst, kind);
         }
 
-        pub fn paste_emit_native_load_const_tok(emit: *mut $crate::emit::Emit, tok: $crate::lexer::TokenKind) {
+        pub fn paste_emit_native_load_const_tok(
+            emit: *mut $crate::emit::Emit,
+            tok: $crate::lexer::TokenKind,
+        ) {
             EmitNativeBackend::load_const_tok(emit, tok);
         }
 
@@ -96,11 +118,17 @@ macro_rules! export_emit_native {
             EmitNativeBackend::load_const_small_int(emit, arg);
         }
 
-        pub fn paste_emit_native_load_const_str(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr) {
+        pub fn paste_emit_native_load_const_str(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+        ) {
             EmitNativeBackend::load_const_str(emit, qst);
         }
 
-        pub fn paste_emit_native_load_const_obj(emit: *mut $crate::emit::Emit, obj_in: $crate::obj::Obj) {
+        pub fn paste_emit_native_load_const_obj(
+            emit: *mut $crate::emit::Emit,
+            obj_in: $crate::obj::Obj,
+        ) {
             EmitNativeBackend::load_const_obj(emit, obj_in);
         }
 
@@ -108,7 +136,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::load_null(emit);
         }
 
-        pub fn paste_emit_native_load_method(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, is_super: bool) {
+        pub fn paste_emit_native_load_method(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            is_super: bool,
+        ) {
             EmitNativeBackend::load_method(emit, qst, is_super);
         }
 
@@ -120,7 +152,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::subscr(emit, kind);
         }
 
-        pub fn paste_emit_native_attr(emit: *mut $crate::emit::Emit, qst: $crate::qstr::Qstr, kind: i32) {
+        pub fn paste_emit_native_attr(
+            emit: *mut $crate::emit::Emit,
+            qst: $crate::qstr::Qstr,
+            kind: i32,
+        ) {
             EmitNativeBackend::attr(emit, qst, kind);
         }
 
@@ -148,19 +184,35 @@ macro_rules! export_emit_native {
             EmitNativeBackend::jump(emit, label);
         }
 
-        pub fn paste_emit_native_pop_jump_if(emit: *mut $crate::emit::Emit, cond: bool, label: usize) {
+        pub fn paste_emit_native_pop_jump_if(
+            emit: *mut $crate::emit::Emit,
+            cond: bool,
+            label: usize,
+        ) {
             EmitNativeBackend::pop_jump_if(emit, cond, label);
         }
 
-        pub fn paste_emit_native_jump_if_or_pop(emit: *mut $crate::emit::Emit, cond: bool, label: usize) {
+        pub fn paste_emit_native_jump_if_or_pop(
+            emit: *mut $crate::emit::Emit,
+            cond: bool,
+            label: usize,
+        ) {
             EmitNativeBackend::jump_if_or_pop(emit, cond, label);
         }
 
-        pub fn paste_emit_native_unwind_jump(emit: *mut $crate::emit::Emit, label: usize, except_depth: usize) {
+        pub fn paste_emit_native_unwind_jump(
+            emit: *mut $crate::emit::Emit,
+            label: usize,
+            except_depth: usize,
+        ) {
             EmitNativeBackend::unwind_jump(emit, label, except_depth);
         }
 
-        pub fn paste_emit_native_setup_block(emit: *mut $crate::emit::Emit, label: usize, kind: i32) {
+        pub fn paste_emit_native_setup_block(
+            emit: *mut $crate::emit::Emit,
+            label: usize,
+            kind: i32,
+        ) {
             EmitNativeBackend::setup_block(emit, label, kind);
         }
 
@@ -210,11 +262,17 @@ macro_rules! export_emit_native {
             EmitNativeBackend::end_finally(emit);
         }
 
-        pub fn paste_emit_native_unary_op(emit: *mut $crate::emit::Emit, op: $crate::runtime0::UnaryOp) {
+        pub fn paste_emit_native_unary_op(
+            emit: *mut $crate::emit::Emit,
+            op: $crate::runtime0::UnaryOp,
+        ) {
             EmitNativeBackend::unary_op(emit, op);
         }
 
-        pub fn paste_emit_native_binary_op(emit: *mut $crate::emit::Emit, op: $crate::runtime0::BinaryOp) {
+        pub fn paste_emit_native_binary_op(
+            emit: *mut $crate::emit::Emit,
+            op: $crate::runtime0::BinaryOp,
+        ) {
             EmitNativeBackend::binary_op(emit, op);
         }
 
@@ -238,7 +296,11 @@ macro_rules! export_emit_native {
             EmitNativeBackend::unpack_sequence(emit, n_args);
         }
 
-        pub fn paste_emit_native_unpack_ex(emit: *mut $crate::emit::Emit, n_left: usize, n_right: usize) {
+        pub fn paste_emit_native_unpack_ex(
+            emit: *mut $crate::emit::Emit,
+            n_left: usize,
+            n_right: usize,
+        ) {
             EmitNativeBackend::unpack_ex(emit, n_left, n_right);
         }
 
@@ -258,7 +320,13 @@ macro_rules! export_emit_native {
             n_pos_defaults: usize,
             n_kw_defaults: usize,
         ) {
-            EmitNativeBackend::make_closure(emit, scope, n_closed_over, n_pos_defaults, n_kw_defaults);
+            EmitNativeBackend::make_closure(
+                emit,
+                scope,
+                n_closed_over,
+                n_pos_defaults,
+                n_kw_defaults,
+            );
         }
 
         pub fn paste_emit_native_call_function(

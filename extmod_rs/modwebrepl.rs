@@ -6,14 +6,17 @@ use std::sync::Mutex;
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
 use py_rs::builtin;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
-use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objmodule;
-use py_rs::qstr;
 use py_rs::objstr;
+use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::stream::{
     self, StreamP, STREAM_CLOSE, STREAM_ERROR, STREAM_GET_DATA_OPTS, STREAM_OP_IOCTL,
@@ -67,15 +70,12 @@ fn webrepl_ptr(o: Obj) -> *mut ObjWebrepl {
 fn write_webrepl(websock: Obj, buf: &[u8]) {
     let stream_p = stream::get_stream(websock);
     let mut err = 0;
-    let old_opts = stream_p
-        .ioctl
-        .expect("ioctl")(websock, STREAM_SET_DATA_OPTS, FRAME_BIN as usize, &mut err);
+    let old_opts =
+        stream_p.ioctl.expect("ioctl")(websock, STREAM_SET_DATA_OPTS, FRAME_BIN as usize, &mut err);
     if let Some(write) = stream_p.write {
         write(websock, buf.as_ptr(), buf.len(), &mut err);
     }
-    stream_p
-        .ioctl
-        .expect("ioctl")(websock, STREAM_SET_DATA_OPTS, old_opts, &mut err);
+    stream_p.ioctl.expect("ioctl")(websock, STREAM_SET_DATA_OPTS, old_opts, &mut err);
 }
 
 fn write_webrepl_str(websock: Obj, data: &[u8]) {
@@ -103,9 +103,8 @@ fn write_file_chunk(self_: &mut ObjWebrepl) -> usize {
     let stream_p = stream::get_stream(self_.cur_file);
     let mut readbuf = [0u8; 258];
     let mut err = 0;
-    let out_sz = stream_p
-        .read
-        .expect("read")(self_.cur_file, readbuf[2..].as_mut_ptr(), 256, &mut err);
+    let out_sz =
+        stream_p.read.expect("read")(self_.cur_file, readbuf[2..].as_mut_ptr(), 256, &mut err);
     if out_sz == STREAM_ERROR {
         return out_sz;
     }
@@ -160,9 +159,7 @@ fn webrepl_read_inner(self_in: Obj, buf: *mut u8, _size: usize, errcode: *mut i3
         *errcode = 0;
     }
     let sock_stream = stream::get_stream(self_.sock);
-    let out_sz = sock_stream
-        .read
-        .expect("read")(self_.sock, buf, 1, errcode);
+    let out_sz = sock_stream.read.expect("read")(self_.sock, buf, 1, errcode);
     if out_sz == 0 || out_sz == STREAM_ERROR {
         return out_sz;
     }
@@ -171,8 +168,8 @@ fn webrepl_read_inner(self_in: Obj, buf: *mut u8, _size: usize, errcode: *mut i3
         let c = unsafe { *buf };
         if c == b'\r' || c == b'\n' {
             let passwd = WEBREPL_PASSWD.lock().unwrap();
-            let entered = std::str::from_utf8(&self_.hdr.fname[..self_.passwd_len as usize])
-                .unwrap_or("");
+            let entered =
+                std::str::from_utf8(&self_.hdr.fname[..self_.passwd_len as usize]).unwrap_or("");
             let stored = std::str::from_utf8(
                 &passwd[..passwd.iter().position(|&b| b == 0).unwrap_or(passwd.len())],
             )
@@ -192,32 +189,23 @@ fn webrepl_read_inner(self_in: Obj, buf: *mut u8, _size: usize, errcode: *mut i3
     }
 
     let mut err = 0;
-    if sock_stream
-        .ioctl
-        .expect("ioctl")(self_.sock, STREAM_GET_DATA_OPTS, 0, &mut err)
-        == 1
-    {
+    if sock_stream.ioctl.expect("ioctl")(self_.sock, STREAM_GET_DATA_OPTS, 0, &mut err) == 1 {
         return out_sz;
     }
 
     if self_.hdr_to_recv != 0 {
         let hdr_size = core::mem::size_of::<WebreplFile>();
         let filled = hdr_size - self_.hdr_to_recv;
-        let p = unsafe {
-            (self_ as *mut ObjWebrepl as *mut u8).add(filled)
-        };
+        let p = unsafe { (self_ as *mut ObjWebrepl as *mut u8).add(filled) };
         unsafe {
             *p = *buf;
         }
         self_.hdr_to_recv -= 1;
         if self_.hdr_to_recv != 0 {
             let mut errcode = 0;
-            let p = unsafe {
-                (self_ as *mut ObjWebrepl as *mut u8).add(filled + 1)
-            };
-            let hdr_sz = sock_stream
-                .read
-                .expect("read")(self_.sock, p, self_.hdr_to_recv, &mut errcode);
+            let p = unsafe { (self_ as *mut ObjWebrepl as *mut u8).add(filled + 1) };
+            let hdr_sz =
+                sock_stream.read.expect("read")(self_.sock, p, self_.hdr_to_recv, &mut errcode);
             if hdr_sz == STREAM_ERROR {
                 return hdr_sz;
             }
@@ -238,9 +226,12 @@ fn webrepl_read_inner(self_in: Obj, buf: *mut u8, _size: usize, errcode: *mut i3
         if self_.data_to_recv != 0 {
             let to_read = core::cmp::min(filebuf.len() - 1, self_.data_to_recv as usize);
             let mut errcode = 0;
-            let sz = sock_stream
-                .read
-                .expect("read")(self_.sock, filebuf[1..].as_mut_ptr(), to_read, &mut errcode);
+            let sz = sock_stream.read.expect("read")(
+                self_.sock,
+                filebuf[1..].as_mut_ptr(),
+                to_read,
+                &mut errcode,
+            );
             if sz == STREAM_ERROR {
                 return sz;
             }
@@ -278,9 +269,7 @@ fn webrepl_write(self_in: Obj, buf: *const u8, size: usize, errcode: *mut i32) -
         return size;
     }
     let stream_p = stream::get_stream(self_.sock);
-    stream_p
-        .write
-        .expect("write")(self_in, buf, size, errcode)
+    stream_p.write.expect("write")(self_in, buf, size, errcode)
 }
 
 fn webrepl_ioctl(self_in: Obj, request: u32, _arg: usize, errcode: *mut i32) -> usize {
@@ -409,8 +398,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream_close_obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -507,7 +496,8 @@ mod tests {
 
     fn bytesio(initial: &[u8]) -> Obj {
         objstringio::type_bytesio();
-        let make_new = obj::type_get_make_new(objstringio::type_bytesio()).expect("bytesio make_new");
+        let make_new =
+            obj::type_get_make_new(objstringio::type_bytesio()).expect("bytesio make_new");
         if initial.is_empty() {
             make_new(objstringio::type_bytesio(), 0, 0, &[])
         } else {

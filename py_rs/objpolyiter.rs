@@ -1,9 +1,12 @@
 //! rewrite of py/objpolyiter.c (polymorph iterator for list/tuple iters)
 // symmetry: done
 
-use crate::obj::{self, IterNextFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_ITERNEXT};
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
+use crate::obj::{
+    self, IterNextFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_ITERNEXT,
+};
 use crate::objdict::{self, ObjDict};
 use crate::qstr;
 
@@ -32,8 +35,10 @@ struct ObjFunBuiltin1 {
 
 static mut POLYMORPH_ITER_SLOTS: [*const (); 1] = [polymorph_it_iternext as *const ()];
 
-static TYPE_POLYMORPH_ITER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE_POLYMORPH_ITER: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -55,7 +60,9 @@ static mut POLYMORPH_ITER_FINAL_SLOTS: [*const (); 2] =
     [polymorph_it_iternext as *const (), core::ptr::null()];
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -73,7 +80,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static mut TYPE_POLYMORPH_ITER_WITH_FINALISER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 0,
@@ -113,8 +122,8 @@ fn init_finaliser_type() {
             key: obj::new_qstr(qstr::from_str("__del__")),
             value: mk1(polymorph_it_del),
         }];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             POLYMORPH_ITER_FINAL_SLOTS[1] =
@@ -125,7 +134,11 @@ fn init_finaliser_type() {
 }
 
 pub fn type_polymorph_iter() -> &'static ObjType {
-    &TYPE_POLYMORPH_ITER
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE_POLYMORPH_ITER.name = qstr::from_str("iterator");
+    });
+    unsafe { &*core::ptr::addr_of!(TYPE_POLYMORPH_ITER) }
 }
 
 pub fn type_polymorph_iter_with_finaliser() -> &'static ObjType {

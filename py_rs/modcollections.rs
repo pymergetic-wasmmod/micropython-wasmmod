@@ -2,8 +2,8 @@
 // symmetry: done
 
 use crate::bc::ModuleContext;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{self, Obj, ObjType};
 use crate::objdeque;
@@ -35,7 +35,7 @@ pub fn init_module() -> Obj {
     if mpconfig::PY_COLLECTIONS_ORDEREDDICT {
         table.push(MapElem {
             key: obj::new_qstr(qstr::from_str("OrderedDict")),
-            value: obj::from_ptr(objdict::type_dict() as *const ObjType as *const ()),
+            value: obj::from_ptr(objdict::type_ordereddict() as *const ObjType as *const ()),
         });
     }
     let ctx = malloc::new_obj::<ModuleContext>().expect("collections module");

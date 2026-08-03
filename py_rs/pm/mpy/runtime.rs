@@ -32,10 +32,16 @@ pub fn runtime_deinit() -> pm_mpy_status_t {
 }
 
 /// Call a callable with one positional argument, catching MicroPython exceptions.
-pub fn runtime_call(fun: pm_mpy_obj_t, arg: pm_mpy_obj_t, out: &mut pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn runtime_call(
+    fun: pm_mpy_obj_t,
+    arg: pm_mpy_obj_t,
+    out: &mut pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     ensure_init();
     let mut nlr_buf = NlrBuf::default();
-    match nlr::protect(&mut nlr_buf, || runtime::call_function_1(fun.to_obj(), arg.to_obj())) {
+    match nlr::protect(&mut nlr_buf, || {
+        runtime::call_function_1(fun.to_obj(), arg.to_obj())
+    }) {
         Ok(ret) => {
             *out = pm_mpy_obj_t::from_obj(ret);
             pm_mpy_status_t::Ok
@@ -173,7 +179,9 @@ pub unsafe extern "C" fn pm_mpy_runtime_exec(src: *const core::ffi::c_char) -> p
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pm_mpy_runtime_execfile(path: *const core::ffi::c_char) -> pm_mpy_status_t {
+pub unsafe extern "C" fn pm_mpy_runtime_execfile(
+    path: *const core::ffi::c_char,
+) -> pm_mpy_status_t {
     if path.is_null() {
         return pm_mpy_status_t::Value;
     }

@@ -46,7 +46,9 @@ static mut F2S: [*const (); 1] = [f2 as *const ()];
 static mut F3S: [*const (); 1] = [f3 as *const ()];
 
 static TF0: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -64,7 +66,9 @@ static TF0: ObjType = ObjType {
     slots: unsafe { F0S.as_ptr() },
 };
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -82,7 +86,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1S.as_ptr() },
 };
 static TF2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -100,7 +106,9 @@ static TF2: ObjType = ObjType {
     slots: unsafe { F2S.as_ptr() },
 };
 static TF3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -197,7 +205,9 @@ fn object___delattr__(_self_in: Obj, _attr: Obj) -> Obj {
 
 static mut OBJECT_SLOTS: [*const (); 2] = [object_make_new as *const (), core::ptr::null()];
 static mut TYPE_OBJECT: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: 0,
     name: 0,
     slot_index_make_new: 1,
@@ -241,10 +251,22 @@ fn init_type() {
             });
         }
         if !table.is_empty() {
-            let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+            let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+                as *mut ObjDict;
             unsafe {
                 map::init_fixed_table(&mut (*ptr).map, table);
                 OBJECT_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+                // Type locals live only on the static type; pin dict + method objs
+                // (Map.table is a Rust Vec, so GC cannot reach these via the dict).
+                crate::gc::add_root(ptr as *mut u8);
+                for elem in &(*ptr).map.table {
+                    if elem.key != obj::OBJ_NULL
+                        && elem.key != obj::OBJ_SENTINEL
+                        && obj::is_obj(elem.value)
+                    {
+                        crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+                    }
+                }
             }
         }
         unsafe {

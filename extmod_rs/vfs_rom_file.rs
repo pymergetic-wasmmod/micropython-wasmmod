@@ -5,12 +5,15 @@ use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mperrno;
-use py_rs::obj::{self, BufferInfo, BufferFn, Obj, ObjBase, ObjType, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{self, BufferFn, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_ITER_IS_STREAM};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
-use py_rs::stream::{self, StreamP, StreamSeek, STREAM_ERROR, STREAM_SEEK, STREAM_CLOSE, SEEK_SET, SEEK_CUR, SEEK_END};
+use py_rs::stream::{
+    self, StreamP, StreamSeek, SEEK_CUR, SEEK_END, SEEK_SET, STREAM_CLOSE, STREAM_ERROR,
+    STREAM_SEEK,
+};
 
 use crate::vfs_rom::{self, ObjVfsRom};
 
@@ -47,12 +50,7 @@ pub fn open(self_in: Obj, path_in: Obj, mode_in: Obj) -> Obj {
     let path = objstr::str_get_str(path_in);
     let mut file_size = 0usize;
     let mut file_data = core::ptr::null();
-    let stat = vfs_rom::search_filesystem(
-        self_,
-        &path,
-        Some(&mut file_size),
-        Some(&mut file_data),
-    );
+    let stat = vfs_rom::search_filesystem(self_, &path, Some(&mut file_size), Some(&mut file_data));
     match stat {
         py_rs::builtinimport::ImportStat::NoExist => {
             raise::raise(MpRaise::OSError(mperrno::ENOENT));
@@ -91,11 +89,7 @@ fn file_read(self_in: Obj, buf: *mut u8, size: usize, errcode: *mut i32) -> usiz
     let size = size.min(remain);
     if size > 0 {
         unsafe {
-            std::ptr::copy_nonoverlapping(
-                self_.file_data.add(self_.file_offset),
-                buf,
-                size,
-            );
+            std::ptr::copy_nonoverlapping(self_.file_data.add(self_.file_offset), buf, size);
         }
     }
     unsafe {
@@ -166,7 +160,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: py_rs::obj::TYPE_FLAG_BINDS_SELF | py_rs::obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -240,8 +236,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream___exit___obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -252,7 +248,9 @@ fn locals_dict() -> *const () {
 
 static mut FILEIO_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_FILEIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -272,7 +270,9 @@ static mut TYPE_FILEIO: ObjType = ObjType {
 
 static mut TEXTIO_SLOTS: [*const (); 2] = [core::ptr::null(); 2];
 static mut TYPE_TEXTIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,

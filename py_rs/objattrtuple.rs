@@ -6,6 +6,7 @@ use core::mem::size_of;
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_ITER_IS_CUSTOM};
+use crate::objstr;
 use crate::objtuple::{self, ObjTuple};
 use crate::qstr::{self, Qstr};
 
@@ -16,7 +17,10 @@ pub fn attrtuple_print_helper(print: &Print, fields: &[Qstr], o: &ObjTuple, item
         if i > 0 {
             mpprint::print_str(print, ", ");
         }
-        mpprint::print_str(print, &format!("{}=", qstr::str_from_qstr(fields[i]).unwrap_or_default()));
+        mpprint::print_str(
+            print,
+            &format!("{}=", qstr::str_from_qstr(fields[i]).unwrap_or_default()),
+        );
         obj::print_helper(print, items[i], PrintKind::Repr);
     }
     mpprint::print_str(print, ")");
@@ -33,9 +37,13 @@ fn items_ptr_mut(o: *mut ObjTuple) -> *mut Obj {
 fn attrtuple_print(print: &Print, o_in: Obj, _kind: PrintKind) {
     let o = unsafe { &*(obj::as_ptr(o_in) as *const ObjTuple) };
     let fields_obj = unsafe { *items_ptr(o).add(o.len) };
-    let fields = unsafe { std::slice::from_raw_parts(obj::as_ptr(fields_obj) as *const Qstr, o.len) };
+    let (_n, field_objs) = objtuple::tuple_get(fields_obj);
+    let fields: Vec<Qstr> = field_objs
+        .iter()
+        .map(|&fo| objstr::str_get_qstr(fo))
+        .collect();
     let items = unsafe { std::slice::from_raw_parts(items_ptr(o), o.len) };
-    attrtuple_print_helper(print, fields, o, items);
+    attrtuple_print_helper(print, &fields, o, items);
 }
 
 fn attrtuple_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
@@ -45,9 +53,9 @@ fn attrtuple_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjTuple) };
     let len = self_.len;
     let fields_obj = unsafe { *items_ptr(self_).add(len) };
-    let fields = unsafe { std::slice::from_raw_parts(obj::as_ptr(fields_obj) as *const Qstr, len) };
+    let (_n, field_objs) = objtuple::tuple_get(fields_obj);
     for i in 0..len {
-        if fields[i] == attr {
+        if objstr::str_get_qstr(field_objs[i]) == attr {
             dest[0] = unsafe { *items_ptr(self_).add(i) };
             return;
         }
@@ -56,12 +64,18 @@ fn attrtuple_attr(self_in: Obj, attr: Qstr, dest: &mut [Obj; 2]) {
 
 /// `mp_obj_new_attrtuple`
 pub fn new_attrtuple(fields: &[Qstr], n: usize, items: &[Obj]) -> Obj {
+    assert_eq!(fields.len(), n);
+    assert_eq!(items.len(), n);
+    // Store field names as a real tuple of qstrs so GC tracing stays sound
+    // (C stuffs a raw qstr[] pointer into the last slot; that is not GC-safe here).
+    let field_objs: Vec<Obj> = fields.iter().map(|&q| obj::new_qstr(q)).collect();
+    let fields_tuple = objtuple::new_tuple(n, Some(&field_objs));
     let o = obj::malloc_var::<ObjTuple>(size_of::<Obj>() * (n + 1), type_attrtuple());
     unsafe {
         (*o).len = n;
         let dst = std::slice::from_raw_parts_mut(items_ptr_mut(o), n + 1);
         dst[..n].copy_from_slice(items);
-        dst[n] = obj::from_ptr(fields.as_ptr() as *const ());
+        dst[n] = fields_tuple;
         obj::from_ptr(o as *const ObjTuple as *const ())
     }
 }
@@ -76,7 +90,9 @@ static mut ATTRTUPLE_SLOTS: [*const (); 6] = [
 ];
 
 static mut TYPE_ATTRTUPLE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_CUSTOM,
     name: 0,
     slot_index_make_new: 0,

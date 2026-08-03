@@ -64,7 +64,9 @@ pub struct pm_mpy_qstr_t {
 }
 
 impl pm_mpy_qstr_t {
-    pub const NULL: Self = Self { id: crate::qstr::QSTR_NULL };
+    pub const NULL: Self = Self {
+        id: crate::qstr::QSTR_NULL,
+    };
 
     pub fn from_qstr(q: crate::qstr::Qstr) -> Self {
         Self { id: q }

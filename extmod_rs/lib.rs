@@ -15,9 +15,7 @@
     clippy::all
 )]
 
-pub mod pm;
 pub mod asyncio;
-pub mod wasmmod;
 pub mod cyw43_config_common;
 pub mod font_petme128_8x8;
 pub mod hal_pin;
@@ -39,6 +37,7 @@ pub mod machine_timer;
 pub mod machine_uart;
 pub mod machine_usb_device;
 pub mod machine_wdt;
+pub mod metal_net;
 pub mod misc;
 pub mod modasyncio;
 pub mod modbinascii;
@@ -62,9 +61,9 @@ pub mod modos;
 pub mod modplatform;
 pub mod modrandom;
 pub mod modre;
-pub mod re15;
 pub mod modselect;
 pub mod modsocket;
+pub mod modsocket_metal;
 pub mod modtime;
 pub mod modtls_axtls;
 pub mod modtls_mbedtls;
@@ -76,10 +75,13 @@ pub mod mpbthci;
 pub mod network_cyw43;
 pub mod network_esp_hosted;
 pub mod network_lwip;
+pub mod network_metal;
 pub mod network_ninaw10;
 pub mod network_ppp_lwip;
 pub mod network_wiznet5k;
 pub mod os_dupterm;
+pub mod pm;
+pub mod re15;
 pub mod vfs;
 pub mod vfs_blockdev;
 pub mod vfs_fat;
@@ -95,14 +97,45 @@ pub mod vfs_reader;
 pub mod vfs_rom;
 pub mod vfs_rom_file;
 pub mod virtpin;
+pub mod wasmmod;
 
 /// Initialise extmod host services (VFS mount, import hooks, built-in modules).
 pub fn init_host() {
     if py_rs::mpconfig::PY_VFS {
         vfs::init_host();
     }
+    if py_rs::mpconfig::PY_SYS_STDFILES && py_rs::mpconfig::VFS_POSIX {
+        vfs_posix_file::install_sys_stdfiles();
+    }
     if py_rs::mpconfig::PY_OS {
         let _ = modos::init_module();
+    }
+    if py_rs::mpconfig::PY_TIME {
+        let _ = modtime::init_module();
+    }
+    if py_rs::mpconfig::PY_PLATFORM {
+        let _ = modplatform::init_module();
+    }
+    if py_rs::mpconfig::PY_JSON {
+        let _ = modjson::init_module();
+    }
+    if py_rs::mpconfig::PY_HASHLIB {
+        let _ = modhashlib::init_module();
+    }
+    if py_rs::mpconfig::PY_BINASCII {
+        let _ = modbinascii::init_module();
+    }
+    if py_rs::mpconfig::PY_HEAPQ {
+        let _ = modheapq::init_module();
+    }
+    if py_rs::mpconfig::PY_RANDOM {
+        let _ = modrandom::init_module();
+    }
+    if py_rs::mpconfig::PY_SELECT {
+        let _ = modselect::init_module();
+    }
+    if py_rs::mpconfig::PY_ASYNCIO {
+        let _ = modasyncio::init_module();
     }
     if py_rs::mpconfig::PY_RE {
         let _ = modre::init_module();
@@ -132,7 +165,14 @@ pub fn init_host() {
         let _ = moddeflate::init_module();
     }
     if py_rs::mpconfig::PY_SOCKET {
-        let _ = modsocket::init_module();
+        #[cfg(feature = "metal_net")]
+        {
+            let _ = modsocket_metal::init_module();
+        }
+        #[cfg(not(feature = "metal_net"))]
+        {
+            let _ = modsocket::init_module();
+        }
     }
     if py_rs::mpconfig::PY_NETWORK {
         let _ = modnetwork::init_module();
@@ -146,5 +186,20 @@ pub fn init_host() {
     }
     if py_rs::mpconfig::PY_ONEWIRE {
         let _ = modonewire::init_module();
+    }
+    if py_rs::mpconfig::PY_BTREE {
+        let _ = modbtree::init_module();
+    }
+    if py_rs::mpconfig::PY_WASM {
+        let _ = wasmmod::wasmmod::init_module();
+    }
+    if py_rs::mpconfig::PY_BLUETOOTH {
+        let _ = modbluetooth::init_module();
+    }
+    if py_rs::mpconfig::PY_LWIP {
+        let _ = modlwip::init_module();
+    }
+    if py_rs::mpconfig::PY_OPENAMP {
+        let _ = modopenamp::init_module();
     }
 }

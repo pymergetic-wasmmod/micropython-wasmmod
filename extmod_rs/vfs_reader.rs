@@ -7,7 +7,9 @@ use py_rs::obj::{self, Uint};
 use py_rs::qstr::{self, Qstr};
 use py_rs::raise::{self, MpRaise};
 use py_rs::reader::{self, Reader, READER_EOF, READER_IS_ROM};
-use py_rs::stream::{self, STREAM_ERROR, STREAM_GET_BUFFER_SIZE, STREAM_OP_READ, STREAM_RW_ONCE, STREAM_RW_READ};
+use py_rs::stream::{
+    self, STREAM_ERROR, STREAM_GET_BUFFER_SIZE, STREAM_OP_READ, STREAM_RW_ONCE, STREAM_RW_READ,
+};
 
 use crate::vfs;
 
@@ -87,12 +89,7 @@ pub fn reader_new_file(reader: &mut Reader, filename: Qstr) {
     if mpconfig::VFS_ROM {
         let mut bufinfo = obj::BufferInfo::default();
         if obj::get_buffer(file, &mut bufinfo, obj::BUFFER_READ) {
-            reader::reader_new_mem(
-                reader,
-                bufinfo.buf,
-                bufinfo.len,
-                READER_IS_ROM,
-            );
+            reader::reader_new_mem(reader, bufinfo.buf, bufinfo.len, READER_IS_ROM);
             return;
         }
     }

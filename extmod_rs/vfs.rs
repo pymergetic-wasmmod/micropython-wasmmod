@@ -148,7 +148,9 @@ pub fn import_stat(path: &str) -> ImportStat {
     }
     let path_o = objstr::new_str(path_out.as_bytes());
     let mut nlr_buf = NlrBuf::default();
-    match nlr::protect(&mut nlr_buf, || proxy_call(res, qstr::from_str("stat"), &[path_o])) {
+    match nlr::protect(&mut nlr_buf, || {
+        proxy_call(res, qstr::from_str("stat"), &[path_o])
+    }) {
         Ok(stat) => {
             let (_, items) = objtuple::tuple_get(stat);
             let st_mode = obj::get_int(items[0]) as i32;

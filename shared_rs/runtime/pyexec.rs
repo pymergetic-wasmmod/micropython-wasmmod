@@ -1,13 +1,21 @@
 //! rewrite of shared/runtime/pyexec.c + shared/runtime/pyexec.h
 // symmetry: done
 
+use py_rs::bc::ModuleContext;
 use py_rs::compile;
+use py_rs::emitglue::{self, CompiledModule, ProtoFun};
 use py_rs::lexer::Lexer;
+use py_rs::malloc;
 use py_rs::mpconfig;
 use py_rs::mphal;
+use py_rs::mpprint;
+use py_rs::mpstate;
 use py_rs::nlr;
 use py_rs::obj;
+use py_rs::objdict;
+use py_rs::objexcept;
 use py_rs::parse::{self, ParseInputKind};
+use py_rs::persistentcode;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::reader::READER_IS_ROM;
@@ -15,9 +23,7 @@ use py_rs::runtime::{self, HandlePendingBehaviour};
 use py_rs::scheduler;
 use py_rs::vstr::{self, Vstr};
 
-use crate::readline::{
-    self, CHAR_CTRL_A, CHAR_CTRL_B, CHAR_CTRL_C, CHAR_CTRL_D, CHAR_CTRL_E,
-};
+use crate::readline::{self, CHAR_CTRL_A, CHAR_CTRL_B, CHAR_CTRL_C, CHAR_CTRL_D, CHAR_CTRL_E};
 use crate::runtime::interrupt_char;
 
 #[repr(u8)]
@@ -61,7 +67,98 @@ enum ExecSource<'a> {
     Filename(&'a str),
 }
 
-fn parse_compile_execute(source: ExecSource<'_>, input_kind: ParseInputKind, exec_flags: u32) -> i32 {
+fn path_is_mpy(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    bytes.len() >= 3 && bytes[bytes.len() - 3] == b'm'
+}
+
+/// Mirror `shared/runtime/pyexec.c` SystemExit / KeyboardInterrupt handling.
+pub fn handle_uncaught_exception(exc: obj::Obj) -> i32 {
+    // Accept either a real exception instance or an encoded `MpRaise` NLR value.
+    let exc = py_rs::vm::jump_val_to_exception(exc.0);
+    let system_exit =
+        obj::from_ptr(objexcept::type_system_exit() as *const obj::ObjType as *const ());
+    if objexcept::exception_match(exc, system_exit) {
+        if mpconfig::PYEXEC_ENABLE_EXIT_CODE_HANDLING {
+            let val = objexcept::exception_get_value(exc);
+            let mut ret = if val == obj::CONST_NONE {
+                NORMAL_EXIT
+            } else if obj::is_int(val) {
+                obj::get_int_truncated(val) as i32
+            } else {
+                obj::print_helper(&mpprint::PLAT_PRINT, val, mpprint::PrintKind::Str);
+                let _ = mpprint::print_str(&mpprint::PLAT_PRINT, "\n");
+                UNHANDLED_EXCEPTION
+            };
+            ret |= FORCED_EXIT;
+            ret
+        } else {
+            FORCED_EXIT
+        }
+    } else {
+        obj::print_exception(&mpprint::PLAT_PRINT, exc);
+        let mut ret = UNHANDLED_EXCEPTION;
+        if mpconfig::PYEXEC_ENABLE_EXIT_CODE_HANDLING {
+            let keyboard_interrupt = obj::from_ptr(objexcept::type_keyboard_interrupt()
+                as *const obj::ObjType
+                as *const ());
+            if objexcept::exception_match(exc, keyboard_interrupt) {
+                ret = KEYBOARD_INTERRUPT;
+            }
+        }
+        ret
+    }
+}
+
+fn execute_mpy_file(path: &str) -> i32 {
+    let mut nlr_buf = nlr::NlrBuf::default();
+    match nlr::protect(&mut nlr_buf, || {
+        interrupt_char::set_interrupt_char(CHAR_CTRL_C);
+
+        let file_qstr = qstr::from_str(path);
+        let ctx = malloc::new_obj::<ModuleContext>().expect("module context");
+        unsafe {
+            (*ctx).module.globals = objdict::dict_ptr(mpstate::globals_get());
+        }
+        if mpconfig::MODULE_FILE {
+            objdict::dict_store(
+                mpstate::globals_get(),
+                obj::new_qstr(qstr::from_str("__file__")),
+                obj::new_qstr(file_qstr),
+            );
+        }
+
+        let mut cm = CompiledModule {
+            context: ctx,
+            rc: core::ptr::null(),
+            has_native: false,
+            n_qstr: 0,
+            n_obj: 0,
+            arch_flags: 0,
+        };
+        persistentcode::raw_code_load_file(file_qstr, &mut cm);
+
+        let module_fun = emitglue::make_function_from_proto_fun(cm.rc as ProtoFun, ctx, None);
+        runtime::call_function_0(module_fun);
+
+        interrupt_char::set_interrupt_char(-1);
+        scheduler::handle_pending(HandlePendingBehaviour::CallbacksAndExceptions);
+        NORMAL_EXIT
+    }) {
+        Ok(ret) => ret,
+        Err(exc_val) => {
+            interrupt_char::set_interrupt_char(-1);
+            scheduler::handle_pending(HandlePendingBehaviour::CallbacksAndClearExceptions);
+            handle_uncaught_exception(py_rs::vm::jump_val_to_exception(exc_val))
+        }
+    }
+}
+
+fn parse_compile_execute(
+    source: ExecSource<'_>,
+    input_kind: ParseInputKind,
+    exec_flags: u32,
+) -> i32 {
     let mut nlr_buf = nlr::NlrBuf::default();
     let result = match nlr::protect(&mut nlr_buf, || {
         if !(exec_flags & EXEC_FLAG_NO_INTERRUPT != 0) {
@@ -75,8 +172,7 @@ fn parse_compile_execute(source: ExecSource<'_>, input_kind: ParseInputKind, exe
                 parse::parse(lex, input_kind)
             }
             ExecSource::Vstr(v) => {
-                let bytes =
-                    unsafe { std::slice::from_raw_parts(vstr::str_ptr(v), vstr::len(v)) };
+                let bytes = unsafe { std::slice::from_raw_parts(vstr::str_ptr(v), vstr::len(v)) };
                 let lex = Lexer::new_from_str_len(src_name, bytes, READER_IS_ROM);
                 parse::parse(lex, input_kind)
             }
@@ -87,13 +183,9 @@ fn parse_compile_execute(source: ExecSource<'_>, input_kind: ParseInputKind, exe
             }
         };
 
-        let module_fun = compile::compile(
-            &mut tree,
-            src_name,
-            exec_flags & EXEC_FLAG_IS_REPL != 0,
-        );
+        let module_fun = compile::compile(&mut tree, src_name, exec_flags & EXEC_FLAG_IS_REPL != 0);
 
-        if !mpconfig::PYEXEC_COMPILE_ONLY {
+        if !py_rs::mpstate::skip_compiled_execution() {
             runtime::call_function_0(module_fun);
         }
         interrupt_char::set_interrupt_char(-1);
@@ -101,13 +193,13 @@ fn parse_compile_execute(source: ExecSource<'_>, input_kind: ParseInputKind, exe
         NORMAL_EXIT
     }) {
         Ok(ret) => ret,
-        Err(_) => {
+        Err(exc_val) => {
             interrupt_char::set_interrupt_char(-1);
             scheduler::handle_pending(HandlePendingBehaviour::CallbacksAndClearExceptions);
             if exec_flags & EXEC_FLAG_PRINT_EOF != 0 {
                 mphal::stdout_tx_strn("\x04", 1);
             }
-            UNHANDLED_EXCEPTION
+            handle_uncaught_exception(py_rs::vm::jump_val_to_exception(exc_val))
         }
     };
 
@@ -129,6 +221,9 @@ pub fn vstr(str: &Vstr, allow_keyboard_interrupt: bool) -> i32 {
 
 /// `pyexec_file`.
 pub fn file(filename: &str) -> i32 {
+    if mpconfig::PERSISTENT_CODE_LOAD && mpconfig::HAS_FILE_READER && path_is_mpy(filename) {
+        return execute_mpy_file(filename);
+    }
     parse_compile_execute(
         ExecSource::Filename(filename),
         ParseInputKind::FileInput,
@@ -144,8 +239,12 @@ pub fn file_if_exists(filename: &str) -> i32 {
     file(filename)
 }
 
-fn stdio_mode_raw() {}
-fn stdio_mode_orig() {}
+fn stdio_mode_raw() {
+    mphal::stdio_mode_raw();
+}
+fn stdio_mode_orig() {
+    mphal::stdio_mode_orig();
+}
 
 /// `pyexec_raw_repl`.
 pub fn raw_repl() -> i32 {
@@ -186,10 +285,12 @@ pub fn raw_repl() -> i32 {
             }
         }
         stdio_mode_orig();
-        let ret = vstr(
-            unsafe { &*line },
-            true,
-        ) | if mpconfig::PYEXEC_ENABLE_EXIT_CODE_HANDLING { 0 } else { 0 };
+        let ret = vstr(unsafe { &*line }, true)
+            | if mpconfig::PYEXEC_ENABLE_EXIT_CODE_HANDLING {
+                0
+            } else {
+                0
+            };
         vstr::free(line);
         if ret & FORCED_EXIT != 0 {
             return ret;
@@ -229,9 +330,7 @@ pub fn friendly_repl() -> i32 {
                 return FORCED_EXIT;
             }
             x if x == CHAR_CTRL_E => {
-                mphal::stdout_tx_str(
-                    "\r\npaste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ",
-                );
+                mphal::stdout_tx_str("\r\npaste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ");
                 vstr::reset(unsafe { &mut *line });
                 loop {
                     let c = mphal::stdin_rx_chr();
@@ -343,5 +442,49 @@ pub fn mode_kind() -> PyexecModeKind {
 pub fn set_mode_kind(mode: PyexecModeKind) {
     unsafe {
         PYEXEC_MODE_KIND = mode;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use py_rs::modbuiltins;
+    use py_rs::runtime;
+
+    fn setup() {
+        runtime::init();
+        let _ = modbuiltins::init_builtins_module();
+        py_rs::init_builtin_modules();
+    }
+
+    fn run_cmd(source: &str) -> i32 {
+        let bytes = source.as_bytes();
+        let v = vstr::Vstr {
+            alloc: bytes.len(),
+            len: bytes.len(),
+            buf: bytes.as_ptr() as *mut u8,
+            fixed_buf: true,
+        };
+        vstr(&v, true)
+    }
+
+    fn process_exit(ret: i32) -> i32 {
+        if ret & FORCED_EXIT != 0 {
+            ret & 0xff
+        } else {
+            ret
+        }
+    }
+
+    #[test]
+    fn system_exit_codes() {
+        setup();
+        assert_eq!(process_exit(run_cmd("raise SystemExit(7)")), 7);
+        assert_eq!(process_exit(run_cmd("import sys; sys.exit(3)")), 3);
+        assert_eq!(process_exit(run_cmd("raise SystemExit")), 0);
+        assert_eq!(
+            process_exit(run_cmd("raise ValueError(1)")),
+            UNHANDLED_EXCEPTION
+        );
     }
 }

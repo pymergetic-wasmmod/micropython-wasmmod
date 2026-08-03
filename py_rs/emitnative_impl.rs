@@ -3,23 +3,25 @@
 #![allow(clippy::all, non_snake_case)]
 
 use super::*;
-use core::mem::size_of;
 use crate::malloc;
 use crate::objexcept;
 use crate::objstr;
 use crate::qstr;
+use core::mem::size_of;
 
 fn need_fun_obj<B: NativeBackend>(emit: &EmitNative<B>) -> bool {
     unsafe {
         (*emit.scope).exc_stack_size > 0
-            || ((*emit.scope).scope_flags & (MP_SCOPE_FLAG_REFGLOBALS | MP_SCOPE_FLAG_HASCONSTS)) != 0
+            || ((*emit.scope).scope_flags & (MP_SCOPE_FLAG_REFGLOBALS | MP_SCOPE_FLAG_HASCONSTS))
+                != 0
     }
 }
 
 fn need_global_exc_handler<B: NativeBackend>(emit: &EmitNative<B>) -> bool {
     unsafe {
         (*emit.scope).exc_stack_size > 0
-            || ((*emit.scope).scope_flags & (MP_SCOPE_FLAG_GENERATOR | MP_SCOPE_FLAG_REFGLOBALS)) != 0
+            || ((*emit.scope).scope_flags & (MP_SCOPE_FLAG_GENERATOR | MP_SCOPE_FLAG_REFGLOBALS))
+                != 0
     }
 }
 
@@ -55,7 +57,8 @@ fn generator_return_x_slot_if_active<B: NativeBackend>(emit: &EmitNative<B>) -> 
 
 fn can_use_regs_for_locals<B: NativeBackend>(emit: &EmitNative<B>) -> bool {
     unsafe {
-        (*emit.scope).exc_stack_size == 0 && ((*emit.scope).scope_flags & MP_SCOPE_FLAG_GENERATOR) == 0
+        (*emit.scope).exc_stack_size == 0
+            && ((*emit.scope).scope_flags & MP_SCOPE_FLAG_GENERATOR) == 0
     }
 }
 
@@ -95,14 +98,22 @@ fn set_emit_compile_error<B: NativeBackend>(emit: &mut EmitNative<B>, exc: Obj) 
 fn emit_not_implemented_error<B: NativeBackend>(emit: &mut EmitNative<B>, msg: &[u8]) {
     set_emit_compile_error(
         emit,
-        objexcept::new_exception_args(objexcept::type_not_implemented_error(), 1, &[objstr::new_str(msg)]),
+        objexcept::new_exception_args(
+            objexcept::type_not_implemented_error(),
+            1,
+            &[objstr::new_str(msg)],
+        ),
     );
 }
 
 fn viper_type_error_msg<B: NativeBackend>(emit: &mut EmitNative<B>, msg: &[u8]) {
     set_emit_compile_error(
         emit,
-        objexcept::new_exception_args(objexcept::type_viper_type_error(), 1, &[objstr::new_str(msg)]),
+        objexcept::new_exception_args(
+            objexcept::type_viper_type_error(),
+            1,
+            &[objstr::new_str(msg)],
+        ),
     );
 }
 
@@ -125,7 +136,9 @@ fn viper_type_error_vtypes<B: NativeBackend>(
 ) {
     let lhs_name = vtype_name(lhs);
     let rhs_name = vtype_name(rhs);
-    let mut msg = Vec::with_capacity(prefix.len() + lhs_name.len() + mid.len() + rhs_name.len() + suffix.len());
+    let mut msg = Vec::with_capacity(
+        prefix.len() + lhs_name.len() + mid.len() + rhs_name.len() + suffix.len(),
+    );
     msg.extend_from_slice(prefix);
     msg.extend_from_slice(lhs_name);
     msg.extend_from_slice(mid);
@@ -234,10 +247,11 @@ impl<B: NativeBackend> EmitNative<B> {
             n_info: 0,
             n_cell: 0,
             scope: core::ptr::null_mut(),
+            // `B::new_asm` already calls `asmbase::init` internally; doing so again
+            // here would leak the first `label_offsets` allocation.
             as_: B::new_asm(max_num_labels),
             _backend: core::marker::PhantomData,
         });
-        asmbase::init(B::asm_base(&mut emit.as_), max_num_labels);
         Box::into_raw(emit)
     }
 
@@ -284,7 +298,11 @@ impl<B: NativeBackend> EmitNative<B> {
     fn mov_reg_qstr(emit: &mut EmitNative<B>, arg_reg: i32, qst: Qstr) {
         if mpconfig::PERSISTENT_CODE_SAVE {
             let idx = emit::emit_common_use_qstr(unsafe { &mut *emit.emit_common }, qst);
-            B::load16_reg_reg_offset(&mut emit.as_, arg_reg, B::REG_QSTR_TABLE, idx as i32);
+            if core::mem::size_of::<Qstr>() == 2 {
+                B::load16_reg_reg_offset(&mut emit.as_, arg_reg, B::REG_QSTR_TABLE, idx as i32);
+            } else {
+                B::load_reg_reg_offset(&mut emit.as_, arg_reg, B::REG_QSTR_TABLE, idx as i32);
+            }
         } else if B::HAS_ASM_MOV_REG_QSTR {
             B::mov_reg_qstr(&mut emit.as_, arg_reg, qst);
         } else {
@@ -309,12 +327,15 @@ impl<B: NativeBackend> EmitNative<B> {
         let need = (emit.stack_size as usize).saturating_add(delta);
         if need > emit.stack_info.len() {
             let new_alloc = (need + 8) & !3;
-            emit.stack_info.resize(new_alloc, StackInfo {
-                vtype: VType::Unbound,
-                kind: StackInfoKind::Value,
-                u_reg: 0,
-                u_imm: 0,
-            });
+            emit.stack_info.resize(
+                new_alloc,
+                StackInfo {
+                    vtype: VType::Unbound,
+                    kind: StackInfoKind::Value,
+                    u_reg: 0,
+                    u_imm: 0,
+                },
+            );
         }
     }
 
@@ -380,23 +401,28 @@ impl<B: NativeBackend> EmitNative<B> {
         }
     }
 
-    fn load_reg_stack_imm(emit: &mut EmitNative<B>, reg_dest: i32, si: &StackInfo, convert_to_pyobj: bool) -> VType {
+    fn load_reg_stack_imm(
+        emit: &mut EmitNative<B>,
+        reg_dest: i32,
+        si: &StackInfo,
+        convert_to_pyobj: bool,
+    ) -> VType {
         if !convert_to_pyobj && emit.do_viper_types {
             B::mov_reg_imm(&mut emit.as_, reg_dest, si.u_imm as usize);
             si.vtype
         } else {
             match si.vtype {
                 VType::PyObj => B::mov_reg_imm(&mut emit.as_, reg_dest, si.u_imm as usize),
-                VType::Bool => {
-                    Self::mov_reg_const(emit, reg_dest, (mp_f::CONST_FALSE_OBJ + si.u_imm as u32) as i32)
-                }
-                VType::Int | VType::Uint => {
-                    B::mov_reg_imm(
-                        &mut emit.as_,
-                        reg_dest,
-                        obj::new_small_int(si.u_imm as obj::Int).0 as usize,
-                    )
-                }
+                VType::Bool => Self::mov_reg_const(
+                    emit,
+                    reg_dest,
+                    (mp_f::CONST_FALSE_OBJ + si.u_imm as u32) as i32,
+                ),
+                VType::Int | VType::Uint => B::mov_reg_imm(
+                    &mut emit.as_,
+                    reg_dest,
+                    obj::new_small_int(si.u_imm as obj::Int).0 as usize,
+                ),
                 VType::PtrNone => Self::mov_reg_const(emit, reg_dest, mp_f::CONST_NONE_OBJ as i32),
                 _ => viper_type_error_vtype(emit, b"can't load immediate value for '", si.vtype),
             }
@@ -431,7 +457,11 @@ impl<B: NativeBackend> EmitNative<B> {
         *vtype = si.vtype;
         match si.kind {
             StackInfoKind::Value => {
-                Self::mov_reg_state(emit, reg_dest, emit.stack_start as i32 + emit.stack_size - pos);
+                Self::mov_reg_state(
+                    emit,
+                    reg_dest,
+                    emit.stack_start as i32 + emit.stack_size - pos,
+                );
             }
             StackInfoKind::Reg => {
                 if si.u_reg != reg_dest {
@@ -458,7 +488,11 @@ impl<B: NativeBackend> EmitNative<B> {
         let below = (emit.stack_size - 2) as usize;
         emit.stack_info[below] = emit.stack_info[below + 1];
         if emit.stack_info[below].kind == StackInfoKind::Value && !need_gen_return_obj(emit) {
-            Self::mov_reg_state(emit, reg_dest, emit.stack_start as i32 + emit.stack_size - 1);
+            Self::mov_reg_state(
+                emit,
+                reg_dest,
+                emit.stack_start as i32 + emit.stack_size - 1,
+            );
             emit.stack_info[below].kind = StackInfoKind::Reg;
             emit.stack_info[below].u_reg = reg_dest;
         } else if emit.stack_info[below].kind == StackInfoKind::Value {
@@ -517,7 +551,8 @@ impl<B: NativeBackend> EmitNative<B> {
                 | BinaryOp::InplacePower
         ) {
             BinaryOp::from_u8(
-                (op as u8).wrapping_sub((BinaryOp::InplaceOr as u8).wrapping_sub(BinaryOp::Or as u8)),
+                (op as u8)
+                    .wrapping_sub((BinaryOp::InplaceOr as u8).wrapping_sub(BinaryOp::Or as u8)),
             )
         } else {
             op
@@ -632,15 +667,18 @@ impl<B: NativeBackend> EmitNative<B> {
         Self::fold_stack_top(e, B::REG_ARG_1);
     }
 
-    fn emit_get_stack_pointer_to_reg_for_pop(emit: &mut EmitNative<B>, reg_dest: i32, n_pop: usize) {
+    fn emit_get_stack_pointer_to_reg_for_pop(
+        emit: &mut EmitNative<B>,
+        reg_dest: i32,
+        n_pop: usize,
+    ) {
         Self::need_reg_all(emit);
         for i in 0..n_pop {
             let idx = (emit.stack_size - 1 - i as i32) as usize;
             let si = emit.stack_info[idx];
             if si.kind == StackInfoKind::Imm {
                 emit.stack_info[idx].kind = StackInfoKind::Value;
-                let vtype =
-                    Self::load_reg_stack_imm(emit, reg_dest, &si, true);
+                let vtype = Self::load_reg_stack_imm(emit, reg_dest, &si, true);
                 emit.stack_info[idx].vtype = vtype;
                 Self::mov_state_reg(
                     emit,
@@ -656,7 +694,12 @@ impl<B: NativeBackend> EmitNative<B> {
             if vtype != VType::PyObj {
                 let local_num = emit.stack_start as i32 + emit.stack_size - 1 - i as i32;
                 Self::mov_reg_state(emit, B::REG_ARG_1, local_num);
-                Self::emit_call_with_imm_arg(emit, mp_f::CONVERT_NATIVE_TO_OBJ, vtype as i64, B::REG_ARG_2);
+                Self::emit_call_with_imm_arg(
+                    emit,
+                    mp_f::CONVERT_NATIVE_TO_OBJ,
+                    vtype as i64,
+                    B::REG_ARG_2,
+                );
                 Self::mov_state_reg(emit, local_num, B::REG_RET);
                 emit.stack_info[idx].vtype = VType::PyObj;
             }
@@ -665,7 +708,11 @@ impl<B: NativeBackend> EmitNative<B> {
         Self::mov_reg_state_addr(emit, reg_dest, emit.stack_start as i32 + emit.stack_size);
     }
 
-    fn emit_get_stack_pointer_to_reg_for_push(emit: &mut EmitNative<B>, reg_dest: i32, n_push: usize) {
+    fn emit_get_stack_pointer_to_reg_for_push(
+        emit: &mut EmitNative<B>,
+        reg_dest: i32,
+        n_push: usize,
+    ) {
         Self::need_reg_all(emit);
         Self::ensure_extra_stack(emit, n_push);
         for i in 0..n_push {
@@ -712,7 +759,11 @@ impl<B: NativeBackend> EmitNative<B> {
             }
             e_idx -= 1;
             if emit.exc_stack[e_idx].is_active {
-                B::mov_reg_pcrel(&mut emit.as_, B::REG_RET, emit.exc_stack[e_idx].label as usize);
+                B::mov_reg_pcrel(
+                    &mut emit.as_,
+                    B::REG_RET,
+                    emit.exc_stack[e_idx].label as usize,
+                );
                 break;
             }
         }
@@ -732,16 +783,33 @@ impl<B: NativeBackend> EmitNative<B> {
         Self::emit_access_stack(emit, 1, &mut vtype, B::REG_ARG_1);
         debug_assert_eq!(vtype, VType::PyObj);
         Self::emit_get_stack_pointer_to_reg_for_push(emit, B::REG_ARG_3, 2);
-        Self::emit_call_with_qstr_arg(emit, mp_f::LOAD_METHOD, qstr::from_str("__exit__"), B::REG_ARG_2);
+        Self::emit_call_with_qstr_arg(
+            emit,
+            mp_f::LOAD_METHOD,
+            qstr::from_str("__exit__"),
+            B::REG_ARG_2,
+        );
         Self::emit_pre_pop_reg(emit, &mut vtype, B::REG_ARG_3);
         Self::emit_pre_pop_reg(emit, &mut vtype, B::REG_ARG_2);
         Self::emit_pre_pop_reg(emit, &mut vtype, B::REG_ARG_1);
         Self::emit_post_push_reg(emit, vtype, B::REG_ARG_2);
         Self::emit_post_push_reg(emit, vtype, B::REG_ARG_3);
         Self::emit_get_stack_pointer_to_reg_for_push(emit, B::REG_ARG_3, 2);
-        Self::emit_call_with_qstr_arg(emit, mp_f::LOAD_METHOD, qstr::from_str("__enter__"), B::REG_ARG_2);
+        Self::emit_call_with_qstr_arg(
+            emit,
+            mp_f::LOAD_METHOD,
+            qstr::from_str("__enter__"),
+            B::REG_ARG_2,
+        );
         Self::emit_get_stack_pointer_to_reg_for_pop(emit, B::REG_ARG_3, 2);
-        Self::emit_call_with_2_imm_args(emit, mp_f::CALL_METHOD_N_KW, 0, B::REG_ARG_1, 0, B::REG_ARG_2);
+        Self::emit_call_with_2_imm_args(
+            emit,
+            mp_f::CALL_METHOD_N_KW,
+            0,
+            B::REG_ARG_1,
+            0,
+            B::REG_ARG_2,
+        );
         Self::emit_post_push_reg(emit, VType::PyObj, B::REG_RET);
         Self::need_stack_settled(emit);
         Self::push_exc_stack(emit, label, true);
@@ -757,7 +825,12 @@ impl<B: NativeBackend> EmitNative<B> {
         }
         let table_off = emit::emit_common_use_const_obj(unsafe { &mut *emit.emit_common }, obj_in);
         Self::mov_reg_state(emit, B::REG_TEMP0, local_idx_fun_obj(emit));
-        B::load_reg_reg_offset(&mut emit.as_, B::REG_TEMP0, B::REG_TEMP0, OFFSETOF_OBJ_FUN_BC_CONTEXT as i32);
+        B::load_reg_reg_offset(
+            &mut emit.as_,
+            B::REG_TEMP0,
+            B::REG_TEMP0,
+            OFFSETOF_OBJ_FUN_BC_CONTEXT as i32,
+        );
         B::load_reg_reg_offset(
             &mut emit.as_,
             B::REG_TEMP0,
@@ -998,12 +1071,7 @@ impl<B: NativeBackend> EmitNative<B> {
             if unsafe { (*emit.scope).scope_flags & MP_SCOPE_FLAG_GENERATOR == 0 } {
                 Self::mov_reg_state(emit, B::REG_ARG_1, local_idx_old_globals(emit));
                 if unsafe { (*emit.scope).exc_stack_size == 0 } {
-                    B::jump_if_reg_zero(
-                        &mut emit.as_,
-                        B::REG_ARG_1,
-                        emit.exit_label + 1,
-                        false,
-                    );
+                    B::jump_if_reg_zero(&mut emit.as_, B::REG_ARG_1, emit.exit_label + 1, false);
                 }
                 Self::emit_call(emit, mp_f::NATIVE_SWAP_GLOBALS);
             }
@@ -1045,12 +1113,7 @@ impl<B: NativeBackend> EmitNative<B> {
             let throw_val = local_idx_throw_val(emit);
             B::mov_local_reg(&mut emit.as_, throw_val, B::REG_PARENT_ARG_2);
             let fun_obj = local_idx_fun_obj(emit);
-            B::load_reg_reg_offset(
-                &mut emit.as_,
-                B::REG_TEMP0,
-                B::REG_GENERATOR_STATE,
-                fun_obj,
-            );
+            B::load_reg_reg_offset(&mut emit.as_, B::REG_TEMP0, B::REG_GENERATOR_STATE, fun_obj);
             B::load_reg_reg_offset(
                 &mut emit.as_,
                 B::REG_TEMP0,
@@ -1085,11 +1148,7 @@ impl<B: NativeBackend> EmitNative<B> {
                 B::WORD_SIZE as u32,
                 emit.prelude_ptr_index as usize,
             );
-            B::entry(
-                &mut emit.as_,
-                emit.stack_start as i32 + emit.n_state,
-                None,
-            );
+            B::entry(&mut emit.as_, emit.stack_start as i32 + emit.n_state, None);
             Self::load_fun_table(emit, fun_table_off);
             Self::mov_state_reg(emit, local_idx_fun_obj(emit), B::REG_PARENT_ARG_1);
             Self::mov_state_imm_via(
@@ -1098,11 +1157,7 @@ impl<B: NativeBackend> EmitNative<B> {
                 emit.n_state,
                 B::REG_ARG_1,
             );
-            B::mov_reg_local_addr(
-                &mut emit.as_,
-                B::REG_ARG_1,
-                emit.code_state_start as i32,
-            );
+            B::mov_reg_local_addr(&mut emit.as_, B::REG_ARG_1, emit.code_state_start as i32);
             Self::copy_parent_args_to_call_regs(emit);
             B::setup_code_state_call(&mut emit.as_);
         }
@@ -1157,14 +1212,16 @@ impl<B: NativeBackend> EmitNative<B> {
         B::mov_reg_reg(&mut emit.as_, B::REG_ARG_1, B::REG_PARENT_ARG_2);
         B::mov_reg_reg(&mut emit.as_, B::REG_ARG_2, B::REG_PARENT_ARG_3);
         B::mov_reg_reg(&mut emit.as_, B::REG_LOCAL_LAST, B::REG_PARENT_ARG_4);
-        B::jump_if_reg_nonzero(&mut emit.as_, B::REG_ARG_2, unsafe { *emit.label_slot + 4 }, true);
-        B::mov_reg_imm(&mut emit.as_, B::REG_ARG_3, scope.num_pos_args as usize);
-        B::jump_if_reg_eq(
+        B::jump_if_reg_nonzero(
             &mut emit.as_,
-            B::REG_ARG_1,
-            B::REG_ARG_3,
-            unsafe { *emit.label_slot + 5 },
+            B::REG_ARG_2,
+            unsafe { *emit.label_slot + 4 },
+            true,
         );
+        B::mov_reg_imm(&mut emit.as_, B::REG_ARG_3, scope.num_pos_args as usize);
+        B::jump_if_reg_eq(&mut emit.as_, B::REG_ARG_1, B::REG_ARG_3, unsafe {
+            *emit.label_slot + 5
+        });
         asmbase::label_assign(B::asm_base(&mut emit.as_), unsafe { *emit.label_slot + 4 });
         B::mov_reg_imm(
             &mut emit.as_,
@@ -1336,7 +1393,10 @@ impl<B: NativeBackend> EmitNative<B> {
                 let mut children = (*emit.emit_common).children;
                 if !emit.do_viper_types {
                     let prelude_ptr = f.add(emit.prelude_offset as usize);
-                    debug_assert_eq!(emit.prelude_ptr_index, (*emit.emit_common).ct_cur_child as i32);
+                    debug_assert_eq!(
+                        emit.prelude_ptr_index,
+                        (*emit.emit_common).ct_cur_child as i32
+                    );
                     if emit.prelude_ptr_index == 0 {
                         children = prelude_ptr as *mut *mut RawCode;
                     } else {
@@ -1344,7 +1404,8 @@ impl<B: NativeBackend> EmitNative<B> {
                         if children.is_null() {
                             children = malloc::new(idx + 1).expect("native child table");
                         } else {
-                            children = malloc::renew(children, idx, idx + 1).expect("native child table");
+                            children =
+                                malloc::renew(children, idx, idx + 1).expect("native child table");
                         }
                         *children.add(idx) = prelude_ptr as *mut RawCode;
                     }
@@ -1497,7 +1558,12 @@ impl<B: NativeBackend> EmitNative<B> {
             } else {
                 let mut vtype = vtype_val;
                 Self::emit_pre_pop_reg(emit, &mut vtype, B::REG_ARG_1);
-                Self::emit_call_with_imm_arg(emit, mp_f::CONVERT_NATIVE_TO_OBJ, vtype as i64, B::REG_ARG_2);
+                Self::emit_call_with_imm_arg(
+                    emit,
+                    mp_f::CONVERT_NATIVE_TO_OBJ,
+                    vtype as i64,
+                    B::REG_ARG_2,
+                );
                 B::mov_reg_reg(&mut emit.as_, B::REG_ARG_2, B::REG_RET);
             }
         }
@@ -1512,7 +1578,12 @@ impl<B: NativeBackend> EmitNative<B> {
     }
 
     pub fn delete_global(emit: *mut crate::emit::Emit, qst: Qstr, kind: i32) {
-        Self::emit_call_with_qstr_arg(emit_mut::<B>(emit), mp_f::DELETE_NAME + kind as u32, qst, B::REG_ARG_1);
+        Self::emit_call_with_qstr_arg(
+            emit_mut::<B>(emit),
+            mp_f::DELETE_NAME + kind as u32,
+            qst,
+            B::REG_ARG_1,
+        );
     }
 
     pub fn label_assign(emit: *mut crate::emit::Emit, l: usize) {
@@ -1576,7 +1647,11 @@ impl<B: NativeBackend> EmitNative<B> {
         } else if tok == TokenKind::KwNone {
             Self::emit_post_push_imm(emit_mut::<B>(emit), VType::PtrNone, 0);
         } else {
-            Self::emit_post_push_imm(emit_mut::<B>(emit), VType::Bool, if tok == TokenKind::KwFalse { 0 } else { 1 });
+            Self::emit_post_push_imm(
+                emit_mut::<B>(emit),
+                VType::Bool,
+                if tok == TokenKind::KwFalse { 0 } else { 1 },
+            );
         }
     }
 
@@ -1641,12 +1716,22 @@ impl<B: NativeBackend> EmitNative<B> {
             } else {
                 let mut vt = vtype_index;
                 Self::emit_pre_pop_reg(emit, &mut vt, B::REG_ARG_1);
-                Self::emit_call_with_imm_arg(emit, mp_f::CONVERT_NATIVE_TO_OBJ, vt as i64, B::REG_ARG_2);
+                Self::emit_call_with_imm_arg(
+                    emit,
+                    mp_f::CONVERT_NATIVE_TO_OBJ,
+                    vt as i64,
+                    B::REG_ARG_2,
+                );
                 B::mov_reg_reg(&mut emit.as_, B::REG_ARG_2, B::REG_RET);
             }
             let mut vt_base = vtype_base;
             Self::emit_pre_pop_reg(emit, &mut vt_base, B::REG_ARG_1);
-            Self::emit_call_with_imm_arg(emit, mp_f::OBJ_SUBSCR, obj::OBJ_SENTINEL.0 as i64, B::REG_ARG_3);
+            Self::emit_call_with_imm_arg(
+                emit,
+                mp_f::OBJ_SUBSCR,
+                obj::OBJ_SENTINEL.0 as i64,
+                B::REG_ARG_3,
+            );
             Self::emit_post_push_reg(emit, VType::PyObj, B::REG_RET);
             return;
         }
@@ -1657,12 +1742,23 @@ impl<B: NativeBackend> EmitNative<B> {
             Self::emit_pre_pop_discard(emit);
             let mut reg_base = B::REG_ARG_1;
             let reg_index = B::REG_ARG_2;
-            Self::emit_pre_pop_reg_flexible(emit, &mut vtype_base, &mut reg_base, reg_index, reg_index);
+            Self::emit_pre_pop_reg_flexible(
+                emit,
+                &mut vtype_base,
+                &mut reg_base,
+                reg_index,
+                reg_index,
+            );
             Self::need_reg_single(emit, B::REG_RET, 0);
             match vtype_base {
                 VType::Ptr8 => {
                     if B::HAS_ASM_LOAD8_REG_REG_OFFSET {
-                        B::load8_reg_reg_offset(&mut emit.as_, B::REG_RET, reg_base, index_value as i32);
+                        B::load8_reg_reg_offset(
+                            &mut emit.as_,
+                            B::REG_RET,
+                            reg_base,
+                            index_value as i32,
+                        );
                     } else if index_value != 0 {
                         Self::need_reg_single(emit, reg_index, 0);
                         B::mov_reg_imm(&mut emit.as_, reg_index, index_value as usize);
@@ -1674,7 +1770,12 @@ impl<B: NativeBackend> EmitNative<B> {
                 }
                 VType::Ptr16 => {
                     if B::HAS_ASM_LOAD16_REG_REG_OFFSET {
-                        B::load16_reg_reg_offset(&mut emit.as_, B::REG_RET, reg_base, index_value as i32);
+                        B::load16_reg_reg_offset(
+                            &mut emit.as_,
+                            B::REG_RET,
+                            reg_base,
+                            index_value as i32,
+                        );
                     } else if index_value != 0 {
                         Self::need_reg_single(emit, reg_index, 0);
                         B::mov_reg_imm(&mut emit.as_, reg_index, (index_value << 1) as usize);
@@ -1686,7 +1787,12 @@ impl<B: NativeBackend> EmitNative<B> {
                 }
                 VType::Ptr32 => {
                     if B::HAS_ASM_LOAD32_REG_REG_OFFSET {
-                        B::load32_reg_reg_offset(&mut emit.as_, B::REG_RET, reg_base, index_value as i32);
+                        B::load32_reg_reg_offset(
+                            &mut emit.as_,
+                            B::REG_RET,
+                            reg_base,
+                            index_value as i32,
+                        );
                     } else if index_value != 0 {
                         Self::need_reg_single(emit, reg_index, 0);
                         B::mov_reg_imm(&mut emit.as_, reg_index, (index_value << 2) as usize);
@@ -1701,7 +1807,13 @@ impl<B: NativeBackend> EmitNative<B> {
         } else {
             let mut vtype_index = VType::Int;
             let mut reg_index = B::REG_ARG_2;
-            Self::emit_pre_pop_reg_flexible(emit, &mut vtype_index, &mut reg_index, B::REG_ARG_1, B::REG_ARG_1);
+            Self::emit_pre_pop_reg_flexible(
+                emit,
+                &mut vtype_index,
+                &mut reg_index,
+                B::REG_ARG_1,
+                B::REG_ARG_1,
+            );
             let mut vt_base = vtype_base;
             Self::emit_pre_pop_reg(emit, &mut vt_base, B::REG_ARG_1);
             Self::need_reg_single(emit, B::REG_RET, 0);
@@ -1763,7 +1875,15 @@ impl<B: NativeBackend> EmitNative<B> {
             let mut vt_i = vtype_index;
             let mut vt_b = vtype_base;
             let mut vt_v = vtype_value;
-            Self::emit_pre_pop_reg_reg_reg(emit, &mut vt_i, B::REG_ARG_2, &mut vt_b, B::REG_ARG_1, &mut vt_v, B::REG_ARG_3);
+            Self::emit_pre_pop_reg_reg_reg(
+                emit,
+                &mut vt_i,
+                B::REG_ARG_2,
+                &mut vt_b,
+                B::REG_ARG_1,
+                &mut vt_v,
+                B::REG_ARG_3,
+            );
             Self::emit_call(emit, mp_f::OBJ_SUBSCR);
             return;
         }
@@ -1775,22 +1895,47 @@ impl<B: NativeBackend> EmitNative<B> {
             let mut reg_base = B::REG_ARG_1;
             let reg_index = B::REG_ARG_2;
             let mut reg_value = B::REG_ARG_3;
-            Self::emit_pre_pop_reg_flexible(emit, &mut vtype_base, &mut reg_base, reg_index, reg_value);
+            Self::emit_pre_pop_reg_flexible(
+                emit,
+                &mut vtype_base,
+                &mut reg_base,
+                reg_index,
+                reg_value,
+            );
             let mut vtype_value = Self::peek_vtype(emit, 0);
             if B::N_X64 || B::N_X86 {
                 Self::emit_pre_pop_reg(emit, &mut vtype_value, reg_value);
             } else {
-                Self::emit_pre_pop_reg_flexible(emit, &mut vtype_value, &mut reg_value, reg_base, reg_index);
+                Self::emit_pre_pop_reg_flexible(
+                    emit,
+                    &mut vtype_value,
+                    &mut reg_value,
+                    reg_base,
+                    reg_index,
+                );
             }
             if !matches!(vtype_value, VType::Bool | VType::Int | VType::Uint) {
                 viper_type_error_vtype(emit, b"can't store '", vtype_value);
             } else {
-                Self::viper_store_ptr_index_imm(emit, vtype_base, reg_base, reg_index, reg_value, index_value);
+                Self::viper_store_ptr_index_imm(
+                    emit,
+                    vtype_base,
+                    reg_base,
+                    reg_index,
+                    reg_value,
+                    index_value,
+                );
             }
         } else {
             let mut reg_index = B::REG_ARG_2;
             let mut vtype_index = VType::Int;
-            Self::emit_pre_pop_reg_flexible(emit, &mut vtype_index, &mut reg_index, B::REG_ARG_1, B::REG_ARG_3);
+            Self::emit_pre_pop_reg_flexible(
+                emit,
+                &mut vtype_index,
+                &mut reg_index,
+                B::REG_ARG_1,
+                B::REG_ARG_3,
+            );
             let mut vt_base = vtype_base;
             Self::emit_pre_pop_reg(emit, &mut vt_base, B::REG_ARG_1);
             if !matches!(vtype_index, VType::Int | VType::Uint) {
@@ -1801,12 +1946,24 @@ impl<B: NativeBackend> EmitNative<B> {
                 if B::N_X64 || B::N_X86 {
                     Self::emit_pre_pop_reg(emit, &mut vtype_value, reg_value);
                 } else {
-                    Self::emit_pre_pop_reg_flexible(emit, &mut vtype_value, &mut reg_value, B::REG_ARG_1, reg_index);
+                    Self::emit_pre_pop_reg_flexible(
+                        emit,
+                        &mut vtype_value,
+                        &mut reg_value,
+                        B::REG_ARG_1,
+                        reg_index,
+                    );
                 }
                 if !matches!(vtype_value, VType::Bool | VType::Int | VType::Uint) {
                     viper_type_error_vtype(emit, b"can't store '", vtype_value);
                 } else {
-                    Self::viper_store_ptr_index_reg(emit, vt_base, B::REG_ARG_1, reg_index, reg_value);
+                    Self::viper_store_ptr_index_reg(
+                        emit,
+                        vt_base,
+                        B::REG_ARG_1,
+                        reg_index,
+                        reg_value,
+                    );
                 }
             }
         }
@@ -1823,7 +1980,12 @@ impl<B: NativeBackend> EmitNative<B> {
         match vtype_base {
             VType::Ptr8 => {
                 if B::HAS_ASM_STORE8_REG_REG_OFFSET {
-                    B::store8_reg_reg_offset(&mut emit.as_, reg_value, reg_base, index_value as i32);
+                    B::store8_reg_reg_offset(
+                        &mut emit.as_,
+                        reg_value,
+                        reg_base,
+                        index_value as i32,
+                    );
                 } else if index_value != 0 {
                     B::mov_reg_imm(&mut emit.as_, reg_index, index_value as usize);
                     B::add_reg_reg(&mut emit.as_, reg_index, reg_base);
@@ -1835,7 +1997,12 @@ impl<B: NativeBackend> EmitNative<B> {
             }
             VType::Ptr16 => {
                 if B::HAS_ASM_STORE16_REG_REG_OFFSET {
-                    B::store16_reg_reg_offset(&mut emit.as_, reg_value, reg_base, index_value as i32);
+                    B::store16_reg_reg_offset(
+                        &mut emit.as_,
+                        reg_value,
+                        reg_base,
+                        index_value as i32,
+                    );
                 } else if index_value != 0 {
                     B::mov_reg_imm(&mut emit.as_, reg_index, (index_value << 1) as usize);
                     B::add_reg_reg(&mut emit.as_, reg_index, reg_base);
@@ -1847,7 +2014,12 @@ impl<B: NativeBackend> EmitNative<B> {
             }
             VType::Ptr32 => {
                 if B::HAS_ASM_STORE32_REG_REG_OFFSET {
-                    B::store32_reg_reg_offset(&mut emit.as_, reg_value, reg_base, index_value as i32);
+                    B::store32_reg_reg_offset(
+                        &mut emit.as_,
+                        reg_value,
+                        reg_base,
+                        index_value as i32,
+                    );
                 } else if index_value != 0 {
                     B::mov_reg_imm(&mut emit.as_, reg_index, (index_value << 2) as usize);
                     B::add_reg_reg(&mut emit.as_, reg_index, reg_base);
@@ -1926,7 +2098,13 @@ impl<B: NativeBackend> EmitNative<B> {
         let emit = emit_mut::<B>(emit);
         let mut vtype_index = VType::PyObj;
         let mut vtype_base = VType::PyObj;
-        Self::emit_pre_pop_reg_reg(emit, &mut vtype_index, B::REG_ARG_2, &mut vtype_base, B::REG_ARG_1);
+        Self::emit_pre_pop_reg_reg(
+            emit,
+            &mut vtype_index,
+            B::REG_ARG_2,
+            &mut vtype_base,
+            B::REG_ARG_1,
+        );
         Self::emit_call_with_imm_arg(emit, mp_f::OBJ_SUBSCR, 0, B::REG_ARG_3);
     }
 
@@ -2039,7 +2217,12 @@ impl<B: NativeBackend> EmitNative<B> {
                 Self::adjust_stack(emit, 1);
             }
             if !(matches!(vtype, VType::Bool | VType::Int | VType::Uint)) {
-                viper_type_error_vtype_suffix(emit, b"can't implicitly convert '", vtype, b" to 'bool'");
+                viper_type_error_vtype_suffix(
+                    emit,
+                    b"can't implicitly convert '",
+                    vtype,
+                    b" to 'bool'",
+                );
                 return;
             }
         }
@@ -2085,7 +2268,11 @@ impl<B: NativeBackend> EmitNative<B> {
                 if e_idx == 0 {
                     B::clr_reg(&mut e.as_, B::REG_RET);
                 } else {
-                    B::mov_reg_pcrel(&mut e.as_, B::REG_RET, e.exc_stack[e_idx - 1].label as usize);
+                    B::mov_reg_pcrel(
+                        &mut e.as_,
+                        B::REG_RET,
+                        e.exc_stack[e_idx - 1].label as usize,
+                    );
                 }
                 let exc_pc = local_idx_exc_handler_pc(e);
                 B::mov_local_reg(&mut e.as_, exc_pc, B::REG_RET);
@@ -2124,7 +2311,14 @@ impl<B: NativeBackend> EmitNative<B> {
         Self::emit_post_push_imm(e, VType::PtrNone, 0);
         Self::emit_post_push_imm(e, VType::PtrNone, 0);
         Self::emit_get_stack_pointer_to_reg_for_pop(e, B::REG_ARG_3, 5);
-        Self::emit_call_with_2_imm_args(e, mp_f::CALL_METHOD_N_KW, 3, B::REG_ARG_1, 0, B::REG_ARG_2);
+        Self::emit_call_with_2_imm_args(
+            e,
+            mp_f::CALL_METHOD_N_KW,
+            3,
+            B::REG_ARG_1,
+            0,
+            B::REG_ARG_2,
+        );
         Self::jump(emit, label_slot);
         asmbase::label_assign(B::asm_base(&mut e.as_), label);
         Self::leave_exc_stack(e, true);
@@ -2137,7 +2331,14 @@ impl<B: NativeBackend> EmitNative<B> {
         Self::emit_post_push_reg(e, VType::PyObj, B::REG_ARG_1);
         Self::emit_post_push_imm(e, VType::PtrNone, 0);
         Self::emit_get_stack_pointer_to_reg_for_pop(e, B::REG_ARG_3, 5);
-        Self::emit_call_with_2_imm_args(e, mp_f::CALL_METHOD_N_KW, 3, B::REG_ARG_1, 0, B::REG_ARG_2);
+        Self::emit_call_with_2_imm_args(
+            e,
+            mp_f::CALL_METHOD_N_KW,
+            3,
+            B::REG_ARG_1,
+            0,
+            B::REG_ARG_2,
+        );
         if B::REG_ARG_1 != B::REG_RET {
             B::mov_reg_reg(&mut e.as_, B::REG_ARG_1, B::REG_RET);
         }
@@ -2315,9 +2516,7 @@ impl<B: NativeBackend> EmitNative<B> {
         {
             let op = Self::normalize_inplace_binary_op(op);
 
-            if (B::N_X64 || B::N_X86)
-                && matches!(op, BinaryOp::Lshift | BinaryOp::Rshift)
-            {
+            if (B::N_X64 || B::N_X86) && matches!(op, BinaryOp::Lshift | BinaryOp::Rshift) {
                 let mut vt_r = vtype_rhs;
                 let mut vt_l = vtype_lhs;
                 Self::emit_pre_pop_reg(emit, &mut vt_r, B::REG_ARG_4);
@@ -2369,7 +2568,13 @@ impl<B: NativeBackend> EmitNative<B> {
 
             let mut reg_rhs = B::REG_ARG_3;
             let mut vt_r = vtype_rhs;
-            Self::emit_pre_pop_reg_flexible(emit, &mut vt_r, &mut reg_rhs, B::REG_RET, B::REG_ARG_2);
+            Self::emit_pre_pop_reg_flexible(
+                emit,
+                &mut vt_r,
+                &mut reg_rhs,
+                B::REG_RET,
+                B::REG_ARG_2,
+            );
             let mut vt_l = vtype_lhs;
             Self::emit_pre_pop_reg(emit, &mut vt_l, B::REG_ARG_2);
 
@@ -2437,7 +2642,12 @@ impl<B: NativeBackend> EmitNative<B> {
         if kind == EMIT_BUILD_TUPLE || kind == EMIT_BUILD_LIST || kind == EMIT_BUILD_SET {
             Self::emit_get_stack_pointer_to_reg_for_pop(emit, B::REG_ARG_2, n_args);
         }
-        Self::emit_call_with_imm_arg(emit, mp_f::BUILD_TUPLE + kind as u32, n_args as i64, B::REG_ARG_1);
+        Self::emit_call_with_imm_arg(
+            emit,
+            mp_f::BUILD_TUPLE + kind as u32,
+            n_args as i64,
+            B::REG_ARG_1,
+        );
         Self::emit_post_push_reg(emit, VType::PyObj, B::REG_RET);
     }
 
@@ -2490,7 +2700,12 @@ impl<B: NativeBackend> EmitNative<B> {
     ) {
         let emit = emit_mut::<B>(emit);
         Self::mov_reg_state(emit, B::REG_ARG_2, local_idx_fun_obj(emit));
-        B::load_reg_reg_offset(&mut emit.as_, B::REG_ARG_2, B::REG_ARG_2, OFFSETOF_OBJ_FUN_BC_CONTEXT as i32);
+        B::load_reg_reg_offset(
+            &mut emit.as_,
+            B::REG_ARG_2,
+            B::REG_ARG_2,
+            OFFSETOF_OBJ_FUN_BC_CONTEXT as i32,
+        );
         if n_pos_defaults == 0 && n_kw_defaults == 0 {
             Self::need_reg_all(emit);
             B::mov_reg_imm(&mut emit.as_, B::REG_ARG_3, 0);
@@ -2499,8 +2714,10 @@ impl<B: NativeBackend> EmitNative<B> {
             Self::need_reg_all(emit);
         }
         unsafe {
-            let table_off =
-                emit::emit_common_alloc_const_child(unsafe { &mut *emit.emit_common }, (*scope).raw_code);
+            let table_off = emit::emit_common_alloc_const_child(
+                unsafe { &mut *emit.emit_common },
+                (*scope).raw_code,
+            );
             Self::mov_reg_state(emit, B::REG_TEMP0, local_idx_fun_obj(emit));
             B::load_reg_reg_offset(
                 &mut emit.as_,
@@ -2523,7 +2740,12 @@ impl<B: NativeBackend> EmitNative<B> {
     ) {
         let emit = emit_mut::<B>(emit);
         Self::mov_reg_state(emit, B::REG_ARG_2, local_idx_fun_obj(emit));
-        B::load_reg_reg_offset(&mut emit.as_, B::REG_ARG_2, B::REG_ARG_2, OFFSETOF_OBJ_FUN_BC_CONTEXT as i32);
+        B::load_reg_reg_offset(
+            &mut emit.as_,
+            B::REG_ARG_2,
+            B::REG_ARG_2,
+            OFFSETOF_OBJ_FUN_BC_CONTEXT as i32,
+        );
         if n_pos_defaults == 0 && n_kw_defaults == 0 {
             Self::need_reg_all(emit);
             B::mov_reg_imm(&mut emit.as_, B::REG_ARG_3, 0);
@@ -2533,8 +2755,10 @@ impl<B: NativeBackend> EmitNative<B> {
             Self::need_reg_all(emit);
         }
         unsafe {
-            let table_off =
-                emit::emit_common_alloc_const_child(unsafe { &mut *emit.emit_common }, (*scope).raw_code);
+            let table_off = emit::emit_common_alloc_const_child(
+                unsafe { &mut *emit.emit_common },
+                (*scope).raw_code,
+            );
             Self::mov_reg_state(emit, B::REG_TEMP0, local_idx_fun_obj(emit));
             B::load_reg_reg_offset(
                 &mut emit.as_,
@@ -2696,8 +2920,9 @@ impl<B: NativeBackend> EmitNative<B> {
             return;
         }
         if e.do_viper_types {
-            let return_vtype =
-                VType::from_u8((unsafe { (*e.scope).scope_flags >> MP_SCOPE_FLAG_VIPERRET_POS }) as u8);
+            let return_vtype = VType::from_u8(
+                (unsafe { (*e.scope).scope_flags >> MP_SCOPE_FLAG_VIPERRET_POS }) as u8,
+            );
             if Self::peek_vtype(e, 0) == VType::PtrNone {
                 Self::emit_pre_pop_discard(e);
                 if return_vtype == VType::PyObj {
@@ -2876,8 +3101,9 @@ impl<B: NativeBackend> EmitNative<B> {
 }
 
 fn viper_compare_op_idx(op: BinaryOp, unsigned_lhs: bool) -> Option<usize> {
+    // C maps the first 6 relational ops (< > == <= >= !=) into asm compare indices.
     let base = op as u8;
-    if base < BinaryOp::Less as u8 || base > BinaryOp::MoreEqual as u8 {
+    if base < BinaryOp::Less as u8 || base > BinaryOp::NotEqual as u8 {
         return None;
     }
     Some((base - BinaryOp::Less as u8) as usize + if unsigned_lhs { 0 } else { 6 })
@@ -2891,10 +3117,11 @@ mod emitnative_impl_tests {
     #[test]
     fn viper_compare_op_idx_maps_relational_ops() {
         assert_eq!(viper_compare_op_idx(BinaryOp::Less, true), Some(0));
-        assert_eq!(viper_compare_op_idx(BinaryOp::MoreEqual, true), Some(5));
+        assert_eq!(viper_compare_op_idx(BinaryOp::MoreEqual, true), Some(4));
+        assert_eq!(viper_compare_op_idx(BinaryOp::NotEqual, true), Some(5));
         assert_eq!(viper_compare_op_idx(BinaryOp::Less, false), Some(6));
-        assert_eq!(viper_compare_op_idx(BinaryOp::NotEqual, false), Some(9));
-        assert_eq!(viper_compare_op_idx(BinaryOp::MoreEqual, false), Some(11));
+        assert_eq!(viper_compare_op_idx(BinaryOp::LessEqual, false), Some(9));
+        assert_eq!(viper_compare_op_idx(BinaryOp::NotEqual, false), Some(11));
         assert_eq!(viper_compare_op_idx(BinaryOp::Add, true), None);
     }
 
@@ -2933,9 +3160,9 @@ impl BinaryOp {
             0 => BinaryOp::Less,
             1 => BinaryOp::More,
             2 => BinaryOp::Equal,
-            3 => BinaryOp::NotEqual,
-            4 => BinaryOp::LessEqual,
-            5 => BinaryOp::MoreEqual,
+            3 => BinaryOp::LessEqual,
+            4 => BinaryOp::MoreEqual,
+            5 => BinaryOp::NotEqual,
             6 => BinaryOp::In,
             7 => BinaryOp::Is,
             8 => BinaryOp::ExceptionMatch,

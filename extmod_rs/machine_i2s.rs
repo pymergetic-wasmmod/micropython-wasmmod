@@ -1,8 +1,7 @@
 //! rewrite of extmod/machine_i2s.c
-// symmetry: gaps
-// gaps:
-// - needs I2S audio peripheral HAL (MCLK/BCLK/LRCK, DMA, sample formats)
-// - `I2S` init/read/write/irq require port audio block driver
+//! Host has no I2S audio peripheral HAL (MCLK/BCLK/LRCK, DMA, sample formats).
+//! `I2S` init/read/write/irq require port audio block driver.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

@@ -4,8 +4,8 @@
 use crate::argcheck::{self, Arg, ArgFlag, ArgVal};
 use crate::builtin;
 use crate::builtinevex;
-use crate::map::{self, LookupKind, Map, MapElem};
 use crate::malloc;
+use crate::map::{self, LookupKind, Map, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
@@ -14,23 +14,23 @@ use crate::objboundmeth;
 use crate::objcell;
 use crate::objcomplex;
 use crate::objdict;
+use crate::objenumerate;
 use crate::objexcept;
+use crate::objfilter;
 use crate::objfloat;
 use crate::objlist;
-use crate::objmodule;
-use crate::objenumerate;
-use crate::objfilter;
 use crate::objmap;
+use crate::objmodule;
 use crate::objproperty;
-use crate::objreversed;
-use crate::objzip;
 use crate::objrange;
+use crate::objreversed;
 use crate::objsingleton;
 use crate::objslice;
 use crate::objstr;
 use crate::objtemplate;
 use crate::objtuple;
 use crate::objtype;
+use crate::objzip;
 use crate::qstr::{self, Qstr};
 use crate::raise::{self, MpRaise};
 use crate::runtime;
@@ -88,7 +88,9 @@ macro_rules! fun_builtin_type {
     ($name:ident, $slots:ident) => {
         static mut $slots: [*const (); 1] = [core::ptr::null()];
         static mut $name: ObjType = ObjType {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
             name: 0,
             slot_index_make_new: 0,
@@ -191,11 +193,15 @@ fn new_fun_builtin_var(min_args: u8, max_args: u8, fun: BuiltinFnVar) -> Obj {
 }
 
 fn new_fun_builtin_kw(min_args: u8, fun: BuiltinFnKw) -> Obj {
+    new_fun_builtin_kw_var(min_args, min_args, fun)
+}
+
+fn new_fun_builtin_kw_var(min_args: u8, max_args: u8, fun: BuiltinFnKw) -> Obj {
     init_types();
     let o = malloc::new_obj::<ObjFunBuiltinVar>().expect("builtin alloc");
     unsafe {
         (*o).base.type_ = &TYPE_FUN_BUILTIN_VAR as *const ObjType;
-        (*o).sig = argcheck::make_sig(min_args as usize, min_args as usize, true);
+        (*o).sig = argcheck::make_sig(min_args as usize, max_args as usize, true);
         (*o).fun.kw = fun;
         obj::from_ptr(o as *const ObjFunBuiltinVar as *const ())
     }
@@ -232,7 +238,11 @@ fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) 
         let mut kw_args = Map::default();
         map::init(&mut kw_args, n_kw);
         for i in 0..n_kw {
-            if let Some(slot) = map::lookup(&mut kw_args, args[n_args + i * 2], LookupKind::AddIfNotFound) {
+            if let Some(slot) = map::lookup(
+                &mut kw_args,
+                args[n_args + i * 2],
+                LookupKind::AddIfNotFound,
+            ) {
                 slot.value = args[n_args + i * 2 + 1];
             }
         }
@@ -274,12 +284,7 @@ fn builtin___build_class__(n_args: usize, args: &[Obj]) -> Obj {
         obj::from_ptr(obj::get_type(args[2]) as *const ObjType as *const ())
     };
     let bases = objtuple::new_tuple(n_args - 2, Some(&args[2..]));
-    let new_class = runtime::call_function_n_kw(
-        meta,
-        3,
-        0,
-        &[args[1], bases, class_locals],
-    );
+    let new_class = runtime::call_function_n_kw(meta, 3, 0, &[args[1], bases, class_locals]);
     if cell != obj::CONST_NONE {
         objcell::cell_set(cell, new_class);
     }
@@ -398,12 +403,9 @@ fn builtin_hash(o: Obj) -> Obj {
 }
 
 fn builtin_hex(o: Obj) -> Obj {
-    if mpconfig::PY_BUILTINS_STR_OP_MODULO {
-        runtime::binary_op_obj(BinaryOp::Modulo, obj::new_qstr(qstr::from_str("%#x")), o)
-    } else {
-        let fmt = obj::new_qstr(qstr::from_str("{:#x}"));
-        objstr::str_format(2, &[fmt, o], None)
-    }
+    // Prefer `str.format` so `#` prefix works; modulo `"%#x"` is incomplete.
+    let fmt = obj::new_qstr(qstr::from_str("{:#x}"));
+    objstr::str_format(2, &[fmt, o], None)
 }
 
 fn builtin_help(n_args: usize, args: &[Obj]) -> Obj {
@@ -424,7 +426,9 @@ fn builtin_input(n_args: usize, args: &[Obj]) -> Obj {
     let _ = std::io::Write::write_all(&mut std::io::stdout(), b"");
     match std::io::stdin().read_line(&mut line) {
         Ok(0) => raise::raise_obj(objexcept::new_exception(objexcept::type_eof_error())),
-        Err(_) => raise::raise_obj(objexcept::new_exception(objexcept::type_keyboard_interrupt())),
+        Err(_) => raise::raise_obj(objexcept::new_exception(
+            objexcept::type_keyboard_interrupt(),
+        )),
         Ok(_) => {}
     }
     if line.ends_with('\n') {
@@ -449,9 +453,13 @@ fn builtin_iter(o: Obj) -> Obj {
 }
 
 fn min_max(n_args: usize, args: &[Obj], kwargs: &mut Map, op: BinaryOp) -> Obj {
-    let key_fn = map::lookup(kwargs, obj::new_qstr(qstr::from_str("key")), LookupKind::Lookup)
-        .map(|e| e.value)
-        .unwrap_or(obj::OBJ_NULL);
+    let key_fn = map::lookup(
+        kwargs,
+        obj::new_qstr(qstr::from_str("key")),
+        LookupKind::Lookup,
+    )
+    .map(|e| e.value)
+    .unwrap_or(obj::OBJ_NULL);
     if n_args == 1 {
         let mut iter_buf = empty_iter_buf();
         let iterable = runtime::getiter(args[0], Some(&mut iter_buf));
@@ -467,15 +475,18 @@ fn min_max(n_args: usize, args: &[Obj], kwargs: &mut Map, op: BinaryOp) -> Obj {
             } else {
                 runtime::call_function_1(key_fn, item)
             };
-            if best_obj == obj::OBJ_NULL
-                || obj::is_true(runtime::binary_op_obj(op, key, best_key))
+            if best_obj == obj::OBJ_NULL || obj::is_true(runtime::binary_op_obj(op, key, best_key))
             {
                 best_key = key;
                 best_obj = item;
             }
         }
         if best_obj == obj::OBJ_NULL {
-            if let Some(elem) = map::lookup(kwargs, obj::new_qstr(qstr::from_str("default")), LookupKind::Lookup) {
+            if let Some(elem) = map::lookup(
+                kwargs,
+                obj::new_qstr(qstr::from_str("default")),
+                LookupKind::Lookup,
+            ) {
                 return elem.value;
             }
             raise::raise(MpRaise::ValueError("arg is an empty sequence"));
@@ -484,8 +495,12 @@ fn min_max(n_args: usize, args: &[Obj], kwargs: &mut Map, op: BinaryOp) -> Obj {
     }
     let mut best_key = obj::OBJ_NULL;
     let mut best_obj = obj::OBJ_NULL;
-    for &arg in args {
-        let key = if key_fn == obj::OBJ_NULL { arg } else { runtime::call_function_1(key_fn, arg) };
+    for &arg in &args[..n_args] {
+        let key = if key_fn == obj::OBJ_NULL {
+            arg
+        } else {
+            runtime::call_function_1(key_fn, arg)
+        };
         if best_obj == obj::OBJ_NULL || obj::is_true(runtime::binary_op_obj(op, key, best_key)) {
             best_key = key;
             best_obj = arg;
@@ -510,7 +525,11 @@ fn builtin_next(n_args: usize, args: &[Obj]) -> Obj {
             if arg == obj::OBJ_NULL {
                 raise::raise_obj(objexcept::new_exception(objexcept::type_stop_iteration()));
             }
-            raise::raise_obj(objexcept::new_exception_args(objexcept::type_stop_iteration(), 1, &[arg]));
+            raise::raise_obj(objexcept::new_exception_args(
+                objexcept::type_stop_iteration(),
+                1,
+                &[arg],
+            ));
         }
         ret
     } else {
@@ -524,12 +543,8 @@ fn builtin_next(n_args: usize, args: &[Obj]) -> Obj {
 }
 
 fn builtin_oct(o: Obj) -> Obj {
-    if mpconfig::PY_BUILTINS_STR_OP_MODULO {
-        runtime::binary_op_obj(BinaryOp::Modulo, obj::new_qstr(qstr::from_str("%#o")), o)
-    } else {
-        let fmt = obj::new_qstr(qstr::from_str("{:#o}"));
-        objstr::str_format(2, &[fmt, o], None)
-    }
+    let fmt = obj::new_qstr(qstr::from_str("{:#o}"));
+    objstr::str_format(2, &[fmt, o], None)
 }
 
 fn builtin_ord(o: Obj) -> Obj {
@@ -548,11 +563,16 @@ fn builtin_ord(o: Obj) -> Obj {
     let msg = objstr::new_str(
         format!("ord() expected a character, but string of length {len} found").as_bytes(),
     );
-    raise::raise_obj(objexcept::new_exception_args(objexcept::type_type_error(), 1, &[msg]));
+    raise::raise_obj(objexcept::new_exception_args(
+        objexcept::type_type_error(),
+        1,
+        &[msg],
+    ));
 }
 
 fn builtin_pow(n_args: usize, args: &[Obj]) -> Obj {
-    if n_args == 2 || (mpconfig::PY_BUILTINS_POW3 && args.get(2).copied() == Some(obj::CONST_NONE)) {
+    if n_args == 2 || (mpconfig::PY_BUILTINS_POW3 && args.get(2).copied() == Some(obj::CONST_NONE))
+    {
         return runtime::binary_op_obj(BinaryOp::Power, args[0], args[1]);
     }
     if !mpconfig::PY_BUILTINS_POW3 {
@@ -577,8 +597,14 @@ fn builtin_print(n_args: usize, pos_args: &[Obj], kw_args: &mut Map) -> Obj {
     ];
     let mut vals = [ArgVal::default(), ArgVal::default()];
     argcheck::parse_all(0, &[], kw_args, allowed.len(), &allowed, &mut vals);
-    let sep = match vals[0] { ArgVal::Obj(o) => o, _ => obj::OBJ_NULL };
-    let end = match vals[1] { ArgVal::Obj(o) => o, _ => obj::OBJ_NULL };
+    let sep = match vals[0] {
+        ArgVal::Obj(o) => o,
+        _ => obj::OBJ_NULL,
+    };
+    let end = match vals[1] {
+        ArgVal::Obj(o) => o,
+        _ => obj::OBJ_NULL,
+    };
     let (sep_data, sep_len) = objstr::str_get_data(sep);
     let (end_data, end_len) = objstr::str_get_data(end);
     for (i, &arg) in pos_args.iter().enumerate().take(n_args) {
@@ -645,23 +671,53 @@ fn builtin_round(n_args: usize, args: &[Obj]) -> Obj {
             return runtime::binary_op_obj(BinaryOp::Add, rounded, mult);
         }
         let floor = runtime::binary_op_obj(BinaryOp::FloorDivide, o_in, mult);
-        if obj::is_true(runtime::binary_op_obj(BinaryOp::And, floor, obj::new_small_int(1))) {
+        if obj::is_true(runtime::binary_op_obj(
+            BinaryOp::And,
+            floor,
+            obj::new_small_int(1),
+        )) {
             return runtime::binary_op_obj(BinaryOp::Add, rounded, mult);
         }
         return rounded;
     }
     if mpconfig::PY_BUILTINS_FLOAT {
         let val = objfloat::float_get(o_in);
+        // C uses `nearbyint` (IEEE roundTiesToEven), not Rust's `.round()`.
         if n_args > 1 {
             let num_dig = obj::get_int(args[1]) as i32;
             let mult = 10f64.powi(num_dig);
-            let rounded = (val * mult).round() / mult;
+            let rounded = nearbyint(val * mult) / mult;
             return objfloat::new_float(rounded);
         }
-        let rounded = val.round();
+        let rounded = nearbyint(val);
         return obj::new_int(rounded as obj::Int);
     }
     obj::new_int(obj::get_int(o_in) as obj::Int)
+}
+
+/// IEEE 754 roundTiesToEven — matches MicroPython/C `nearbyint`.
+fn nearbyint(x: f64) -> f64 {
+    if !x.is_finite() {
+        return x;
+    }
+    let abs = x.abs();
+    let trunc = abs.trunc();
+    let frac = abs - trunc;
+    let rounded_abs = if frac < 0.5 {
+        trunc
+    } else if frac > 0.5 {
+        trunc + 1.0
+    } else if (trunc as i64) & 1 == 0 {
+        // exactly halfway: keep even
+        trunc
+    } else {
+        trunc + 1.0
+    };
+    if x.is_sign_negative() && rounded_abs != 0.0 {
+        -rounded_abs
+    } else {
+        rounded_abs
+    }
 }
 
 fn builtin_sum(n_args: usize, args: &[Obj]) -> Obj {
@@ -684,17 +740,12 @@ fn builtin_sum(n_args: usize, args: &[Obj]) -> Obj {
 
 fn builtin_sorted(n_args: usize, args: &[Obj], kwargs: &mut Map) -> Obj {
     if n_args > 1 {
-        raise::raise(MpRaise::TypeError("must use keyword argument for key function"));
+        raise::raise(MpRaise::TypeError(
+            "must use keyword argument for key function",
+        ));
     }
     let self_ = objlist::list_make_new(objlist::type_list(), 1, 0, args);
-    let mut sort_args = vec![self_];
-    for i in 0..kwargs.alloc {
-        if map::slot_is_filled(kwargs, i) {
-            sort_args.push(kwargs.table[i].key);
-            sort_args.push(kwargs.table[i].value);
-        }
-    }
-    objlist::list_sort(sort_args.len(), &sort_args);
+    objlist::list_sort(1, &[self_], kwargs);
     self_
 }
 
@@ -740,7 +791,10 @@ fn type_elem(name: &str, ty: &ObjType) -> MapElem {
 fn build_globals_table() -> Vec<MapElem> {
     let mut table = vec![
         me("__name__", obj::new_qstr(qstr::from_str("builtins"))),
-        me("__build_class__", new_fun_builtin_var(2, usize::MAX as u8, |n, a| builtin___build_class__(n, a))),
+        me(
+            "__build_class__",
+            new_fun_builtin_var(2, usize::MAX as u8, |n, a| builtin___build_class__(n, a)),
+        ),
         me("__import__", crate::builtinimport::builtin___import___obj()),
         me("__repl_print__", new_fun_builtin_1(builtin___repl_print__)),
         type_elem("bool", obj::type_bool()),
@@ -766,7 +820,10 @@ fn build_globals_table() -> Vec<MapElem> {
         me("callable", new_fun_builtin_1(builtin_callable)),
         me("chr", new_fun_builtin_1(builtin_chr)),
         me("divmod", new_fun_builtin_2(builtin_divmod)),
-        me("getattr", new_fun_builtin_var(2, 3, |n, a| builtin_getattr(n, a))),
+        me(
+            "getattr",
+            new_fun_builtin_var(2, 3, |n, a| builtin_getattr(n, a)),
+        ),
         me("setattr", new_fun_builtin_3(builtin_setattr)),
         me("globals", new_fun_builtin_0(builtin_globals)),
         me("hasattr", new_fun_builtin_2(builtin_hasattr)),
@@ -784,13 +841,16 @@ fn build_globals_table() -> Vec<MapElem> {
         me("pow", new_fun_builtin_var(2, 3, |n, a| builtin_pow(n, a))),
         me(
             "print",
-            new_fun_builtin_kw(0, |n, a, kw| {
+            new_fun_builtin_kw_var(0, 0xff, |n, a, kw| {
                 let mut kw = kw.clone();
                 builtin_print(n, a, &mut kw)
             }),
         ),
         me("repr", new_fun_builtin_1(builtin_repr)),
-        me("round", new_fun_builtin_var(1, 2, |n, a| builtin_round(n, a))),
+        me(
+            "round",
+            new_fun_builtin_var(1, 2, |n, a| builtin_round(n, a)),
+        ),
         me(
             "sorted",
             new_fun_builtin_kw(1, |n, a, kw| {
@@ -814,7 +874,10 @@ fn build_globals_table() -> Vec<MapElem> {
         type_elem("LookupError", objexcept::type_lookup_error()),
         type_elem("MemoryError", objexcept::type_memory_error()),
         type_elem("NameError", objexcept::type_name_error()),
-        type_elem("NotImplementedError", objexcept::type_not_implemented_error()),
+        type_elem(
+            "NotImplementedError",
+            objexcept::type_not_implemented_error(),
+        ),
         type_elem("OSError", objexcept::type_os_error()),
         type_elem("OverflowError", objexcept::type_overflow_error()),
         type_elem("RuntimeError", objexcept::type_runtime_error()),
@@ -865,7 +928,10 @@ fn build_globals_table() -> Vec<MapElem> {
         }
     }
     if mpconfig::PY_BUILTINS_DIR {
-        table.push(me("dir", new_fun_builtin_var(0, 1, |n, a| builtin_dir(n, a))));
+        table.push(me(
+            "dir",
+            new_fun_builtin_var(0, 1, |n, a| builtin_dir(n, a)),
+        ));
     }
     if mpconfig::CPYTHON_COMPAT {
         table.push(me("delattr", new_fun_builtin_2(builtin_delattr)));
@@ -880,7 +946,10 @@ fn build_globals_table() -> Vec<MapElem> {
         table.push(type_elem("UnicodeError", objexcept::type_unicode_error()));
     }
     if mpconfig::EMIT_NATIVE {
-        table.push(type_elem("ViperTypeError", objexcept::type_viper_type_error()));
+        table.push(type_elem(
+            "ViperTypeError",
+            objexcept::type_viper_type_error(),
+        ));
     }
     if mpconfig::PY_TSTRINGS {
         table.push(me(
@@ -901,29 +970,35 @@ fn build_globals_table() -> Vec<MapElem> {
     if mpconfig::PY_IO {
         table.push(me(
             "open",
-            new_fun_builtin_kw(0, |n, a, kw| {
+            new_fun_builtin_kw_var(0, 0xff, |n, a, kw| {
                 let mut kw = kw.clone();
                 builtin::builtin_open(n, a, Some(&mut kw))
             }),
         ));
     }
     if mpconfig::PY_BUILTINS_HELP {
-        table.push(me("help", new_fun_builtin_var(0, 1, |n, a| builtin_help(n, a))));
+        table.push(me(
+            "help",
+            new_fun_builtin_var(0, 1, |n, a| builtin_help(n, a)),
+        ));
     }
     if mpconfig::PY_BUILTINS_INPUT {
-        table.push(me("input", new_fun_builtin_var(0, 1, |n, a| builtin_input(n, a))));
+        table.push(me(
+            "input",
+            new_fun_builtin_var(0, 1, |n, a| builtin_input(n, a)),
+        ));
     }
     if mpconfig::PY_BUILTINS_MIN_MAX {
         table.push(me(
             "max",
-            new_fun_builtin_kw(1, |n, a, kw| {
+            new_fun_builtin_kw_var(1, 0xff, |n, a, kw| {
                 let mut kw = kw.clone();
                 builtin_max(n, a, &mut kw)
             }),
         ));
         table.push(me(
             "min",
-            new_fun_builtin_kw(1, |n, a, kw| {
+            new_fun_builtin_kw_var(1, 0xff, |n, a, kw| {
                 let mut kw = kw.clone();
                 builtin_min(n, a, &mut kw)
             }),

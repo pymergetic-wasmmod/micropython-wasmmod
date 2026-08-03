@@ -10,7 +10,9 @@ use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mperrno;
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objpolyiter;
 use py_rs::objstr;
@@ -51,7 +53,11 @@ fn root_mut(vfs: &mut ObjVfsPosix) -> &mut Vstr {
 
 fn vstr_path(v: &mut Vstr) -> String {
     let p = vstr::null_terminated_str(v);
-    unsafe { CStr::from_ptr(p as *const c_char).to_string_lossy().into_owned() }
+    unsafe {
+        CStr::from_ptr(p as *const c_char)
+            .to_string_lossy()
+            .into_owned()
+    }
 }
 
 fn get_path_str(vfs: &mut ObjVfsPosix, path: Obj) -> String {
@@ -123,9 +129,7 @@ fn make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj
             let root = objstr::str_get_str(args[0]);
             if !root.is_empty() && !root.starts_with('/') {
                 let mut buf = vec![0u8; mpconfig::ALLOC_PATH_MAX + 1];
-                let cwd = unsafe {
-                    libc::getcwd(buf.as_mut_ptr() as *mut c_char, buf.len())
-                };
+                let cwd = unsafe { libc::getcwd(buf.as_mut_ptr() as *mut c_char, buf.len()) };
                 if cwd.is_null() {
                     raise::raise(MpRaise::OSError(errno()));
                 }
@@ -169,9 +173,7 @@ fn umount(_self_in: Obj) -> Obj {
 fn open(self_in: Obj, path_in: Obj, mode_in: Obj) -> Obj {
     let self_ = unsafe { &*vfs_ptr(self_in) };
     let mode = objstr::str_get_str(mode_in);
-    if is_readonly(self_)
-        && (mode.contains('w') || mode.contains('a') || mode.contains('+'))
-    {
+    if is_readonly(self_) && (mode.contains('w') || mode.contains('a') || mode.contains('+')) {
         raise::raise(MpRaise::OSError(mperrno::EROFS));
     }
     let path = if obj::is_small_int(path_in) {
@@ -193,7 +195,9 @@ fn getcwd(self_in: Obj) -> Obj {
     if ret.is_null() {
         raise::raise(MpRaise::OSError(errno()));
     }
-    let mut s = unsafe { CStr::from_ptr(ret) }.to_string_lossy().into_owned();
+    let mut s = unsafe { CStr::from_ptr(ret) }
+        .to_string_lossy()
+        .into_owned();
     if self_.root_len > 0 {
         s = s[self_.root_len - 1..].to_string();
     }
@@ -393,7 +397,9 @@ static mut F1: [*const (); 1] = [call1 as *const ()];
 static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut F3: [*const (); 1] = [call3 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -411,7 +417,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static TF2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -429,7 +437,9 @@ static TF2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TF3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -489,7 +499,9 @@ static VFS_POSIX_PROTO: VfsProto = VfsProto { import_stat };
 
 static mut VFS_POSIX_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_VFS_POSIX: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -563,8 +575,8 @@ fn init_type() {
                 value: mk2(statvfs),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             VFS_POSIX_SLOTS[0] = make_new as MakeNewFn as *const ();

@@ -4,6 +4,9 @@
 use crate::mpconfig;
 use crate::mpz::{self, Mpz};
 use crate::obj::{self, Int, Obj, ObjBase, ObjType};
+use crate::objint;
+use crate::objtuple;
+use crate::qstr;
 use crate::raise::{self, MpRaise};
 use crate::runtime0::{BinaryOp, UnaryOp};
 use crate::smallint;
@@ -14,33 +17,45 @@ pub struct ObjInt {
     pub mpz: Mpz,
 }
 
-static TYPE_INT: ObjType = make_type_int();
+static mut INT_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 
-const fn make_type_int() -> ObjType {
-    ObjType {
-        base: ObjBase { type_: core::ptr::null() },
-        flags: obj::TYPE_FLAG_NONE,
-        name: 0,
-        slot_index_make_new: 0,
-        slot_index_print: 0,
-        slot_index_call: 0,
-        slot_index_unary_op: 0,
-        slot_index_binary_op: 0,
-        slot_index_attr: 0,
-        slot_index_subscr: 0,
-        slot_index_iter: 0,
-        slot_index_buffer: 0,
-        slot_index_protocol: 0,
-        slot_index_parent: 0,
-        slot_index_locals_dict: 0,
-        slots: core::ptr::null(),
-    }
+static mut TYPE_INT: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: obj::TYPE_FLAG_NONE,
+    name: 0,
+    slot_index_make_new: 1,
+    slot_index_print: 2,
+    slot_index_call: 0,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 3,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: core::ptr::null(),
+};
+
+fn init_type_int() {
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        INT_SLOTS[0] = objint::int_make_new as *const ();
+        INT_SLOTS[1] = objint::int_print as *const ();
+        INT_SLOTS[2] = objint::int_binary_op_dispatch as *const ();
+        let t = core::ptr::addr_of_mut!(TYPE_INT);
+        (*t).slots = INT_SLOTS.as_ptr();
+        (*t).name = qstr::from_str("int");
+        objint::install_int_locals(&mut *t, &mut INT_SLOTS);
+    });
 }
 
 pub fn type_int() -> &'static ObjType {
-    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
-    INIT.get_or_init(|| {});
-    &TYPE_INT
+    init_type_int();
+    unsafe { &*core::ptr::addr_of!(TYPE_INT) }
 }
 
 pub fn new_mpz() -> *mut ObjInt {
@@ -53,12 +68,19 @@ pub fn new_mpz() -> *mut ObjInt {
 }
 
 pub fn new_int(val: Int) -> Obj {
-    if smallint::fits(val) { obj::new_small_int(val) } else { new_int_from_ll(val as i64) }
+    if smallint::fits(val) {
+        obj::new_small_int(val)
+    } else {
+        new_int_from_ll(val as i64)
+    }
 }
 
 pub fn new_int_from_ll(val: i64) -> Obj {
     let o = new_mpz();
-    unsafe { mpz::set_from_ll(&mut (*o).mpz, val, true); obj::from_ptr(o as *const ObjInt as *const ()) }
+    unsafe {
+        mpz::set_from_ll(&mut (*o).mpz, val, true);
+        obj::from_ptr(o as *const ObjInt as *const ())
+    }
 }
 
 pub fn new_int_from_uint(val: obj::Uint) -> Obj {
@@ -71,7 +93,10 @@ pub fn new_int_from_uint(val: obj::Uint) -> Obj {
 
 pub fn new_int_from_ull(val: u64) -> Obj {
     let o = new_mpz();
-    unsafe { mpz::set_from_ll(&mut (*o).mpz, val as i64, false); obj::from_ptr(o as *const ObjInt as *const ()) }
+    unsafe {
+        mpz::set_from_ll(&mut (*o).mpz, val as i64, false);
+        obj::from_ptr(o as *const ObjInt as *const ())
+    }
 }
 
 /// `mp_obj_new_int_from_str_len`
@@ -91,14 +116,22 @@ pub fn new_int_from_str(s: &str, neg: bool, base: u32) -> (Obj, usize) {
 }
 
 pub fn int_get_truncated(o: Obj) -> Int {
-    if obj::is_small_int(o) { obj::small_int_value(o) } else { mpz::hash(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz }) }
+    if obj::is_small_int(o) {
+        obj::small_int_value(o)
+    } else {
+        mpz::hash(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz })
+    }
 }
 
 pub fn int_get_checked(o: Obj) -> Int {
-    if obj::is_small_int(o) { return obj::small_int_value(o); }
+    if obj::is_small_int(o) {
+        return obj::small_int_value(o);
+    }
     let mut v = 0;
     unsafe {
-        if mpz::as_int_checked(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz }, &mut v) { v } else {
+        if mpz::as_int_checked(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz }, &mut v) {
+            v
+        } else {
             raise::raise(MpRaise::OverflowError("overflow converting long int"));
         }
     }
@@ -107,18 +140,24 @@ pub fn int_get_checked(o: Obj) -> Int {
 pub fn int_get_uint_checked(o: Obj) -> obj::Uint {
     if obj::is_small_int(o) {
         let v = obj::small_int_value(o);
-        if v >= 0 { return v as obj::Uint; }
+        if v >= 0 {
+            return v as obj::Uint;
+        }
     } else {
         let mut v = 0;
         unsafe {
-            if mpz::as_uint_checked(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz }, &mut v) { return v; }
+            if mpz::as_uint_checked(unsafe { &(*(obj::as_ptr(o) as *const ObjInt)).mpz }, &mut v) {
+                return v;
+            }
         }
     }
     raise::raise(MpRaise::OverflowError("overflow converting long int"));
 }
 
 pub fn int_unary_op(op: UnaryOp, o: Obj) -> Obj {
-    if obj::is_small_int(o) { return obj::OBJ_NULL; }
+    if obj::is_small_int(o) {
+        return obj::OBJ_NULL;
+    }
     let self_ptr = obj::as_ptr(o) as *mut ObjInt;
     unsafe {
         let z = &mut (*self_ptr).mpz;
@@ -126,9 +165,25 @@ pub fn int_unary_op(op: UnaryOp, o: Obj) -> Obj {
             UnaryOp::Bool => obj::new_bool(!mpz::is_zero(z)),
             UnaryOp::Hash => obj::new_small_int(mpz::hash(z)),
             UnaryOp::Positive | UnaryOp::IntMaybe => o,
-            UnaryOp::Negative => { let o2 = new_mpz(); mpz::neg_inpl(&mut (*o2).mpz, z); obj::from_ptr(o2 as *const ()) }
-            UnaryOp::Invert => { let o2 = new_mpz(); mpz::not_inpl(&mut (*o2).mpz, z); obj::from_ptr(o2 as *const ()) }
-            UnaryOp::Abs => if z.neg { let o2 = new_mpz(); mpz::abs_inpl(&mut (*o2).mpz, z); obj::from_ptr(o2 as *const ()) } else { o }
+            UnaryOp::Negative => {
+                let o2 = new_mpz();
+                mpz::neg_inpl(&mut (*o2).mpz, z);
+                obj::from_ptr(o2 as *const ())
+            }
+            UnaryOp::Invert => {
+                let o2 = new_mpz();
+                mpz::not_inpl(&mut (*o2).mpz, z);
+                obj::from_ptr(o2 as *const ())
+            }
+            UnaryOp::Abs => {
+                if z.neg {
+                    let o2 = new_mpz();
+                    mpz::abs_inpl(&mut (*o2).mpz, z);
+                    obj::from_ptr(o2 as *const ())
+                } else {
+                    o
+                }
+            }
             _ => obj::OBJ_NULL,
         }
     }
@@ -143,7 +198,14 @@ pub fn binary_op_mpz(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
     let mut zrhs = Mpz::default();
     load_mpz(lhs_in, &mut zlhs);
     load_mpz(rhs_in, &mut zrhs);
-    if matches!(op, BinaryOp::Less | BinaryOp::More | BinaryOp::LessEqual | BinaryOp::MoreEqual | BinaryOp::Equal) {
+    if matches!(
+        op,
+        BinaryOp::Less
+            | BinaryOp::More
+            | BinaryOp::LessEqual
+            | BinaryOp::MoreEqual
+            | BinaryOp::Equal
+    ) {
         let cmp = mpz::cmp(&zlhs, &zrhs);
         return obj::new_bool(match op {
             BinaryOp::Less => cmp < 0,
@@ -161,16 +223,49 @@ pub fn binary_op_mpz(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
             BinaryOp::Add | BinaryOp::InplaceAdd => mpz::add_inpl(res, &zlhs, &zrhs),
             BinaryOp::Subtract | BinaryOp::InplaceSubtract => mpz::sub_inpl(res, &zlhs, &zrhs),
             BinaryOp::Multiply | BinaryOp::InplaceMultiply => mpz::mul_inpl(res, &zlhs, &zrhs),
-            BinaryOp::FloorDivide | BinaryOp::InplaceFloorDivide | BinaryOp::Modulo | BinaryOp::InplaceModulo => {
+            BinaryOp::FloorDivide
+            | BinaryOp::InplaceFloorDivide
+            | BinaryOp::Modulo
+            | BinaryOp::InplaceModulo
+            | BinaryOp::Divmod => {
                 let mut quo = Mpz::default();
                 let mut rem = Mpz::default();
                 mpz::divmod_inpl(&mut quo, &mut rem, &zlhs, &zrhs);
-                if matches!(op, BinaryOp::Modulo | BinaryOp::InplaceModulo) { *res = rem; } else { *res = quo; }
+                if op == BinaryOp::Divmod {
+                    let q = if smallint::fits(mpz::hash(&quo)) {
+                        obj::new_small_int(mpz::hash(&quo))
+                    } else {
+                        let qo = new_mpz();
+                        unsafe {
+                            (*qo).mpz = quo;
+                            obj::from_ptr(qo as *const ())
+                        }
+                    };
+                    let r = if smallint::fits(mpz::hash(&rem)) {
+                        obj::new_small_int(mpz::hash(&rem))
+                    } else {
+                        let ro = new_mpz();
+                        unsafe {
+                            (*ro).mpz = rem;
+                            obj::from_ptr(ro as *const ())
+                        }
+                    };
+                    return objtuple::new_tuple(2, Some(&[q, r]));
+                }
+                if matches!(op, BinaryOp::Modulo | BinaryOp::InplaceModulo) {
+                    *res = rem;
+                } else {
+                    *res = quo;
+                }
             }
             _ => return obj::OBJ_NULL,
         }
         let small = mpz::hash(res);
-        if smallint::fits(small) { obj::new_small_int(small) } else { obj::from_ptr(o as *const ()) }
+        if smallint::fits(small) {
+            obj::new_small_int(small)
+        } else {
+            obj::from_ptr(o as *const ())
+        }
     }
 }
 
@@ -178,6 +273,8 @@ fn load_mpz(o: Obj, z: &mut Mpz) {
     if obj::is_small_int(o) {
         mpz::set_from_int(z, obj::small_int_value(o));
     } else {
-        unsafe { mpz::set(z, &(*(obj::as_ptr(o) as *const ObjInt)).mpz); }
+        unsafe {
+            mpz::set(z, &(*(obj::as_ptr(o) as *const ObjInt)).mpz);
+        }
     }
 }

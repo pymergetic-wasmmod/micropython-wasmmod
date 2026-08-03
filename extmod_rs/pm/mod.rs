@@ -75,3 +75,12 @@ mod btree_wired;
 
 mod network;
 mod network_wired;
+
+mod bluetooth;
+mod bluetooth_wired;
+
+mod lwip;
+mod lwip_wired;
+
+mod openamp;
+mod openamp_wired;

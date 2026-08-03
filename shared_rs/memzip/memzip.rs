@@ -120,7 +120,8 @@ pub fn locate(filename: &str) -> Result<(&'static [u8], usize), MemzipResult> {
     }
     let data = memzip_data().ok_or(MemzipResult::NoFile)?;
     let base = find_file_header(filename).unwrap().0;
-    let start = base + mem::size_of::<FileHdr>() + hdr.filename_len as usize + hdr.extra_len as usize;
+    let start =
+        base + mem::size_of::<FileHdr>() + hdr.filename_len as usize + hdr.extra_len as usize;
     let end = start + hdr.uncompressed_size as usize;
     if end > data.len() {
         return Err(MemzipResult::NoFile);

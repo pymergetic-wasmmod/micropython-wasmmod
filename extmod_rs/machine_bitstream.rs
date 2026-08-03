@@ -1,8 +1,8 @@
 //! rewrite of extmod/machine_bitstream.c
 // symmetry: done
 
-use py_rs::mphal;
 use py_rs::mpconfig;
+use py_rs::mphal;
 use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::raise::{self, MpRaise};
 
@@ -24,7 +24,9 @@ struct ObjFunBuiltinVar {
 
 static mut FV: [*const (); 1] = [callv as *const ()];
 static TV: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -44,7 +46,13 @@ static TV: ObjType = ObjType {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -90,7 +98,7 @@ fn machine_bitstream(n: usize, args: &[Obj]) -> Obj {
     let encoding = obj::get_int(args[1]) as i32;
     let mut bufinfo = BufferInfo::default();
     obj::get_buffer_raise(args[3], &mut bufinfo, obj::BUFFER_READ);
-    let buf = unsafe { core::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+    let buf = bufinfo.as_bytes();
 
     match encoding {
         MACHINE_BITSTREAM_TYPE_HIGH_LOW => {

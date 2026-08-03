@@ -9,7 +9,9 @@ pub fn hci_poll() -> bool {
     false
 }
 
-pub fn hci_active() -> bool { hci_poll() }
+pub fn hci_active() -> bool {
+    hci_poll()
+}
 
 pub fn hci_uart_wfi() {
     #[cfg(feature = "bluetooth_nimble")]

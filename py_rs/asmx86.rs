@@ -180,10 +180,7 @@ fn write_r32_disp(asm: &mut AsmX86, r32: i32, disp_r32: i32, disp_offset: i32) {
     } else {
         MODRM_RM_DISP32
     };
-    write_byte_1(
-        asm,
-        modrm_r32(r32) | rm_disp | modrm_rm_r32(disp_r32),
-    );
+    write_byte_1(asm, modrm_r32(r32) | rm_disp | modrm_rm_r32(disp_r32));
     if disp_r32 == ASM_X86_REG_ESP {
         write_byte_1(asm, 0x24);
     }
@@ -631,6 +628,10 @@ pub fn call_ind(asm: &mut AsmX86, fun_id: usize, n_args: usize, temp_r32: i32) {
     );
 
     if n_args > 0 {
-        add_i32_to_r32(asm, ((n_args + align) * WORD_SIZE as usize) as i32, ASM_X86_REG_ESP);
+        add_i32_to_r32(
+            asm,
+            ((n_args + align) * WORD_SIZE as usize) as i32,
+            ASM_X86_REG_ESP,
+        );
     }
 }

@@ -76,11 +76,7 @@ pub fn printf(fmt: &str, args: &[VaArg<'_>]) -> i32 {
 pub fn putchar(c: i32) -> i32 {
     let chr = c as u8;
     if let Some(f) = INTERNAL_PRINTF_PRINTER.print_strn {
-        f(
-            INTERNAL_PRINTF_PRINTER.data,
-            &chr as *const u8,
-            1,
-        );
+        f(INTERNAL_PRINTF_PRINTER.data, &chr as *const u8, 1);
     }
     c
 }

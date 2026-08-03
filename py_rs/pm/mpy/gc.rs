@@ -1,9 +1,9 @@
 //! Shared helpers for `pm_mpy_gc_*` accessors.
 // symmetry: done
 
+use super::export::module_global_export;
 use crate::modgc;
 use crate::obj;
-use super::export::module_global_export;
 
 /// Look up `gc` module export `name` (null if absent).
 pub(crate) fn gc_export(name: &str) -> obj::Obj {

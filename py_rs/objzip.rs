@@ -27,7 +27,9 @@ fn iters_ptr_mut(o: *mut ObjZip) -> *mut Obj {
 static mut ZIP_SLOTS: [*const (); 2] = [zip_make_new as *const (), zip_iternext as *const ()];
 
 static mut TYPE_ZIP: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 1,
@@ -106,16 +108,22 @@ mod tests {
     #[test]
     fn zip_pairs_lists() {
         setup();
-        let a = objlist::new_list(3, Some(&[
-            obj::new_small_int(1),
-            obj::new_small_int(2),
-            obj::new_small_int(3),
-        ]));
-        let b = objlist::new_list(3, Some(&[
-            obj::new_small_int(4),
-            obj::new_small_int(5),
-            obj::new_small_int(6),
-        ]));
+        let a = objlist::new_list(
+            3,
+            Some(&[
+                obj::new_small_int(1),
+                obj::new_small_int(2),
+                obj::new_small_int(3),
+            ]),
+        );
+        let b = objlist::new_list(
+            3,
+            Some(&[
+                obj::new_small_int(4),
+                obj::new_small_int(5),
+                obj::new_small_int(6),
+            ]),
+        );
         let z = zip_make_new(type_zip(), 2, 0, &[a, b]);
         let t1 = zip_iternext(z);
         let (n, items) = objtuple::tuple_get(t1);

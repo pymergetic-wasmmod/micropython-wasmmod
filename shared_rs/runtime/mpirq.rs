@@ -56,10 +56,14 @@ pub fn dispatch(handler: Obj, parent: Obj, ishard: bool) -> i32 {
         scheduler::sched_lock();
         gc::lock();
         let mut nlr_buf = nlr::NlrBuf::default();
-        let result = match nlr::protect(&mut nlr_buf, || runtime::call_function_1(handler, parent)) {
+        let result = match nlr::protect(&mut nlr_buf, || runtime::call_function_1(handler, parent))
+        {
             Ok(_) => 0,
             Err(_) => {
-                let _ = mpprint::print_str(&mpprint::PLAT_PRINT, "Uncaught exception in IRQ callback handler\n");
+                let _ = mpprint::print_str(
+                    &mpprint::PLAT_PRINT,
+                    "Uncaught exception in IRQ callback handler\n",
+                );
                 -1
             }
         };
@@ -87,7 +91,9 @@ pub fn irq_type() -> &'static ObjType {
     unsafe {
         if IRQ_TYPE.is_none() {
             IRQ_TYPE = Some(ObjType {
-                base: ObjBase { type_: core::ptr::null() },
+                base: ObjBase {
+                    type_: core::ptr::null(),
+                },
                 flags: TYPE_FLAG_NONE,
                 name: py_rs::qstr::from_str("irq"),
                 slot_index_make_new: 0,

@@ -5,9 +5,9 @@
 
 use crate::asmbase::{self, MpAsmBase};
 use crate::asmrv32::{
-    self, AsmRv32, ASM_RV32_REG_A0, ASM_RV32_REG_A1, ASM_RV32_REG_A2, ASM_RV32_REG_A3, ASM_RV32_REG_A4,
-    ASM_RV32_REG_A5, ASM_RV32_REG_A6, ASM_RV32_REG_S1, ASM_RV32_REG_S2, ASM_RV32_REG_S3, ASM_RV32_REG_S4,
-    ASM_RV32_REG_ZERO,
+    self, AsmRv32, ASM_RV32_REG_A0, ASM_RV32_REG_A1, ASM_RV32_REG_A2, ASM_RV32_REG_A3,
+    ASM_RV32_REG_A4, ASM_RV32_REG_A5, ASM_RV32_REG_A6, ASM_RV32_REG_S1, ASM_RV32_REG_S2,
+    ASM_RV32_REG_S3, ASM_RV32_REG_S4, ASM_RV32_REG_ZERO,
 };
 use crate::emitnative::{self, AsmContext, NativeBackend};
 use crate::mpconfig;
@@ -42,7 +42,9 @@ impl NativeBackend for BackendRv32 {
     const REG_FUN_TABLE: i32 = ASM_RV32_REG_S1 as i32;
     const REG_GENERATOR_STATE: i32 = ASM_RV32_REG_S2 as i32;
     const REG_QSTR_TABLE: i32 = ASM_RV32_REG_S4 as i32;
-    const REG_LOCAL_LAST: i32 = ASM_RV32_REG_S4 as i32;
+    // See the comment on the x64 backend: with `PERSISTENT_CODE_SAVE` this must
+    // be `REG_LOCAL_2`, not `REG_LOCAL_3` (`REG_QSTR_TABLE`).
+    const REG_LOCAL_LAST: i32 = ASM_RV32_REG_S2 as i32;
     const NLR_BUF_IDX_LOCAL_1: usize = 6;
     const N_X86: bool = false;
     const N_X64: bool = false;
@@ -73,7 +75,8 @@ impl NativeBackend for BackendRv32 {
     const HAS_ASM_STORE16_REG_REG_REG: bool = true;
     const HAS_ASM_STORE32_REG_REG_REG: bool = true;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn new_asm(max_labels: usize) -> Self::Asm {
         let mut asm = AsmRv32 {

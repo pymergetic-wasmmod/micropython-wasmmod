@@ -1,9 +1,9 @@
 //! rewrite of py/emitcommon.c
 // symmetry: done
 
+use crate::emit::{self, EmitCommon};
 use crate::emit::{Emit, EmitIdOps};
 use crate::emitbc;
-use crate::emit::{self, EmitCommon};
 use crate::mpconfig;
 use crate::obj::{self, Obj};
 use crate::objfloat;
@@ -98,7 +98,12 @@ pub fn id_op(emit: *mut Emit, ops: EmitIdOps, scope: &Scope, qst: Qstr) {
                 EmitIdOps::Store => emitbc::store_local,
                 EmitIdOps::Delete => emitbc::delete_local,
             };
-            f(emit, qst, id.local_num as usize, emit::EMIT_IDOP_LOCAL_DEREF);
+            f(
+                emit,
+                qst,
+                id.local_num as usize,
+                emit::EMIT_IDOP_LOCAL_DEREF,
+            );
         }
         _ => unreachable!("unexpected id kind"),
     }

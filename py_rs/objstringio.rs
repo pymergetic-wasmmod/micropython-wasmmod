@@ -2,11 +2,14 @@
 // symmetry: done
 
 use crate::argcheck;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind, VaArg};
-use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use crate::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use crate::objdict::{self, ObjDict};
 use crate::objstr;
 use crate::qstr;
@@ -187,7 +190,8 @@ fn stringio_new(type_in: &ObjType) -> *mut ObjStringio {
 fn stringio_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     argcheck::check_num(n_args, n_kw, 0, 1, false);
     let type_static: &'static ObjType = unsafe { &*(type_in as *const ObjType) };
-    let o = obj::malloc_helper(core::mem::size_of::<ObjStringio>(), type_static) as *mut ObjStringio;
+    let o =
+        obj::malloc_helper(core::mem::size_of::<ObjStringio>(), type_static) as *mut ObjStringio;
     unsafe {
         (*o).pos = 0;
         (*o).ref_obj = obj::OBJ_NULL;
@@ -211,12 +215,7 @@ fn stringio_make_new(type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]
         (*o).vstr = vstr::new(bufinfo.len);
         let self_obj = obj::from_ptr(o as *const ObjStringio as *const ());
         let mut err = 0;
-        stringio_write(
-            self_obj,
-            bufinfo.buf,
-            bufinfo.len,
-            &mut err,
-        );
+        stringio_write(self_obj, bufinfo.buf, bufinfo.len, &mut err);
         (*o).pos = 0;
         self_obj
     }
@@ -246,7 +245,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1S: [*const (); 1] = [f1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -284,19 +285,53 @@ fn locals_dict() -> *const () {
     unsafe {
         if DICT.is_none() {
             let table = vec![
-                MapElem { key: obj::new_qstr(qstr::from_str("read")), value: stream::stream_read_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("readinto")), value: stream::stream_readinto_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("readline")), value: stream::stream_unbuffered_readline_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("write")), value: stream::stream_write_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("seek")), value: stream::stream_seek_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("tell")), value: stream::stream_tell_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("flush")), value: stream::stream_flush_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("close")), value: stream::stream_close_obj() },
-                MapElem { key: obj::new_qstr(qstr::from_str("getvalue")), value: mk1(stringio_getvalue) },
-                MapElem { key: obj::new_qstr(qstr::from_str("__enter__")), value: mk1(|o| o) },
-                MapElem { key: obj::new_qstr(qstr::from_str("__exit__")), value: stream::stream___exit___obj() },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("read")),
+                    value: stream::stream_read_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("readinto")),
+                    value: stream::stream_readinto_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("readline")),
+                    value: stream::stream_unbuffered_readline_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("write")),
+                    value: stream::stream_write_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("seek")),
+                    value: stream::stream_seek_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("tell")),
+                    value: stream::stream_tell_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("flush")),
+                    value: stream::stream_flush_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("close")),
+                    value: stream::stream_close_obj(),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("getvalue")),
+                    value: mk1(stringio_getvalue),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("__enter__")),
+                    value: mk1(|o| o),
+                },
+                MapElem {
+                    key: obj::new_qstr(qstr::from_str("__exit__")),
+                    value: stream::stream___exit___obj(),
+                },
             ];
-            let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+            let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+                as *mut ObjDict;
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = Some(obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ());
         }
@@ -319,7 +354,9 @@ static mut BYTESIO_SLOTS: [*const (); 4] = [
 ];
 
 static mut TYPE_STRINGIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 1,
@@ -338,7 +375,9 @@ static mut TYPE_STRINGIO: ObjType = ObjType {
 };
 
 static mut TYPE_BYTESIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 1,

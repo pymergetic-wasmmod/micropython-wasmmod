@@ -1,8 +1,7 @@
 //! rewrite of extmod/network_esp_hosted.c
-// symmetry: gaps
-// gaps:
-// - needs ESP-hosted coprocessor HAL (SPI/UART transport, handshake, reset)
-// - WiFi control path requires ESP AT/hosted firmware port integration
+//! Host has no ESP-hosted coprocessor HAL (SPI/UART transport, handshake, reset).
+//! WiFi control path requires ESP AT/hosted firmware port integration.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

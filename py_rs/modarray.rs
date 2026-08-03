@@ -2,8 +2,8 @@
 // symmetry: done
 
 use crate::bc::ModuleContext;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{self, Obj, ObjType};
 use crate::objarray;

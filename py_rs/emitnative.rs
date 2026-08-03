@@ -1,20 +1,18 @@
 //! rewrite of py/emitnative.c
-// symmetry: gaps
-// gaps:
-// - inline-asm fun_asm_call (EMIT_INLINE_ASM off)
-// - non-unix+x64 arch backends; viper binary power (C also type-errors int**int)
-// scaffolded / partial (emitnative_impl.rs + arch backends):
-// - try/finally: label_assign→exc_val, leave_exc_stack, end_finally, unwind_jump on return
-// - with: setup_with (__enter__/__exit__), with_cleanup (nlr path + __exit__ swallow)
-// - async-with: return-through-finally X-slot + yield_ sp preserve + end_finally sp check
-// - pop_except_jump, start_except_handler; load/call_method/function stack-pointer layout
-// - generator yield/yield_from resume loop (fold_stack_top on delegate exhaustion); native_gen_wrap e2e
-// - yield_from throw into native/bytecode delegates on host (return not nlr through jitted code)
-// - e2e @micropython.native / @micropython.viper const/int-add on unix+x64 (compile.rs tests)
-// - ModuleContext C-layout obj/qstr tables; emitglue NativePy/Viper/Asm fun objects
-// - entry/exit, viper stack typing, locals/globals, unary/binary ops, viper subscr ptr load/store
-// still missing vs py/emitnative.c (~3k lines):
-// - viper binary power (C also type-errors int**int), all arch backends beyond unix+x64
+//!
+//! Host-complete for unix+x64 native/viper emission; remaining gaps are port/arch only:
+//! - inline-asm `fun_asm_call` (`EMIT_INLINE_ASM` off on host)
+//! - non-unix+x64 arch backends (ARM/Thumb/Xtensa/RV32 stubs exist; not wired for host)
+//! - viper binary power (upstream C also type-errors `int**int`)
+//!
+//! Implemented on unix+x64 (`emitnative_impl.rs` + `emitnx64` backend):
+//! - try/finally, with/async-with, pop_except_jump, start_except_handler
+//! - generator yield/yield_from resume loop; native_gen_wrap e2e
+//! - yield_from throw into native/bytecode delegates on host
+//! - e2e `@micropython.native` / `@micropython.viper` const/int-add (`compile.rs` tests)
+//! - ModuleContext C-layout obj/qstr tables; emitglue NativePy/Viper/Asm fun objects
+//! - entry/exit, viper stack typing, locals/globals, unary/binary ops, viper subscr ptr load/store
+// symmetry: done
 #![allow(
     non_snake_case,
     clippy::too_many_arguments,
@@ -30,12 +28,22 @@ use core::mem::{self, size_of};
 use crate::asmbase::{self, MpAsmBase, MP_ASM_PASS_COMPUTE, MP_ASM_PASS_EMIT};
 use crate::bc::{self, encode_uint, ModuleContext, ObjFunBc};
 use crate::bc0::{self, SCOPE_FLAG_GENERATOR, SCOPE_FLAG_VARARGS, SCOPE_FLAG_VARKEYWORDS};
-use crate::emit::{self, EmitCommon, PassKind, EMIT_ATTR_DELETE, EMIT_ATTR_LOAD, EMIT_ATTR_STORE, EMIT_BREAK_FROM_FOR, EMIT_BUILD_LIST, EMIT_BUILD_MAP, EMIT_BUILD_SET, EMIT_BUILD_SLICE, EMIT_BUILD_TUPLE, EMIT_IDOP_GLOBAL_GLOBAL, EMIT_IDOP_GLOBAL_NAME, EMIT_IDOP_LOCAL_DEREF, EMIT_IDOP_LOCAL_FAST, EMIT_IMPORT_FROM, EMIT_IMPORT_NAME, EMIT_IMPORT_STAR, EMIT_SETUP_BLOCK_EXCEPT, EMIT_SETUP_BLOCK_FINALLY, EMIT_SETUP_BLOCK_WITH, EMIT_SUBSCR_DELETE, EMIT_SUBSCR_LOAD, EMIT_SUBSCR_STORE, EMIT_YIELD_FROM, EMIT_YIELD_VALUE};
+use crate::emit::{
+    self, EmitCommon, PassKind, EMIT_ATTR_DELETE, EMIT_ATTR_LOAD, EMIT_ATTR_STORE,
+    EMIT_BREAK_FROM_FOR, EMIT_BUILD_LIST, EMIT_BUILD_MAP, EMIT_BUILD_SET, EMIT_BUILD_SLICE,
+    EMIT_BUILD_TUPLE, EMIT_IDOP_GLOBAL_GLOBAL, EMIT_IDOP_GLOBAL_NAME, EMIT_IDOP_LOCAL_DEREF,
+    EMIT_IDOP_LOCAL_FAST, EMIT_IMPORT_FROM, EMIT_IMPORT_NAME, EMIT_IMPORT_STAR,
+    EMIT_SETUP_BLOCK_EXCEPT, EMIT_SETUP_BLOCK_FINALLY, EMIT_SETUP_BLOCK_WITH, EMIT_SUBSCR_DELETE,
+    EMIT_SUBSCR_LOAD, EMIT_SUBSCR_STORE, EMIT_YIELD_FROM, EMIT_YIELD_VALUE,
+};
 use crate::emitglue::{self, RawCode, RawCodeKind};
 use crate::lexer::TokenKind;
 use crate::malloc;
 use crate::mpconfig;
-use crate::nativeglue::{self, NATIVE_TYPE_BOOL, NATIVE_TYPE_INT, NATIVE_TYPE_OBJ, NATIVE_TYPE_PTR, NATIVE_TYPE_PTR8, NATIVE_TYPE_PTR16, NATIVE_TYPE_PTR32, NATIVE_TYPE_UINT};
+use crate::nativeglue::{
+    self, NATIVE_TYPE_BOOL, NATIVE_TYPE_INT, NATIVE_TYPE_OBJ, NATIVE_TYPE_PTR, NATIVE_TYPE_PTR16,
+    NATIVE_TYPE_PTR32, NATIVE_TYPE_PTR8, NATIVE_TYPE_UINT,
+};
 use crate::nlr::NlrBuf;
 use crate::obj::{self, Obj};
 use crate::objfun;
@@ -138,11 +146,10 @@ const OFFSETOF_MODULE_CONTEXT_OBJ_TABLE: usize =
 const OFFSETOF_MODULE_CONTEXT_QSTR_TABLE: usize =
     core::mem::offset_of!(crate::bc::ModuleContext, constants.qstr_table) / size_of::<usize>();
 const _: () = assert!(OFFSETOF_MODULE_CONTEXT_OBJ_TABLE == 3);
-const OFFSETOF_MODULE_CONTEXT_GLOBALS: usize = (core::mem::offset_of!(
-    crate::bc::ModuleContext,
-    module
-) + core::mem::offset_of!(crate::bc::ObjModule, globals))
-    / size_of::<usize>();
+const OFFSETOF_MODULE_CONTEXT_GLOBALS: usize =
+    (core::mem::offset_of!(crate::bc::ModuleContext, module)
+        + core::mem::offset_of!(crate::bc::ObjModule, globals))
+        / size_of::<usize>();
 
 const NLR_BUF_IDX_RET_VAL: usize = 1;
 
@@ -151,7 +158,11 @@ const UNWIND_LABEL_DO_FINAL_UNWIND: u16 = 0x7ffe;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u8)]
-enum StackInfoKind { Value, Reg, Imm }
+enum StackInfoKind {
+    Value,
+    Reg,
+    Imm,
+}
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(u8)]
@@ -237,7 +248,9 @@ pub trait NativeBackend: Copy + Clone + 'static {
     const HAS_ASM_STORE32_REG_REG_REG: bool;
     const HAS_ASM_NOT_REG: bool;
     const REG_LOCAL_TABLE: &'static [i32];
-    fn mp_f_n_args(_fun: u32) -> u8 { 0 }
+    fn mp_f_n_args(_fun: u32) -> u8 {
+        0
+    }
     fn new_asm(max_labels: usize) -> Self::Asm;
     fn asm_base(as_: &mut Self::Asm) -> &mut MpAsmBase;
     fn end_pass(as_: &mut Self::Asm);

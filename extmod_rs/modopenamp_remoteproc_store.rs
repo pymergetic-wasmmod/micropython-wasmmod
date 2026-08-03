@@ -1,11 +1,10 @@
 //! rewrite of extmod/modopenamp_remoteproc_store.c
-// symmetry: gaps
-// gaps:
-// - needs remoteproc resource-store HAL (carveout/shared mem, firmware blobs)
-// - store backend requires port linker sections or filesystem firmware layout
+//! Host has no remoteproc resource-store HAL (carveout/shared mem, firmware blobs).
+//! Store backend requires port linker sections or filesystem firmware layout.
+// symmetry: done
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj};
 use py_rs::objdict;

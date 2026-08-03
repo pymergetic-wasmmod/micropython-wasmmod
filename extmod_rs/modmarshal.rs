@@ -4,8 +4,8 @@
 
 use py_rs::bc::ModuleContext;
 use py_rs::emitglue::{CompiledModule, ProtoFun};
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objcode;
@@ -72,7 +72,7 @@ fn marshal_dumps(value: Obj) -> Obj {
 fn marshal_loads(data: Obj) -> Obj {
     let mut bufinfo = BufferInfo::default();
     obj::get_buffer_raise(data, &mut bufinfo, obj::BUFFER_READ);
-    let buf = unsafe { std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+    let buf = bufinfo.as_bytes();
 
     let ctx = malloc::new_obj::<ModuleContext>().expect("marshal ctx");
     unsafe {

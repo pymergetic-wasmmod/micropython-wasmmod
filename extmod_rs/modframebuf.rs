@@ -5,10 +5,12 @@ use crate::font_petme128_8x8::FONT_PETME128_8X8;
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
 use py_rs::binary;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
-use py_rs::obj::{self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::obj::{
+    self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objmodule;
 use py_rs::objstr;
@@ -89,7 +91,10 @@ fn mono_horiz_fill_rect(fb: &ObjFramebuf, x: u32, y: u32, w: u32, h: u32, col: u
     let mut x = x;
     let mut w = w;
     while w > 0 {
-        let mut b = unsafe { fb.buf.add((x >> 3) as usize + y as usize * advance as usize) };
+        let mut b = unsafe {
+            fb.buf
+                .add((x >> 3) as usize + y as usize * advance as usize)
+        };
         let offset = if reverse { x & 7 } else { 7 - (x & 7) };
         let mut hh = h;
         while hh > 0 {
@@ -150,9 +155,7 @@ fn rgb565_getpixel(fb: &ObjFramebuf, x: u32, y: u32) -> u32 {
 }
 
 fn rgb565_fill_rect(fb: &ObjFramebuf, x: u32, y: u32, w: u32, mut h: u32, col: u32) {
-    let mut b = unsafe {
-        (fb.buf as *mut u16).add((x + y * fb.stride as u32) as usize)
-    };
+    let mut b = unsafe { (fb.buf as *mut u16).add((x + y * fb.stride as u32) as usize) };
     while h > 0 {
         let mut ww = w;
         while ww > 0 {
@@ -181,7 +184,10 @@ fn gs2_hmsb_setpixel(fb: &ObjFramebuf, x: u32, y: u32, col: u32) {
 
 fn gs2_hmsb_getpixel(fb: &ObjFramebuf, x: u32, y: u32) -> u32 {
     unsafe {
-        let pixel = fb.buf.add(((x + y * fb.stride as u32) >> 2) as usize).read();
+        let pixel = fb
+            .buf
+            .add(((x + y * fb.stride as u32) >> 2) as usize)
+            .read();
         let shift = (x & 0x3) << 1;
         ((pixel >> shift) & 0x3).into()
     }
@@ -208,7 +214,10 @@ fn gs4_hmsb_setpixel(fb: &ObjFramebuf, x: u32, y: u32, col: u32) {
 
 fn gs4_hmsb_getpixel(fb: &ObjFramebuf, x: u32, y: u32) -> u32 {
     unsafe {
-        let pixel = fb.buf.add(((x + y * fb.stride as u32) >> 1) as usize).read();
+        let pixel = fb
+            .buf
+            .add(((x + y * fb.stride as u32) >> 1) as usize)
+            .read();
         if x % 2 != 0 {
             (pixel & 0x0f).into()
         } else {
@@ -219,8 +228,7 @@ fn gs4_hmsb_getpixel(fb: &ObjFramebuf, x: u32, y: u32) -> u32 {
 
 fn gs4_hmsb_fill_rect(fb: &ObjFramebuf, x: u32, y: u32, w: u32, mut h: u32, col: u32) {
     let col = col & 0x0f;
-    let mut pixel_pair =
-        unsafe { fb.buf.add(((x + y * fb.stride as u32) >> 1) as usize) };
+    let mut pixel_pair = unsafe { fb.buf.add(((x + y * fb.stride as u32) >> 1) as usize) };
     let col_shifted_left = (col << 4) as u8;
     let col_pixel_pair = col_shifted_left | col as u8;
     let pixel_count_till_next_line = (fb.stride - w as u16) >> 1;
@@ -340,7 +348,12 @@ fn getpixel(fb: &ObjFramebuf, x: u32, y: u32) -> u32 {
 }
 
 fn fill_rect(fb: &ObjFramebuf, x: isize, y: isize, w: isize, h: isize, col: u32) {
-    if h < 1 || w < 1 || x + w <= 0 || y + h <= 0 || y >= fb.height as isize || x >= fb.width as isize
+    if h < 1
+        || w < 1
+        || x + w <= 0
+        || y + h <= 0
+        || y >= fb.height as isize
+        || x >= fb.width as isize
     {
         return;
     }
@@ -373,7 +386,12 @@ fn framebuf_make_new_helper(
         width
     };
 
-    if width < 1 || height < 1 || width > 0xffff || height > 0xffff || stride > 0xffff || stride < width
+    if width < 1
+        || height < 1
+        || width > 0xffff
+        || height > 0xffff
+        || stride > 0xffff
+        || stride < width
     {
         raise::raise(MpRaise::ValueError(""));
     }
@@ -588,7 +606,13 @@ fn call3(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -831,7 +855,7 @@ fn framebuf_ellipse(n: usize, args: &[Obj]) -> Obj {
 }
 
 fn poly_int(bufinfo: &BufferInfo, index: usize) -> isize {
-    let data = unsafe { std::slice::from_raw_parts(bufinfo.buf as *const u8, bufinfo.len) };
+    let data = bufinfo.as_bytes();
     obj::get_int(binary::get_val_array(bufinfo.typecode as u8, data, index))
 }
 
@@ -963,11 +987,7 @@ fn framebuf_blit(n: usize, args: &[Obj]) -> Obj {
     get_readonly_framebuffer(args[1], &mut source);
     let x = obj::get_int(args[2]);
     let y = obj::get_int(args[3]);
-    let key = if n > 4 {
-        obj::get_int(args[4])
-    } else {
-        -1
-    };
+    let key = if n > 4 { obj::get_int(args[4]) } else { -1 };
     let mut palette = ObjFramebuf {
         base: ObjBase {
             type_: core::ptr::null(),
@@ -1031,11 +1051,7 @@ fn framebuf_scroll(self_in: Obj, xstep_in: Obj, ystep_in: Obj) -> Obj {
         if xstep >= self_.width as isize {
             return obj::CONST_NONE;
         }
-        (
-            (self_.width - 1) as u32,
-            (xstep - 1) as u32,
-            -1,
-        )
+        ((self_.width - 1) as u32, (xstep - 1) as u32, -1)
     };
     let (mut y, yend, dy): (u32, u32, isize) = if ystep < 0 {
         if -ystep >= self_.height as isize {
@@ -1046,11 +1062,7 @@ fn framebuf_scroll(self_in: Obj, xstep_in: Obj, ystep_in: Obj) -> Obj {
         if ystep >= self_.height as isize {
             return obj::CONST_NONE;
         }
-        (
-            (self_.height - 1) as u32,
-            (ystep - 1) as u32,
-            -1,
-        )
+        ((self_.height - 1) as u32, (ystep - 1) as u32, -1)
     };
     while y != yend {
         let mut x = sx;
@@ -1073,11 +1085,7 @@ fn framebuf_text(n: usize, args: &[Obj]) -> Obj {
     let (str_data, str_len) = objstr::str_get_data(args[1]);
     let mut x0 = obj::get_int(args[2]);
     let y0 = obj::get_int(args[3]);
-    let col = if n >= 5 {
-        obj::get_int(args[4])
-    } else {
-        1
-    };
+    let col = if n >= 5 { obj::get_int(args[4]) } else { 1 };
     for &byte in &str_data[..str_len] {
         let mut chr = byte;
         if !(32..=127).contains(&chr) {
@@ -1197,8 +1205,8 @@ fn init_framebuf_type() -> &'static ObjType {
                 value: mkv(5, 6, framebuf_poly),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             FRAMEBUF_SLOTS[2] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

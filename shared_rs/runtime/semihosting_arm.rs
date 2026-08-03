@@ -109,7 +109,10 @@ pub fn tx_strn_cooked(str: &str, len: usize) -> u32 {
     let mut start = 0usize;
     for (i, &byte) in bytes.iter().enumerate() {
         if byte == b'\n' {
-            tx_strn(unsafe { std::str::from_utf8_unchecked(&bytes[start..i]) }, i - start);
+            tx_strn(
+                unsafe { std::str::from_utf8_unchecked(&bytes[start..i]) },
+                i - start,
+            );
             tx_char(b'\r');
             start = i;
         }

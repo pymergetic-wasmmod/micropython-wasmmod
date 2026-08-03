@@ -5,9 +5,11 @@ use py_rs::argcheck;
 use py_rs::builtinimport::ImportStat;
 use py_rs::malloc;
 use py_rs::map::{self, MapElem};
-use py_rs::mperrno;
 use py_rs::mpconfig;
-use py_rs::obj::{self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use py_rs::mperrno;
+use py_rs::obj::{
+    self, MakeNewFn, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objpolyiter;
 use py_rs::objstr;
@@ -67,7 +69,8 @@ fn import_stat(self_: *const ObjVfsFat, path: &str) -> ImportStat {
 fn make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     argcheck::check_num(n_args, n_kw, 1, 1, false);
     let o = malloc::new_obj::<ObjVfsFat>().expect("VfsFat");
-    let mount = FatMount::create(args[0], false).unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
+    let mount =
+        FatMount::create(args[0], false).unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
     unsafe {
         (*o).base.type_ = type_vfs_fat();
         (*o).mount = Box::into_raw(mount);
@@ -76,7 +79,8 @@ fn make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj
 }
 
 fn mkfs(bdev_in: Obj) -> Obj {
-    let _mount = FatMount::create(bdev_in, true).unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
+    let _mount =
+        FatMount::create(bdev_in, true).unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
     obj::CONST_NONE
 }
 
@@ -87,7 +91,9 @@ fn mount(self_in: Obj, readonly: Obj, mkfs_flag: Obj) -> Obj {
     }
     if mount.no_filesystem || (mount.blockdev.flags & BLOCKDEV_FLAG_NO_FILESYSTEM != 0) {
         if obj::is_true(mkfs_flag) {
-            mount.format_existing().unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
+            mount
+                .format_existing()
+                .unwrap_or_else(|e| raise::raise(MpRaise::OSError(e)));
         } else if mount.no_filesystem {
             raise::raise(MpRaise::OSError(mperrno::ENODEV));
         }
@@ -126,11 +132,7 @@ fn ilistdir_iternext(self_in: Obj) -> Obj {
     } else {
         objstr::new_bytes(e.name.as_bytes())
     };
-    let mode = if e.is_dir {
-        MP_S_IFDIR
-    } else {
-        MP_S_IFREG
-    };
+    let mode = if e.is_dir { MP_S_IFDIR } else { MP_S_IFREG };
     objtuple::new_tuple(
         4,
         Some(&[
@@ -298,7 +300,9 @@ static mut F2: [*const (); 1] = [call2 as *const ()];
 static mut F3: [*const (); 1] = [call3 as *const ()];
 static mut FVS: [*const (); 1] = [callvs as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -316,7 +320,9 @@ static TF1: ObjType = ObjType {
     slots: unsafe { F1.as_ptr() },
 };
 static TF2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -334,7 +340,9 @@ static TF2: ObjType = ObjType {
     slots: unsafe { F2.as_ptr() },
 };
 static TF3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -352,7 +360,9 @@ static TF3: ObjType = ObjType {
     slots: unsafe { F3.as_ptr() },
 };
 static TFVS: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -384,7 +394,13 @@ fn call3(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callvs(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVarSelf) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     unsafe { (self_.fun)(a[0], n - 1, &a[1..]) }
 }
 
@@ -427,7 +443,9 @@ static VFS_FAT_PROTO: VfsProto = VfsProto { import_stat };
 
 static mut VFS_FAT_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_VFS_FAT: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -504,8 +522,8 @@ fn init_type() {
                 value: mk2(statvfs),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             VFS_FAT_SLOTS[0] = make_new as MakeNewFn as *const ();

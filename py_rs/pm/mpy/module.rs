@@ -27,7 +27,11 @@ pub fn module_get(name: &str) -> pm_mpy_module_t {
 }
 
 /// Set a module global (`pm::mpy::module_set_attr`).
-pub fn module_set_attr(module: pm_mpy_module_t, attr: pm_mpy_qstr_t, value: pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn module_set_attr(
+    module: pm_mpy_module_t,
+    attr: pm_mpy_qstr_t,
+    value: pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     let globals = objmodule::module_get_globals(module.to_obj());
     objdict::dict_store(
         obj::from_ptr(globals as *const ObjDict as *const ()),
@@ -38,7 +42,11 @@ pub fn module_set_attr(module: pm_mpy_module_t, attr: pm_mpy_qstr_t, value: pm_m
 }
 
 /// Get a module global (`pm::mpy::module_get_attr`).
-pub fn module_get_attr(module: pm_mpy_module_t, attr: pm_mpy_qstr_t, out: &mut pm_mpy_obj_t) -> pm_mpy_status_t {
+pub fn module_get_attr(
+    module: pm_mpy_module_t,
+    attr: pm_mpy_qstr_t,
+    out: &mut pm_mpy_obj_t,
+) -> pm_mpy_status_t {
     let globals = objmodule::module_get_globals(module.to_obj());
     let value = objdict::dict_get(
         obj::from_ptr(globals as *const ObjDict as *const ()),

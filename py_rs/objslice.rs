@@ -36,7 +36,9 @@ struct ObjFunBuiltin2 {
 static mut SLICE_INDICES_FUN_SLOTS: [*const (); 1] = [slice_indices_call as *const ()];
 
 static TYPE_SLICE_INDICES_FUN: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -57,15 +59,15 @@ static TYPE_SLICE_INDICES_FUN: ObjType = ObjType {
 static SLICE_FUN_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_slice_indices_fun() {
-    SLICE_FUN_INIT.get_or_init(|| {
-        unsafe {
-            SLICE_INDICES_FUN.base.type_ = &TYPE_SLICE_INDICES_FUN as *const ObjType;
-        }
+    SLICE_FUN_INIT.get_or_init(|| unsafe {
+        SLICE_INDICES_FUN.base.type_ = &TYPE_SLICE_INDICES_FUN as *const ObjType;
     });
 }
 
 static mut SLICE_INDICES_FUN: ObjFunBuiltin2 = ObjFunBuiltin2 {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     fun: slice_indices_method,
 };
 
@@ -81,8 +83,10 @@ static mut SLICE_SLOTS: [*const (); 3] = [
     slice_attr as *const (),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 0,
@@ -90,7 +94,11 @@ static TYPE: ObjType = ObjType {
     slot_index_call: 0,
     slot_index_unary_op: 2,
     slot_index_binary_op: 0,
-    slot_index_attr: if mpconfig::PY_BUILTINS_SLICE_ATTRS { 3 } else { 0 },
+    slot_index_attr: if mpconfig::PY_BUILTINS_SLICE_ATTRS {
+        3
+    } else {
+        0
+    },
     slot_index_subscr: 0,
     slot_index_iter: 0,
     slot_index_buffer: 0,
@@ -101,7 +109,11 @@ static TYPE: ObjType = ObjType {
 };
 
 pub fn type_slice() -> &'static ObjType {
-    &TYPE
+    static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+    INIT.get_or_init(|| unsafe {
+        TYPE.name = crate::qstr::from_str("slice");
+    });
+    unsafe { &TYPE }
 }
 
 /// `mp_obj_new_slice`
@@ -134,7 +146,11 @@ pub fn slice_unary_op(_op: UnaryOp, _o_in: Obj) -> Obj {
 
 fn slice_indices_method(self_in: Obj, length_obj: Obj) -> Obj {
     let length = obj::get_int(length_obj);
-    let mut bound = BoundSlice { start: 0, stop: 0, step: 1 };
+    let mut bound = BoundSlice {
+        start: 0,
+        stop: 0,
+        step: 1,
+    };
     slice_indices(self_in, length, &mut bound);
     let results = [
         obj::new_small_int(bound.start),
@@ -229,8 +245,16 @@ mod tests {
 
     #[test]
     fn positive_step_indices() {
-        let s = new_slice(obj::CONST_NONE, obj::new_small_int(10), obj::new_small_int(2));
-        let mut r = BoundSlice { start: 0, stop: 0, step: 1 };
+        let s = new_slice(
+            obj::CONST_NONE,
+            obj::new_small_int(10),
+            obj::new_small_int(2),
+        );
+        let mut r = BoundSlice {
+            start: 0,
+            stop: 0,
+            step: 1,
+        };
         slice_indices(s, 20, &mut r);
         assert_eq!(r.start, 0);
         assert_eq!(r.stop, 10);
@@ -239,8 +263,16 @@ mod tests {
 
     #[test]
     fn negative_step_indices() {
-        let s = new_slice(obj::new_small_int(-1), obj::CONST_NONE, obj::new_small_int(-1));
-        let mut r = BoundSlice { start: 0, stop: 0, step: 1 };
+        let s = new_slice(
+            obj::new_small_int(-1),
+            obj::CONST_NONE,
+            obj::new_small_int(-1),
+        );
+        let mut r = BoundSlice {
+            start: 0,
+            stop: 0,
+            step: 1,
+        };
         slice_indices(s, 5, &mut r);
         assert_eq!(r.start, 4);
         assert_eq!(r.stop, -1);

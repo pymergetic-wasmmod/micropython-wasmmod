@@ -3,10 +3,10 @@
 
 use core::mem::size_of;
 
-use crate::argcheck;
+use crate::argcheck::{self, Arg, ArgFlag, ArgVal};
 use crate::cstack;
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, Map, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{
@@ -38,6 +38,7 @@ type BuiltinFn1 = fn(Obj) -> Obj;
 type BuiltinFn2 = fn(Obj, Obj) -> Obj;
 type BuiltinFn3 = fn(Obj, Obj, Obj) -> Obj;
 type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
+type BuiltinFnKw = fn(usize, &[Obj], &mut Map) -> Obj;
 
 #[repr(C)]
 struct ObjFunBuiltin1 {
@@ -65,13 +66,23 @@ struct ObjFunBuiltinVar {
     fun: BuiltinFnVar,
 }
 
+#[repr(C)]
+struct ObjFunBuiltinKw {
+    base: ObjBase,
+    min_args: u8,
+    fun: BuiltinFnKw,
+}
+
 static mut FUN_BUILTIN_1_SLOTS: [*const (); 1] = [fun_builtin_1_call as *const ()];
 static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const ()];
 static mut FUN_BUILTIN_3_SLOTS: [*const (); 1] = [fun_builtin_3_call as *const ()];
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
+static mut FUN_BUILTIN_KW_SLOTS: [*const (); 1] = [fun_builtin_kw_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -90,7 +101,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -109,7 +122,9 @@ static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -128,7 +143,9 @@ static TYPE_FUN_BUILTIN_3: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -144,6 +161,27 @@ static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
     slot_index_parent: 0,
     slot_index_locals_dict: 0,
     slots: unsafe { FUN_BUILTIN_VAR_SLOTS.as_ptr() },
+};
+
+static TYPE_FUN_BUILTIN_KW: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
+    flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
+    name: 0,
+    slot_index_make_new: 0,
+    slot_index_print: 0,
+    slot_index_call: 1,
+    slot_index_unary_op: 0,
+    slot_index_binary_op: 0,
+    slot_index_attr: 0,
+    slot_index_subscr: 0,
+    slot_index_iter: 0,
+    slot_index_buffer: 0,
+    slot_index_protocol: 0,
+    slot_index_parent: 0,
+    slot_index_locals_dict: 0,
+    slots: unsafe { FUN_BUILTIN_KW_SLOTS.as_ptr() },
 };
 
 fn fun_builtin_1_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
@@ -166,8 +204,37 @@ fn fun_builtin_3_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
+}
+
+fn fun_builtin_kw_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
+    let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinKw) };
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.min_args as usize,
+        true,
+    );
+    let mut kw_args = Map::default();
+    map::init(&mut kw_args, n_kw);
+    for i in 0..n_kw {
+        if let Some(slot) = map::lookup(
+            &mut kw_args,
+            args[n_args + i * 2],
+            map::LookupKind::AddIfNotFound,
+        ) {
+            slot.value = args[n_args + i * 2 + 1];
+        }
+    }
+    (self_.fun)(n_args, args, &mut kw_args)
 }
 
 fn new_fun_builtin_1(fun: BuiltinFn1) -> Obj {
@@ -208,6 +275,16 @@ fn new_fun_builtin_var(min_args: u8, max_args: u8, fun: BuiltinFnVar) -> Obj {
     }
 }
 
+fn new_fun_builtin_kw(min_args: u8, fun: BuiltinFnKw) -> Obj {
+    let o = malloc::new_obj::<ObjFunBuiltinKw>().expect("fun_builtin_kw alloc");
+    unsafe {
+        (*o).base.type_ = &TYPE_FUN_BUILTIN_KW as *const ObjType;
+        (*o).min_args = min_args;
+        (*o).fun = fun;
+        obj::from_ptr(o as *const ObjFunBuiltinKw as *const ())
+    }
+}
+
 // --- list iterator ------------------------------------------------------------
 
 #[repr(C)]
@@ -242,8 +319,10 @@ static mut LIST_SLOTS: [*const (); 7] = [
     core::ptr::null(),
 ];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -265,30 +344,75 @@ static LIST_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_list_type() {
     LIST_INIT.get_or_init(|| {
+        unsafe {
+            TYPE.name = qstr::from_str("list");
+        }
         let table = vec![
-            MapElem { key: obj::new_qstr(qstr::from_str("append")), value: new_fun_builtin_2(list_append) },
-            MapElem { key: obj::new_qstr(qstr::from_str("clear")), value: new_fun_builtin_1(list_clear) },
-            MapElem { key: obj::new_qstr(qstr::from_str("copy")), value: new_fun_builtin_1(list_copy) },
-            MapElem { key: obj::new_qstr(qstr::from_str("count")), value: new_fun_builtin_2(list_count) },
-            MapElem { key: obj::new_qstr(qstr::from_str("extend")), value: new_fun_builtin_2(list_extend) },
-            MapElem { key: obj::new_qstr(qstr::from_str("index")), value: new_fun_builtin_var(2, 4, list_index) },
-            MapElem { key: obj::new_qstr(qstr::from_str("insert")), value: new_fun_builtin_3(list_insert) },
-            MapElem { key: obj::new_qstr(qstr::from_str("pop")), value: new_fun_builtin_var(1, 2, list_pop) },
-            MapElem { key: obj::new_qstr(qstr::from_str("remove")), value: new_fun_builtin_2(list_remove) },
-            MapElem { key: obj::new_qstr(qstr::from_str("reverse")), value: new_fun_builtin_1(list_reverse) },
-            MapElem { key: obj::new_qstr(qstr::from_str("sort")), value: new_fun_builtin_var(1, 1, list_sort) },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("append")),
+                value: new_fun_builtin_2(list_append),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("clear")),
+                value: new_fun_builtin_1(list_clear),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("copy")),
+                value: new_fun_builtin_1(list_copy),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("count")),
+                value: new_fun_builtin_2(list_count),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("extend")),
+                value: new_fun_builtin_2(list_extend),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("index")),
+                value: new_fun_builtin_var(2, 4, list_index),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("insert")),
+                value: new_fun_builtin_3(list_insert),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("pop")),
+                value: new_fun_builtin_var(1, 2, list_pop),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("remove")),
+                value: new_fun_builtin_2(list_remove),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("reverse")),
+                value: new_fun_builtin_1(list_reverse),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("sort")),
+                value: new_fun_builtin_kw(1, list_sort),
+            },
         ];
         let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             LIST_SLOTS[6] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+            crate::gc::add_root(ptr as *mut u8);
+            for elem in &(*ptr).map.table {
+                if elem.key != obj::OBJ_NULL
+                    && elem.key != obj::OBJ_SENTINEL
+                    && obj::is_obj(elem.value)
+                {
+                    crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+                }
+            }
         }
     });
 }
 
 pub fn type_list() -> &'static ObjType {
     init_list_type();
-    &TYPE
+    unsafe { &TYPE }
 }
 
 // --- helpers ------------------------------------------------------------------
@@ -334,11 +458,7 @@ fn seq_replace_no_grow(
 ) {
     unsafe {
         std::ptr::copy(slice, dest.add(beg), slice_len);
-        std::ptr::copy(
-            dest.add(end),
-            dest.add(beg + slice_len),
-            dest_len - end,
-        );
+        std::ptr::copy(dest.add(end), dest.add(beg + slice_len), dest_len - end);
     }
 }
 
@@ -371,7 +491,11 @@ fn list_new(n: usize) -> *mut ObjList {
 pub fn list_init(o: *mut ObjList, n: usize) {
     unsafe {
         (*o).base.type_ = type_list() as *const ObjType;
-        (*o).alloc = if n < LIST_MIN_ALLOC { LIST_MIN_ALLOC } else { n };
+        (*o).alloc = if n < LIST_MIN_ALLOC {
+            LIST_MIN_ALLOC
+        } else {
+            n
+        };
         (*o).len = n;
         (*o).items = malloc::new::<Obj>((*o).alloc).expect("list items alloc");
         seq_clear((*o).items, n, (*o).alloc);
@@ -479,7 +603,10 @@ pub fn list_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
                     size_of::<Obj>(),
                     o.len,
                     n,
-                    std::slice::from_raw_parts_mut((*s).items as *mut u8, (*s).len * size_of::<Obj>()),
+                    std::slice::from_raw_parts_mut(
+                        (*s).items as *mut u8,
+                        (*s).len * size_of::<Obj>(),
+                    ),
                 );
             }
             obj::from_ptr(s as *const ObjList as *const ())
@@ -508,7 +635,11 @@ pub fn list_binary_op(op: BinaryOp, lhs: Obj, rhs: Obj) -> Obj {
 pub fn list_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
     if mpconfig::PY_BUILTINS_SLICE && obj::is_exact_type(index, objslice::type_slice()) {
         let self_ = unsafe { &mut *list_ptr(self_in) };
-        let mut slice = objslice::BoundSlice { start: 0, stop: 0, step: 1 };
+        let mut slice = objslice::BoundSlice {
+            start: 0,
+            stop: 0,
+            step: 1,
+        };
         let fast = sequence::get_fast_slice_indexes(self_.len, index, &mut slice);
         if value == OBJ_SENTINEL {
             if !fast {
@@ -537,8 +668,9 @@ pub fn list_subscr(self_in: Obj, index: Obj, value: Obj) -> Obj {
         unsafe {
             if len_adj > 0 {
                 if self_.len as isize + len_adj > self_.alloc as isize {
-                    self_.items = malloc::renew(self_.items, self_.alloc, self_.len + len_adj as usize)
-                        .expect("list grow");
+                    self_.items =
+                        malloc::renew(self_.items, self_.alloc, self_.len + len_adj as usize)
+                            .expect("list grow");
                     self_.alloc = self_.len + len_adj as usize;
                 }
                 seq_replace_grow_inplace(
@@ -600,8 +732,7 @@ pub fn list_append(self_in: Obj, arg: Obj) -> Obj {
     check_self(self_in);
     let self_ = unsafe { &mut *list_ptr(self_in) };
     if self_.len >= self_.alloc {
-        self_.items = malloc::renew(self_.items, self_.alloc, self_.alloc * 2)
-            .expect("list grow");
+        self_.items = malloc::renew(self_.items, self_.alloc, self_.alloc * 2).expect("list grow");
         self_.alloc *= 2;
         seq_clear(self_.items, self_.len + 1, self_.alloc);
     }
@@ -640,7 +771,12 @@ pub fn list_pop(n_args: usize, args: &[Obj]) -> Obj {
         raise::raise(MpRaise::ValueError("pop from empty list"));
     }
     let index = if n_args == 1 {
-        obj::get_index(unsafe { &*self_.base.type_ }, self_.len, obj::new_small_int(-1), false)
+        obj::get_index(
+            unsafe { &*self_.base.type_ },
+            self_.len,
+            obj::new_small_int(-1),
+            false,
+        )
     } else {
         obj::get_index(unsafe { &*self_.base.type_ }, self_.len, args[1], false)
     };
@@ -655,19 +791,14 @@ pub fn list_pop(n_args: usize, args: &[Obj]) -> Obj {
         *self_.items.add(self_.len) = obj::OBJ_NULL;
     }
     if self_.alloc > LIST_MIN_ALLOC && self_.alloc > 2 * self_.len {
-        self_.items = malloc::renew(self_.items, self_.alloc, self_.alloc / 2)
-            .expect("list shrink");
+        self_.items =
+            malloc::renew(self_.items, self_.alloc, self_.alloc / 2).expect("list shrink");
         self_.alloc /= 2;
     }
     ret
 }
 
-fn quicksort(
-    mut head: *mut Obj,
-    mut tail: *mut Obj,
-    key_fn: Obj,
-    binop_less_result: Obj,
-) {
+fn quicksort(mut head: *mut Obj, mut tail: *mut Obj, key_fn: Obj, binop_less_result: Obj) {
     cstack::check();
     unsafe {
         while tail.offset_from(head) > 1 {
@@ -726,32 +857,51 @@ fn quicksort(
     }
 }
 
-pub fn list_sort(n_args: usize, args: &[Obj]) -> Obj {
+pub fn list_sort(n_args: usize, args: &[Obj], kwargs: &mut Map) -> Obj {
     check_self(args[0]);
-    let mut key = obj::CONST_NONE;
-    let mut reverse = false;
-    if n_args > 1 {
-        // positional extras not supported; kw-only key/reverse handled below via trailing pairs
-        for i in (1..n_args).step_by(2) {
-            if i + 1 >= n_args {
-                break;
-            }
-            let k = args[i];
-            let v = args[i + 1];
-            if obj::is_qstr(k) {
-                let name = qstr::str_from_qstr(obj::qstr_value(k)).unwrap_or_default();
-                if name == "key" {
-                    key = v;
-                } else if name == "reverse" {
-                    reverse = obj::is_true(v);
-                }
-            }
-        }
-    }
+    let allowed = [
+        Arg {
+            qst: qstr::from_str("key"),
+            flags: ArgFlag::KwOnly as u16 | ArgFlag::Obj as u16,
+            defval: ArgVal::Obj(obj::CONST_NONE),
+        },
+        Arg {
+            qst: qstr::from_str("reverse"),
+            flags: ArgFlag::KwOnly as u16 | ArgFlag::Bool as u16,
+            defval: ArgVal::Bool(false),
+        },
+    ];
+    let mut vals = [ArgVal::default(), ArgVal::default()];
+    // C: parse_all(n_args - 1, pos_args + 1, kw_args, ...)
+    argcheck::parse_all(
+        n_args.saturating_sub(1),
+        &args[1..n_args],
+        kwargs,
+        2,
+        &allowed,
+        &mut vals,
+    );
+    let key = match vals[0] {
+        ArgVal::Obj(o) => o,
+        _ => obj::CONST_NONE,
+    };
+    let reverse = match vals[1] {
+        ArgVal::Bool(b) => b,
+        ArgVal::Obj(o) => obj::is_true(o),
+        _ => false,
+    };
     let self_ = unsafe { &mut *list_ptr(args[0]) };
     if self_.len > 1 {
-        let key_fn = if key == obj::CONST_NONE { obj::OBJ_NULL } else { key };
-        let less_result = if reverse { obj::CONST_FALSE } else { obj::CONST_TRUE };
+        let key_fn = if key == obj::CONST_NONE {
+            obj::OBJ_NULL
+        } else {
+            key
+        };
+        let less_result = if reverse {
+            obj::CONST_FALSE
+        } else {
+            obj::CONST_TRUE
+        };
         unsafe {
             quicksort(
                 self_.items.offset(-1),

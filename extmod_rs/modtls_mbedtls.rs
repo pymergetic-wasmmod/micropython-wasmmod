@@ -23,8 +23,8 @@ use x509_parser::prelude::{FromDer, X509Certificate, X509Name};
 
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, LookupKind, Map, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{
     self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
@@ -193,7 +193,13 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -520,7 +526,11 @@ fn is_dtls(protocol: i32) -> bool {
     (protocol & MP_TRANSPORT_IS_DTLS) != 0
 }
 
-fn call_verify_callback(callback: Obj, cert: &CertificateDer<'_>, depth: i32) -> Result<(), RustlsError> {
+fn call_verify_callback(
+    callback: Obj,
+    cert: &CertificateDer<'_>,
+    depth: i32,
+) -> Result<(), RustlsError> {
     if callback == obj::CONST_NONE {
         return Ok(());
     }
@@ -568,8 +578,7 @@ impl ServerCertVerifier for CallbackServerVerifier {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, RustlsError> {
-        self.inner
-            .verify_tls12_signature(message, cert, dss)
+        self.inner.verify_tls12_signature(message, cert, dss)
     }
 
     fn verify_tls13_signature(
@@ -578,8 +587,7 @@ impl ServerCertVerifier for CallbackServerVerifier {
         cert: &CertificateDer<'_>,
         dss: &rustls::DigitallySignedStruct,
     ) -> Result<HandshakeSignatureValid, RustlsError> {
-        self.inner
-            .verify_tls13_signature(message, cert, dss)
+        self.inner.verify_tls13_signature(message, cert, dss)
     }
 
     fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
@@ -587,10 +595,7 @@ impl ServerCertVerifier for CallbackServerVerifier {
     }
 }
 
-fn wrap_verifier(
-    inner: Arc<dyn ServerCertVerifier>,
-    callback: Obj,
-) -> Arc<dyn ServerCertVerifier> {
+fn wrap_verifier(inner: Arc<dyn ServerCertVerifier>, callback: Obj) -> Arc<dyn ServerCertVerifier> {
     if callback == obj::CONST_NONE {
         inner
     } else {
@@ -629,7 +634,11 @@ fn build_client_config(ctx: &ObjSslContext) -> Arc<ClientConfig> {
     if let (Some(cert_pem), Some(key_pem)) = (&ctx.cert_pem, &ctx.key_pem) {
         let certs = parse_certs(cert_pem);
         let key = parse_private_key(key_pem);
-        Arc::new(builder.with_client_auth_cert(certs, key).expect("client cert"))
+        Arc::new(
+            builder
+                .with_client_auth_cert(certs, key)
+                .expect("client cert"),
+        )
     } else {
         Arc::new(builder.with_no_client_auth())
     }
@@ -638,10 +647,7 @@ fn build_client_config(ctx: &ObjSslContext) -> Arc<ClientConfig> {
 fn build_server_config(ctx: &ObjSslContext) -> Arc<ServerConfig> {
     init_crypto();
     let provider = make_crypto_provider(ctx.ciphers.as_deref());
-    let cert_pem = ctx
-        .cert_pem
-        .as_ref()
-        .expect("server requires cert");
+    let cert_pem = ctx.cert_pem.as_ref().expect("server requires cert");
     let key_pem = ctx.key_pem.as_ref().expect("server requires key");
     let certs = parse_certs(cert_pem);
     let key = parse_private_key(key_pem);
@@ -1083,25 +1089,15 @@ fn peer_cert_to_dict(der: &[u8]) -> Obj {
     objdict::dict_store(
         dict,
         obj::new_qstr(qstr::from_str("notBefore")),
-        objstr::new_str(
-            format_cert_time(cert.validity().not_before.timestamp())
-                .as_bytes(),
-        ),
+        objstr::new_str(format_cert_time(cert.validity().not_before.timestamp()).as_bytes()),
     );
     objdict::dict_store(
         dict,
         obj::new_qstr(qstr::from_str("notAfter")),
-        objstr::new_str(
-            format_cert_time(cert.validity().not_after.timestamp())
-                .as_bytes(),
-        ),
+        objstr::new_str(format_cert_time(cert.validity().not_after.timestamp()).as_bytes()),
     );
     if let Some(san) = subject_alt_name_to_tuple(&cert) {
-        objdict::dict_store(
-            dict,
-            obj::new_qstr(qstr::from_str("subjectAltName")),
-            san,
-        );
+        objdict::dict_store(dict, obj::new_qstr(qstr::from_str("subjectAltName")), san);
     }
     dict
 }
@@ -1165,10 +1161,7 @@ fn ssl_socket_make_new(
     if is_dtls(ctx.protocol) {
         raise::raise(MpRaise::ValueError("DTLS not supported"));
     }
-    if !server_side
-        && ctx.verify_mode == CERT_REQUIRED
-        && server_hostname == obj::CONST_NONE
-    {
+    if !server_side && ctx.verify_mode == CERT_REQUIRED && server_hostname == obj::CONST_NONE {
         raise::raise(MpRaise::ValueError(
             "CERT_REQUIRED requires server_hostname",
         ));
@@ -1192,10 +1185,7 @@ fn ssl_socket_make_new(
 
     let conn = if server_side {
         let config = build_server_config(ctx);
-        TlsConn::Server(
-            ServerConnection::new(config)
-                .unwrap_or_else(|e| raise_tls_error(e)),
-        )
+        TlsConn::Server(ServerConnection::new(config).unwrap_or_else(|e| raise_tls_error(e)))
     } else {
         let config = build_client_config(ctx);
         let name_str = if server_hostname != obj::CONST_NONE {
@@ -1206,8 +1196,7 @@ fn ssl_socket_make_new(
         let server_name = ServerName::try_from(name_str.to_string())
             .unwrap_or_else(|_| raise::raise(MpRaise::ValueError("server_hostname")));
         TlsConn::Client(
-            ClientConnection::new(config, server_name)
-                .unwrap_or_else(|e| raise_tls_error(e)),
+            ClientConnection::new(config, server_name).unwrap_or_else(|e| raise_tls_error(e)),
         )
     };
 
@@ -1217,7 +1206,8 @@ fn ssl_socket_make_new(
     }
 
     if do_handshake_on_connect {
-        let ssl = unsafe { &mut *ssl_sock_ptr(obj::from_ptr(o as *const ObjSslSocket as *const ())) };
+        let ssl =
+            unsafe { &mut *ssl_sock_ptr(obj::from_ptr(o as *const ObjSslSocket as *const ())) };
         let conn = unsafe { &mut *ssl.conn };
         do_handshake(conn, &mut adapter);
     }
@@ -1245,7 +1235,14 @@ fn ssl_context_wrap_socket(n: usize, pos: &[Obj], kw: &Map) -> Obj {
     ];
     let mut vals = [ArgVal::default(); 3];
     let mut kw_copy = kw.clone();
-    argcheck::parse_all(n - 2, &pos[2..], &mut kw_copy, allowed.len(), &allowed, &mut vals);
+    argcheck::parse_all(
+        n - 2,
+        &pos[2..],
+        &mut kw_copy,
+        allowed.len(),
+        &allowed,
+        &mut vals,
+    );
     let server_side = match vals[0] {
         ArgVal::Bool(b) => b,
         _ => false,
@@ -1415,7 +1412,11 @@ fn ssl_socket_ioctl(self_in: Obj, request: u32, arg: usize, errcode: *mut i32) -
 fn ssl_socket_setblocking(self_in: Obj, flag: Obj) -> Obj {
     let self_ = unsafe { &mut *ssl_sock_ptr(self_in) };
     let mut dest = [obj::OBJ_NULL; 3];
-    runtime::load_method(self_.sock, qstr::from_str("setblocking"), &mut dest[..2].try_into().unwrap());
+    runtime::load_method(
+        self_.sock,
+        qstr::from_str("setblocking"),
+        &mut dest[..2].try_into().unwrap(),
+    );
     dest[2] = flag;
     let res = runtime::call_method_n_kw(1, 0, &dest);
     self_.blocking = obj::is_true(flag);
@@ -1511,9 +1512,10 @@ fn ssl_context_locals() -> *const () {
                 },
             );
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<objdict::ObjDict>(), objdict::type_dict())
-                as *mut objdict::ObjDict;
+        let ptr = obj::malloc_helper(
+            core::mem::size_of::<objdict::ObjDict>(),
+            objdict::type_dict(),
+        ) as *mut objdict::ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const objdict::ObjDict as *const ()).0 as *const ();
@@ -1566,9 +1568,10 @@ fn ssl_socket_locals() -> *const () {
                 value: stream::stream_close_obj(),
             });
         }
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<objdict::ObjDict>(), objdict::type_dict())
-                as *mut objdict::ObjDict;
+        let ptr = obj::malloc_helper(
+            core::mem::size_of::<objdict::ObjDict>(),
+            objdict::type_dict(),
+        ) as *mut objdict::ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const objdict::ObjDict as *const ()).0 as *const ();
@@ -1683,10 +1686,7 @@ mod tests {
     #[test]
     fn format_cert_time_utc_gmt() {
         // 2020-01-01 00:00:00 UTC
-        assert_eq!(
-            format_cert_time(1577836800),
-            "Jan 01 00:00:00 2020 GMT"
-        );
+        assert_eq!(format_cert_time(1577836800), "Jan 01 00:00:00 2020 GMT");
     }
 
     #[test]
@@ -1701,6 +1701,9 @@ mod tests {
             Some("micropython.local")
         );
         assert!(cert.subject_alternative_name().unwrap().is_some());
-        assert_eq!(serial_number_hex(cert.raw_serial()), "5362489E52CC1C47D3F28084A686A411AE8AF78E");
+        assert_eq!(
+            serial_number_hex(cert.raw_serial()),
+            "5362489E52CC1C47D3F28084A686A411AE8AF78E"
+        );
     }
 }

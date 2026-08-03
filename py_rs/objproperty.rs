@@ -1,10 +1,15 @@
 //! rewrite of py/objproperty.c
 // symmetry: done
 
+use core::mem::size_of;
+
 use crate::argcheck::{self, Arg, ArgFlag, ArgVal};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::obj::{self, Obj, ObjBase, ObjType};
+use crate::objdict::{self, ObjDict};
+use crate::objfun::{self, BuiltinFn2, ObjFunBuiltinFixed};
 use crate::qstr;
 use crate::raise::{self, MpRaise};
 
@@ -14,10 +19,12 @@ pub struct ObjProperty {
     pub proxy: [Obj; 3],
 }
 
-static mut PROPERTY_SLOTS: [*const (); 1] = [property_make_new as *const ()];
+static mut PROPERTY_SLOTS: [*const (); 2] = [property_make_new as *const (), core::ptr::null()];
 
-static TYPE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+static mut TYPE: ObjType = ObjType {
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -31,12 +38,51 @@ static TYPE: ObjType = ObjType {
     slot_index_buffer: 0,
     slot_index_protocol: 0,
     slot_index_parent: 0,
-    slot_index_locals_dict: 0,
+    slot_index_locals_dict: 2,
     slots: unsafe { PROPERTY_SLOTS.as_ptr() },
 };
 
+static PROPERTY_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
+
+fn new_fun_builtin_2(fun: BuiltinFn2) -> Obj {
+    let o = malloc::new_obj::<ObjFunBuiltinFixed>().expect("fun_builtin_2 alloc");
+    unsafe {
+        (*o).base.type_ = objfun::type_fun_builtin_2() as *const ObjType;
+        (*o).fun.f2 = fun;
+        obj::from_ptr(o as *const ObjFunBuiltinFixed as *const ())
+    }
+}
+
+/// `property_locals_dict_table` (py/objproperty.c): exposes `.getter`,
+/// `.setter`, `.deleter` so `@x.setter` decorator syntax works.
+fn init_property_type() {
+    PROPERTY_INIT.get_or_init(|| {
+        let table = vec![
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("getter")),
+                value: new_fun_builtin_2(property_getter),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("setter")),
+                value: new_fun_builtin_2(property_setter),
+            },
+            MapElem {
+                key: obj::new_qstr(qstr::from_str("deleter")),
+                value: new_fun_builtin_2(property_deleter),
+            },
+        ];
+        let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        unsafe {
+            map::init_fixed_table(&mut (*ptr).map, table);
+            PROPERTY_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+            TYPE.name = qstr::from_str("property");
+        }
+    });
+}
+
 pub fn type_property() -> &'static ObjType {
-    &TYPE
+    init_property_type();
+    unsafe { &*core::ptr::addr_of!(TYPE) }
 }
 
 pub fn is_property(o: Obj) -> bool {

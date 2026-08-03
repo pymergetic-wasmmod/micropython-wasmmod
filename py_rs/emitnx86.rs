@@ -5,8 +5,8 @@
 
 use crate::asmbase::{self, MpAsmBase};
 use crate::asmx86::{
-    self, AsmX86, ASM_X86_REG_EAX, ASM_X86_REG_EBP, ASM_X86_REG_EBX, ASM_X86_REG_ECX, ASM_X86_REG_EDX,
-    ASM_X86_REG_EDI, ASM_X86_REG_ESI,
+    self, AsmX86, ASM_X86_REG_EAX, ASM_X86_REG_EBP, ASM_X86_REG_EBX, ASM_X86_REG_ECX,
+    ASM_X86_REG_EDI, ASM_X86_REG_EDX, ASM_X86_REG_ESI,
 };
 use crate::emitnative::{self, AsmContext, NativeBackend};
 use crate::mpconfig;
@@ -96,7 +96,9 @@ impl NativeBackend for BackendX86 {
     const REG_FUN_TABLE: i32 = ASM_X86_REG_EBP;
     const REG_GENERATOR_STATE: i32 = ASM_X86_REG_ESI;
     const REG_QSTR_TABLE: i32 = ASM_X86_REG_EDI;
-    const REG_LOCAL_LAST: i32 = ASM_X86_REG_EDI;
+    // See the comment on the x64 backend: with `PERSISTENT_CODE_SAVE` this must
+    // be `REG_LOCAL_2`, not `REG_LOCAL_3` (`REG_QSTR_TABLE`).
+    const REG_LOCAL_LAST: i32 = ASM_X86_REG_ESI;
     const NLR_BUF_IDX_LOCAL_1: usize = 5;
     const N_X86: bool = true;
     const N_X64: bool = false;
@@ -127,7 +129,8 @@ impl NativeBackend for BackendX86 {
     const HAS_ASM_STORE16_REG_REG_REG: bool = false;
     const HAS_ASM_STORE32_REG_REG_REG: bool = false;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn mp_f_n_args(fun: u32) -> u8 {
         MP_F_N_ARGS.get(fun as usize).copied().unwrap_or(0)
@@ -188,7 +191,12 @@ impl NativeBackend for BackendX86 {
         asmx86::jmp_reg(as_, reg);
     }
     fn call_ind(as_: &mut Self::Asm, idx: u32) {
-        asmx86::call_ind(as_, idx as usize, Self::mp_f_n_args(idx) as usize, ASM_X86_REG_EAX);
+        asmx86::call_ind(
+            as_,
+            idx as usize,
+            Self::mp_f_n_args(idx) as usize,
+            ASM_X86_REG_EAX,
+        );
     }
     fn mov_local_reg(as_: &mut Self::Asm, local: i32, reg: i32) {
         asmx86::mov_r32_to_local(as_, reg, local);

@@ -1,9 +1,9 @@
 //! rewrite of ports/qemu/mphalport.c + ports/qemu/mphalport.h
 // symmetry: done
 
+use crate::uart;
 use py_rs::mphal;
 use py_rs::runtime::{self, HandlePendingBehaviour};
-use crate::uart;
 
 const USE_UART: bool = true;
 
@@ -69,7 +69,9 @@ static mut RANDOM_STATE: u32 = 0;
 pub fn get_random(n: usize, buf: &mut [u8]) {
     for byte in buf.iter_mut().take(n) {
         unsafe {
-            RANDOM_STATE = RANDOM_STATE.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            RANDOM_STATE = RANDOM_STATE
+                .wrapping_mul(1_664_525)
+                .wrapping_add(1_013_904_223);
             *byte = (RANDOM_STATE >> 24) as u8;
         }
     }

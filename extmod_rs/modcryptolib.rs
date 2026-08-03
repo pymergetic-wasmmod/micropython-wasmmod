@@ -2,11 +2,11 @@
 // symmetry: done
 
 use aes::{Aes128, Aes256};
-use cipher::{BlockDecrypt, BlockEncrypt, KeyInit, generic_array::GenericArray};
+use cipher::{generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit};
 use py_rs::argcheck;
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{
     self, BufferInfo, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
@@ -60,7 +60,13 @@ static TV: ObjType = ObjType {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -222,7 +228,8 @@ fn aes_process(n_args: usize, args: &[Obj], encrypt: bool) -> Obj {
         if out_info.len < in_data.len() {
             raise::raise(MpRaise::ValueError("output too small"));
         }
-        let out_slice = unsafe { std::slice::from_raw_parts_mut(out_info.buf as *mut u8, in_data.len()) };
+        let out_slice =
+            unsafe { std::slice::from_raw_parts_mut(out_info.buf as *mut u8, in_data.len()) };
         match o.block_mode {
             m if m == MODE_ECB as u8 => process_ecb(o, &in_data, out_slice, encrypt),
             m if m == MODE_CBC as u8 => process_cbc(o, &in_data, out_slice, encrypt),
@@ -333,7 +340,8 @@ fn init_aes_type() -> &'static ObjType {
                 value: mkv(2, 3, aes_decrypt),
             },
         ];
-        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             AES_SLOTS[1] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();

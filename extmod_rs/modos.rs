@@ -2,8 +2,8 @@
 // symmetry: done
 
 use py_rs::bc::ModuleContext;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::objdict;
@@ -13,6 +13,8 @@ use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 
 use crate::vfs;
+use crate::vfs_fat;
+use crate::vfs_lfs;
 use crate::vfs_posix;
 
 type BuiltinFn0 = fn() -> Obj;
@@ -142,7 +144,13 @@ fn call2(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn mk0(f: BuiltinFn0) -> Obj {
@@ -181,9 +189,7 @@ fn mkv(min: u8, max: u8, f: BuiltinFnVar) -> Obj {
 }
 
 fn errno() -> i32 {
-    std::io::Error::last_os_error()
-        .raw_os_error()
-        .unwrap_or(0)
+    std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
 }
 
 fn os_getenv(n: usize, args: &[Obj]) -> Obj {
@@ -215,10 +221,7 @@ fn os_unsetenv(key: Obj) -> Obj {
 
 fn os_system(cmd: Obj) -> Obj {
     let c = objstr::str_get_str(cmd);
-    let status = std::process::Command::new("sh")
-        .arg("-c")
-        .arg(c)
-        .status();
+    let status = std::process::Command::new("sh").arg("-c").arg(c).status();
     match status {
         Ok(s) => {
             if let Some(code) = s.code() {
@@ -371,6 +374,18 @@ pub fn init_module() -> Obj {
                 table.push(MapElem {
                     key: obj::new_qstr(qstr::from_str("VfsPosix")),
                     value: obj::from_ptr(vfs_posix::type_vfs_posix() as *const ObjType as *const ()),
+                });
+            }
+            if mpconfig::VFS_FAT {
+                table.push(MapElem {
+                    key: obj::new_qstr(qstr::from_str("VfsFat")),
+                    value: obj::from_ptr(vfs_fat::type_vfs_fat() as *const ObjType as *const ()),
+                });
+            }
+            if mpconfig::VFS_LFS2 {
+                table.push(MapElem {
+                    key: obj::new_qstr(qstr::from_str("VfsLfs2")),
+                    value: obj::from_ptr(vfs_lfs::type_vfs_lfs2() as *const ObjType as *const ()),
                 });
             }
         }

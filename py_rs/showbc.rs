@@ -150,8 +150,12 @@ pub fn bytecode_print_str(
             obj::print_helper(print, val, PrintKind::Repr);
         }
         bc0::LOAD_NULL => ps(print, "LOAD_NULL"),
-        bc0::LOAD_FAST_N | bc0::LOAD_DEREF | bc0::STORE_FAST_N | bc0::STORE_DEREF
-        | bc0::DELETE_FAST | bc0::DELETE_DEREF => {
+        bc0::LOAD_FAST_N
+        | bc0::LOAD_DEREF
+        | bc0::STORE_FAST_N
+        | bc0::STORE_DEREF
+        | bc0::DELETE_FAST
+        | bc0::DELETE_DEREF => {
             let mut p = ip;
             let unum = bc::decode_uint(&mut p);
             ip = p;
@@ -169,9 +173,18 @@ pub fn bytecode_print_str(
                 [VaArg::Str(name), VaArg::USize(unum as usize)].into_iter(),
             );
         }
-        bc0::LOAD_NAME | bc0::LOAD_GLOBAL | bc0::LOAD_ATTR | bc0::LOAD_METHOD
-        | bc0::LOAD_SUPER_METHOD | bc0::STORE_NAME | bc0::STORE_GLOBAL | bc0::STORE_ATTR
-        | bc0::DELETE_NAME | bc0::DELETE_GLOBAL | bc0::IMPORT_NAME | bc0::IMPORT_FROM => {
+        bc0::LOAD_NAME
+        | bc0::LOAD_GLOBAL
+        | bc0::LOAD_ATTR
+        | bc0::LOAD_METHOD
+        | bc0::LOAD_SUPER_METHOD
+        | bc0::STORE_NAME
+        | bc0::STORE_GLOBAL
+        | bc0::STORE_ATTR
+        | bc0::DELETE_NAME
+        | bc0::DELETE_GLOBAL
+        | bc0::IMPORT_NAME
+        | bc0::IMPORT_FROM => {
             let mut p = ip;
             let qst = decode_qstr(&mut p, cm);
             ip = p;
@@ -227,8 +240,13 @@ pub fn bytecode_print_str(
                 [VaArg::Str(name), VaArg::USize(target as usize)].into_iter(),
             );
         }
-        bc0::JUMP_IF_TRUE_OR_POP | bc0::JUMP_IF_FALSE_OR_POP | bc0::SETUP_WITH
-        | bc0::SETUP_EXCEPT | bc0::SETUP_FINALLY | bc0::FOR_ITER | bc0::POP_EXCEPT_JUMP => {
+        bc0::JUMP_IF_TRUE_OR_POP
+        | bc0::JUMP_IF_FALSE_OR_POP
+        | bc0::SETUP_WITH
+        | bc0::SETUP_EXCEPT
+        | bc0::SETUP_FINALLY
+        | bc0::FOR_ITER
+        | bc0::POP_EXCEPT_JUMP => {
             let mut p = ip;
             let unum = decode_ulabel(&mut p);
             ip = p;
@@ -264,8 +282,14 @@ pub fn bytecode_print_str(
         bc0::END_FINALLY => ps(print, "END_FINALLY"),
         bc0::GET_ITER => ps(print, "GET_ITER"),
         bc0::GET_ITER_STACK => ps(print, "GET_ITER_STACK"),
-        bc0::BUILD_TUPLE | bc0::BUILD_LIST | bc0::BUILD_MAP | bc0::BUILD_SET | bc0::BUILD_SLICE
-        | bc0::STORE_COMP | bc0::UNPACK_SEQUENCE | bc0::UNPACK_EX => {
+        bc0::BUILD_TUPLE
+        | bc0::BUILD_LIST
+        | bc0::BUILD_MAP
+        | bc0::BUILD_SET
+        | bc0::BUILD_SLICE
+        | bc0::STORE_COMP
+        | bc0::UNPACK_SEQUENCE
+        | bc0::UNPACK_EX => {
             if opcode == bc0::BUILD_SLICE && !mpconfig::PY_BUILTINS_SLICE {
                 ip = unsafe { ip.offset(-1) };
                 return bytecode_print_str(print, ip_start, ip, rc, cm);
@@ -326,7 +350,9 @@ pub fn bytecode_print_str(
                 .into_iter(),
             );
         }
-        bc0::CALL_FUNCTION | bc0::CALL_FUNCTION_VAR_KW | bc0::CALL_METHOD
+        bc0::CALL_FUNCTION
+        | bc0::CALL_FUNCTION_VAR_KW
+        | bc0::CALL_METHOD
         | bc0::CALL_METHOD_VAR_KW => {
             let mut p = ip;
             let unum = bc::decode_uint(&mut p);
@@ -420,7 +446,13 @@ pub fn bytecode_print_str(
 }
 
 /// `mp_bytecode_print2`
-pub fn bytecode_print2(print: &Print, ip: *const u8, len: usize, rc: &RawCode, cm: &ModuleConstants) {
+pub fn bytecode_print2(
+    print: &Print,
+    ip: *const u8,
+    len: usize,
+    rc: &RawCode,
+    cm: &ModuleConstants,
+) {
     if !mpconfig::DEBUG_PRINTERS {
         return;
     }
@@ -492,11 +524,7 @@ pub fn bytecode_print(print: &Print, rc: &RawCode, fun_data_len: usize, cm: &Mod
             mpprint::print_str(print, "\n");
         }
         let byte = unsafe { *ip_start.add(i) };
-        let _ = mpprint::printf(
-            print,
-            " %02x",
-            std::iter::once(VaArg::USize(byte as usize)),
-        );
+        let _ = mpprint::printf(print, " %02x", std::iter::once(VaArg::USize(byte as usize)));
     }
     mpprint::print_str(print, "\n");
 
@@ -560,11 +588,5 @@ pub fn bytecode_print(print: &Print, rc: &RawCode, fun_data_len: usize, cm: &Mod
         );
     }
 
-    bytecode_print2(
-        print,
-        cell_ip,
-        fun_data_len - prelude_size,
-        rc,
-        cm,
-    );
+    bytecode_print2(print, cell_ip, fun_data_len - prelude_size, rc, cm);
 }

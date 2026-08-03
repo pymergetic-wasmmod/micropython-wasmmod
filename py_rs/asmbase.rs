@@ -128,11 +128,11 @@ pub fn start_pass(base: &mut MpAsmBase, pass: i32) {
     }
     if pass < MP_ASM_PASS_EMIT as i32 {
         unsafe {
-            core::ptr::write_bytes(
-                base.label_offsets,
-                0xff,
-                base.max_num_labels * core::mem::size_of::<usize>(),
-            );
+            // `write_bytes::<usize>` takes an *element* count, not a byte count;
+            // passing `max_num_labels * size_of::<usize>()` here would overrun the
+            // allocation by a factor of `size_of::<usize>()` and clobber whatever
+            // GC block happens to follow `label_offsets`.
+            core::ptr::write_bytes(base.label_offsets, 0xff, base.max_num_labels);
         }
     } else {
         plat_alloc_exec(base.code_offset, &mut base.code_base, &mut base.code_size);

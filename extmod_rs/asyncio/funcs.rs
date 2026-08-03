@@ -65,7 +65,11 @@ pub fn gather(aws: &[Rc<RefCell<Task>>], return_exceptions: bool) -> GatherResul
     }
 
     if state.count() > 0 {
-        GatherResult::Pending { tasks: ts, state, return_exceptions }
+        GatherResult::Pending {
+            tasks: ts,
+            state,
+            return_exceptions,
+        }
     } else if state.is_abort() {
         GatherResult::Err("exception in sub-task")
     } else {

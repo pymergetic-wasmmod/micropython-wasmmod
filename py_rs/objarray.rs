@@ -5,8 +5,8 @@ use core::mem::size_of;
 
 use crate::argcheck;
 use crate::binary::{self, BYTEARRAY_TYPECODE};
-use crate::map::{self, MapElem};
 use crate::malloc;
+use crate::map::{self, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::obj::{
@@ -76,7 +76,9 @@ static mut FUN_BUILTIN_2_SLOTS: [*const (); 1] = [fun_builtin_2_call as *const (
 static mut FUN_BUILTIN_VAR_SLOTS: [*const (); 1] = [fun_builtin_var_call as *const ()];
 
 static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -95,7 +97,9 @@ static TYPE_FUN_BUILTIN_1: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -114,7 +118,9 @@ static TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static TYPE_FUN_BUILTIN_VAR: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_BINDS_SELF | obj::TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -146,7 +152,13 @@ fn fun_builtin_2_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) ->
 
 fn fun_builtin_var_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n_args, n_kw, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n_args,
+        n_kw,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n_args, args)
 }
 
@@ -200,7 +212,11 @@ fn array_it_iternext(self_in: Obj) -> Obj {
     let self_ = unsafe { &mut *(obj::as_ptr(self_in) as *mut ObjArrayIter) };
     let array = unsafe { &*(obj::as_ptr(self_.array) as *const ObjArray) };
     if self_.cur < array.len {
-        let offset = if is_memoryview_obj(self_.array) { array.free } else { 0 };
+        let offset = if is_memoryview_obj(self_.array) {
+            array.free
+        } else {
+            0
+        };
         let idx = offset + self_.cur;
         self_.cur += 1;
         let tc = array.typecode & TYPECODE_MASK;
@@ -237,7 +253,9 @@ static mut BYTEARRAY_SLOTS: [*const (); 8] = [
 ];
 
 static mut TYPE_ARRAY: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: obj::TYPE_FLAG_NONE,
     name: 0,
     slot_index_make_new: 1,
@@ -256,7 +274,9 @@ static mut TYPE_ARRAY: ObjType = ObjType {
 };
 
 static mut TYPE_BYTEARRAY: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_CHECKS_OTHER_TYPE | TYPE_FLAG_SUBSCR_ALLOWS_STACK_SLICE,
     name: 0,
     slot_index_make_new: 1,
@@ -286,7 +306,9 @@ static mut MEMORYVIEW_SLOTS: [*const (); 8] = [
 ];
 
 static mut TYPE_MEMORYVIEW: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_EQ_CHECKS_OTHER_TYPE | TYPE_FLAG_SUBSCR_ALLOWS_STACK_SLICE,
     name: 0,
     slot_index_make_new: 1,
@@ -319,47 +341,80 @@ fn init_array_types() {
     if !(mpconfig::PY_ARRAY || mpconfig::PY_BUILTINS_BYTEARRAY) {
         return;
     }
-    ARRAY_INIT.get_or_init(|| {
-        unsafe {
-            if mpconfig::PY_ARRAY {
-                (*(core::ptr::addr_of_mut!(TYPE_ARRAY) as *mut ObjType)).name =
-                    qstr::from_str("array");
-            }
-            if mpconfig::PY_BUILTINS_BYTEARRAY {
-                (*(core::ptr::addr_of_mut!(TYPE_BYTEARRAY) as *mut ObjType)).name =
-                    qstr::from_str("bytearray");
-            }
-            if mpconfig::PY_ARRAY {
-                ARRAY_SLOTS[0] = array_make_new as *const ();
-                ARRAY_SLOTS[1] = array_print as *const ();
-                ARRAY_SLOTS[2] = array_unary_op as *const ();
-                ARRAY_SLOTS[3] = array_binary_op as *const ();
-                ARRAY_SLOTS[4] = array_subscr as *const ();
-                ARRAY_SLOTS[5] = array_iterator_new as *const ();
-                ARRAY_SLOTS[6] = array_get_buffer as *const ();
-            }
-            if mpconfig::PY_BUILTINS_BYTEARRAY {
-                BYTEARRAY_SLOTS[0] = bytearray_make_new as *const ();
-                BYTEARRAY_SLOTS[1] = array_print as *const ();
-                BYTEARRAY_SLOTS[2] = array_unary_op as *const ();
-                BYTEARRAY_SLOTS[3] = array_binary_op as *const ();
-                BYTEARRAY_SLOTS[4] = array_subscr as *const ();
-                BYTEARRAY_SLOTS[5] = array_iterator_new as *const ();
-                BYTEARRAY_SLOTS[6] = array_get_buffer as *const ();
-            }
+    ARRAY_INIT.get_or_init(|| unsafe {
+        if mpconfig::PY_ARRAY {
+            (*(core::ptr::addr_of_mut!(TYPE_ARRAY) as *mut ObjType)).name = qstr::from_str("array");
+        }
+        if mpconfig::PY_BUILTINS_BYTEARRAY {
+            (*(core::ptr::addr_of_mut!(TYPE_BYTEARRAY) as *mut ObjType)).name =
+                qstr::from_str("bytearray");
+        }
+        if mpconfig::PY_ARRAY {
+            ARRAY_SLOTS[0] = array_make_new as *const ();
+            ARRAY_SLOTS[1] = array_print as *const ();
+            ARRAY_SLOTS[2] = array_unary_op as *const ();
+            ARRAY_SLOTS[3] = array_binary_op as *const ();
+            ARRAY_SLOTS[4] = array_subscr as *const ();
+            ARRAY_SLOTS[5] = array_iterator_new as *const ();
+            ARRAY_SLOTS[6] = array_get_buffer as *const ();
+        }
+        if mpconfig::PY_BUILTINS_BYTEARRAY {
+            BYTEARRAY_SLOTS[0] = bytearray_make_new as *const ();
+            BYTEARRAY_SLOTS[1] = array_print as *const ();
+            BYTEARRAY_SLOTS[2] = array_unary_op as *const ();
+            BYTEARRAY_SLOTS[3] = array_binary_op as *const ();
+            BYTEARRAY_SLOTS[4] = array_subscr as *const ();
+            BYTEARRAY_SLOTS[5] = array_iterator_new as *const ();
+            BYTEARRAY_SLOTS[6] = array_get_buffer as *const ();
+        }
 
-            let table = vec![
+        let mut table = vec![
+            me("append", new_fun_builtin_2(array_append)),
+            me("extend", new_fun_builtin_2(array_extend)),
+        ];
+        if mpconfig::PY_BUILTINS_BYTES_HEX {
+            table.push(me(
+                "hex",
+                new_fun_builtin_var(1, 2, crate::objstr::bytearray_hex_method),
+            ));
+            table.push(me(
+                "fromhex",
+                crate::objstr::bytes_fromhex_classmethod_obj(),
+            ));
+        }
+        if mpconfig::CPYTHON_COMPAT {
+            table.push(me(
+                "decode",
+                new_fun_builtin_var(1, 3, crate::objstr::bytearray_decode_method),
+            ));
+        }
+        // Shared with bytes/str (C `mp_obj_bytearray_locals_dict`).
+        table.extend(crate::objstr::str_bytes_shared_methods());
+        let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        map::init_fixed_table(&mut (*ptr).map, table);
+        let dict_ptr = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
+        if mpconfig::PY_ARRAY {
+            // array.array: append/extend only (slice of shared C table).
+            let arr_table = vec![
                 me("append", new_fun_builtin_2(array_append)),
                 me("extend", new_fun_builtin_2(array_extend)),
             ];
-            let ptr = obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
-            map::init_fixed_table(&mut (*ptr).map, table);
-            let dict_ptr = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
-            if mpconfig::PY_ARRAY {
-                ARRAY_SLOTS[7] = dict_ptr;
-            }
-            if mpconfig::PY_BUILTINS_BYTEARRAY {
-                BYTEARRAY_SLOTS[7] = dict_ptr;
+            let aptr =
+                obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+            map::init_fixed_table(&mut (*aptr).map, arr_table);
+            ARRAY_SLOTS[7] = obj::from_ptr(aptr as *const ObjDict as *const ()).0 as *const ();
+        }
+        if mpconfig::PY_BUILTINS_BYTEARRAY {
+            BYTEARRAY_SLOTS[7] = dict_ptr;
+            // Pin locals: static type is not a GC root; Map.table is a Rust Vec.
+            crate::gc::add_root(ptr as *mut u8);
+            for elem in &(*ptr).map.table {
+                if elem.key != obj::OBJ_NULL
+                    && elem.key != obj::OBJ_SENTINEL
+                    && obj::is_obj(elem.value)
+                {
+                    crate::gc::add_root(obj::to_ptr(elem.value) as *mut u8);
+                }
             }
         }
     });
@@ -369,27 +424,24 @@ fn init_memoryview_type() {
     if !mpconfig::PY_BUILTINS_MEMORYVIEW {
         return;
     }
-    MEMORYVIEW_INIT.get_or_init(|| {
-        unsafe {
-            (*(core::ptr::addr_of_mut!(TYPE_MEMORYVIEW) as *mut ObjType)).name =
-                qstr::from_str("memoryview");
-            MEMORYVIEW_SLOTS[0] = memoryview_make_new as *const ();
-            MEMORYVIEW_SLOTS[1] = array_unary_op as *const ();
-            MEMORYVIEW_SLOTS[2] = array_binary_op as *const ();
-            MEMORYVIEW_SLOTS[3] = array_subscr as *const ();
-            MEMORYVIEW_SLOTS[4] = array_iterator_new as *const ();
-            MEMORYVIEW_SLOTS[5] = array_get_buffer as *const ();
-            if mpconfig::PY_BUILTINS_MEMORYVIEW_ITEMSIZE {
-                MEMORYVIEW_SLOTS[6] = memoryview_attr as *const ();
-            }
-            if mpconfig::PY_BUILTINS_BYTES_HEX {
-                let table = vec![me("hex", new_fun_builtin_var(1, 2, memoryview_hex_method))];
-                let ptr =
-                    obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
-                map::init_fixed_table(&mut (*ptr).map, table);
-                MEMORYVIEW_SLOTS[7] =
-                    obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
-            }
+    MEMORYVIEW_INIT.get_or_init(|| unsafe {
+        (*(core::ptr::addr_of_mut!(TYPE_MEMORYVIEW) as *mut ObjType)).name =
+            qstr::from_str("memoryview");
+        MEMORYVIEW_SLOTS[0] = memoryview_make_new as *const ();
+        MEMORYVIEW_SLOTS[1] = array_unary_op as *const ();
+        MEMORYVIEW_SLOTS[2] = array_binary_op as *const ();
+        MEMORYVIEW_SLOTS[3] = array_subscr as *const ();
+        MEMORYVIEW_SLOTS[4] = array_iterator_new as *const ();
+        MEMORYVIEW_SLOTS[5] = array_get_buffer as *const ();
+        if mpconfig::PY_BUILTINS_MEMORYVIEW_ITEMSIZE {
+            MEMORYVIEW_SLOTS[6] = memoryview_attr as *const ();
+        }
+        if mpconfig::PY_BUILTINS_BYTES_HEX {
+            let table = vec![me("hex", new_fun_builtin_var(1, 2, memoryview_hex_method))];
+            let ptr =
+                obj::malloc_helper(size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+            map::init_fixed_table(&mut (*ptr).map, table);
+            MEMORYVIEW_SLOTS[7] = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
         }
     });
 }
@@ -469,11 +521,7 @@ fn seq_replace_no_grow(
 ) {
     unsafe {
         let dest = dest as *mut u8;
-        core::ptr::copy(
-            slice,
-            dest.add(beg * item_sz),
-            slice_len * item_sz,
-        );
+        core::ptr::copy(slice, dest.add(beg * item_sz), slice_len * item_sz);
         core::ptr::copy(
             dest.add(end * item_sz),
             dest.add((beg + slice_len) * item_sz),
@@ -523,7 +571,9 @@ fn array_new(typecode: u8, n: usize) -> *mut ObjArray {
 
 fn array_extend_impl(array: *mut ObjArray, arg: Obj, typecode: u8, len: usize) {
     let mut iter_buf = ObjIterBuf {
-        base: ObjBase { type_: core::ptr::null() },
+        base: ObjBase {
+            type_: core::ptr::null(),
+        },
         buf: [obj::OBJ_NULL; 3],
     };
     let iterable = runtime::getiter(arg, Some(&mut iter_buf));
@@ -654,7 +704,13 @@ fn bytearray_make_new(_type_in: &ObjType, n_args: usize, n_kw: usize, args: &[Ob
 }
 
 /// `mp_obj_memoryview_init`
-pub fn memoryview_init(self_: *mut ObjArray, typecode: u8, offset: usize, len: usize, items: *mut u8) {
+pub fn memoryview_init(
+    self_: *mut ObjArray,
+    typecode: u8,
+    offset: usize,
+    len: usize,
+    items: *mut u8,
+) {
     unsafe {
         (*self_).base.type_ = type_memoryview() as *const ObjType;
         (*self_).typecode = typecode;
@@ -702,7 +758,7 @@ fn memoryview_attr(self_in: Obj, attr: qstr::Qstr, dest: &mut [Obj; 2]) {
     if mpconfig::PY_BUILTINS_MEMORYVIEW_ITEMSIZE && attr == qstr::from_str("itemsize") {
         let self_ = unsafe { &*(array_ptr(self_in) as *const ObjArray) };
         dest[0] = obj::new_small_int(
-            binary::get_size(b'@', self_.typecode & TYPECODE_MASK, None) as obj::Int,
+            binary::get_size(b'@', self_.typecode & TYPECODE_MASK, None) as obj::Int
         );
     } else if mpconfig::PY_BUILTINS_BYTES_HEX {
         dest[1] = OBJ_SENTINEL;
@@ -710,34 +766,7 @@ fn memoryview_attr(self_in: Obj, attr: qstr::Qstr, dest: &mut [Obj; 2]) {
 }
 
 fn memoryview_hex(n_args: usize, args: &[Obj]) -> Obj {
-    let mut buf = BufferInfo::default();
-    obj::get_buffer_raise(args[0], &mut buf, obj::BUFFER_READ);
-    if buf.len == 0 {
-        return objstr::new_bytes(&[]);
-    }
-    let mut out_len = buf.len * 2;
-    if n_args > 1 {
-        out_len += buf.len - 1;
-    }
-    let mut out = vec![0u8; out_len];
-    let inb = unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) };
-    let mut o = 0usize;
-    for (idx, &byte) in inb.iter().enumerate() {
-        for shift in [4u8, 0] {
-            let mut d = (byte >> shift) & 0xf;
-            if d > 9 {
-                d += b'a' - b'9' - 1;
-            }
-            out[o] = d + b'0';
-            o += 1;
-        }
-        if n_args > 1 && idx + 1 != inb.len() {
-            let (sep, _) = objstr::get_str_data_len(args[1]);
-            out[o] = sep[0];
-            o += 1;
-        }
-    }
-    objstr::new_bytes(&out)
+    objstr::bytearray_hex_method(n_args, args)
 }
 
 fn memoryview_hex_method(n_args: usize, args: &[Obj]) -> Obj {
@@ -794,12 +823,8 @@ fn array_binary_op(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
                         return obj::CONST_FALSE;
                     }
                     array_get_buffer(lhs_in, &mut lhs_bufinfo, obj::BUFFER_READ);
-                    let hay = unsafe {
-                        std::slice::from_raw_parts(lhs_bufinfo.buf as *const u8, lhs_bufinfo.len)
-                    };
-                    let needle = unsafe {
-                        std::slice::from_raw_parts(rhs_bufinfo.buf as *const u8, rhs_bufinfo.len)
-                    };
+                    let hay = lhs_bufinfo.as_bytes();
+                    let needle = rhs_bufinfo.as_bytes();
                     return obj::new_bool(find_subbytes(hay, needle, 1).is_some());
                 }
             }
@@ -820,21 +845,15 @@ fn array_binary_op(op: BinaryOp, lhs_in: Obj, rhs_in: Obj) -> Obj {
                 return obj::CONST_FALSE;
             }
             let mut is_unsigned = false;
-            let lhs_code =
-                typecode_for_comparison(lhs_bufinfo.typecode as u8, &mut is_unsigned);
-            let rhs_code =
-                typecode_for_comparison(rhs_bufinfo.typecode as u8, &mut is_unsigned);
+            let lhs_code = typecode_for_comparison(lhs_bufinfo.typecode as u8, &mut is_unsigned);
+            let rhs_code = typecode_for_comparison(rhs_bufinfo.typecode as u8, &mut is_unsigned);
             if lhs_code == rhs_code
                 && lhs_code != b'f'
                 && lhs_code != b'd'
                 && (op == BinaryOp::Equal || is_unsigned)
             {
-                let d1 = unsafe {
-                    std::slice::from_raw_parts(lhs_bufinfo.buf as *const u8, lhs_bufinfo.len)
-                };
-                let d2 = unsafe {
-                    std::slice::from_raw_parts(rhs_bufinfo.buf as *const u8, rhs_bufinfo.len)
-                };
+                let d1 = lhs_bufinfo.as_bytes();
+                let d2 = rhs_bufinfo.as_bytes();
                 return obj::new_bool(sequence::cmp_bytes(op, d1, d2));
             }
             raise::raise(MpRaise::RuntimeError("not implemented"));
@@ -853,8 +872,12 @@ pub fn array_append(self_in: Obj, arg: Obj) -> Obj {
     if self_.free == 0 {
         let item_sz = binary::get_size(b'@', self_.typecode, None);
         let add_cnt = 8;
-        self_.items = malloc::renew(self_.items, item_sz * self_.len, item_sz * (self_.len + add_cnt))
-            .expect("array grow");
+        self_.items = malloc::renew(
+            self_.items,
+            item_sz * self_.len,
+            item_sz * (self_.len + add_cnt),
+        )
+        .expect("array grow");
         self_.free = add_cnt;
         seq_clear(self_.items, self_.len + 1, self_.len + self_.free, item_sz);
     }
@@ -895,11 +918,7 @@ pub fn array_extend(self_in: Obj, arg_in: Obj) -> Obj {
         self_.free -= len;
     }
     unsafe {
-        seq_copy(
-            self_.items.add(self_.len * sz),
-            arg_bufinfo.buf,
-            len * sz,
-        );
+        seq_copy(self_.items.add(self_.len * sz), arg_bufinfo.buf, len * sz);
     }
     self_.len += len;
     obj::CONST_NONE
@@ -1045,7 +1064,12 @@ fn array_subscr(self_in: Obj, index_in: Obj, value: Obj) -> Obj {
     if value == OBJ_SENTINEL {
         binary::get_val_array(tc, items, index)
     } else {
-        binary::set_val_array(tc, unsafe { std::slice::from_raw_parts_mut(o.items, cap) }, index, value);
+        binary::set_val_array(
+            tc,
+            unsafe { std::slice::from_raw_parts_mut(o.items, cap) },
+            index,
+            value,
+        );
         obj::CONST_NONE
     }
 }
@@ -1160,12 +1184,7 @@ mod tests {
             return;
         }
         let _guard = setup();
-        let b = bytearray_make_new(
-            type_bytearray(),
-            1,
-            0,
-            &[obj::new_small_int(4)],
-        );
+        let b = bytearray_make_new(type_bytearray(), 1, 0, &[obj::new_small_int(4)]);
         let o = unsafe { &*(array_ptr(b) as *const ObjArray) };
         assert_eq!(o.len, 4);
     }
@@ -1252,7 +1271,11 @@ mod tests {
         }
         let _guard = setup();
         let b = new_bytearray(4, b"abcd");
-        let sl = objslice::new_slice(obj::new_small_int(1), obj::new_small_int(3), obj::CONST_NONE);
+        let sl = objslice::new_slice(
+            obj::new_small_int(1),
+            obj::new_small_int(3),
+            obj::CONST_NONE,
+        );
         let sub = array_subscr(b, sl, OBJ_SENTINEL);
         let o = unsafe { &*(array_ptr(sub) as *const ObjArray) };
         assert_eq!(o.len, 2);
@@ -1271,8 +1294,7 @@ mod tests {
         assert_eq!(array_get_buffer(b, &mut buf, obj::BUFFER_READ), 0);
         assert_eq!(buf.len, 2);
         assert_eq!(buf.typecode, BYTEARRAY_TYPECODE as i32);
-        let data = unsafe { std::slice::from_raw_parts(buf.buf as *const u8, buf.len) };
-        assert_eq!(data, b"\x01\x02");
+        assert_eq!(buf.as_bytes(), b"\x01\x02");
     }
 
     #[test]
@@ -1283,7 +1305,9 @@ mod tests {
         let _guard = setup();
         let b = new_bytearray(2, b"\x0a\x0b");
         let mut ibuf = ObjIterBuf {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             buf: [obj::OBJ_NULL; 3],
         };
         let it = array_iterator_new(b, &mut ibuf);
@@ -1317,7 +1341,11 @@ mod tests {
         let _guard = setup();
         let b = new_bytearray(4, b"abcd");
         let mv = memoryview_make_new(type_memoryview(), 1, 0, &[b]);
-        let sl = objslice::new_slice(obj::new_small_int(1), obj::new_small_int(3), obj::CONST_NONE);
+        let sl = objslice::new_slice(
+            obj::new_small_int(1),
+            obj::new_small_int(3),
+            obj::CONST_NONE,
+        );
         let sub = array_subscr(mv, sl, OBJ_SENTINEL);
         let o = unsafe { &*(array_ptr(sub) as *const ObjArray) };
         assert_eq!(o.len, 2);

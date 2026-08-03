@@ -3,15 +3,13 @@
 
 pub use crate::builtinimport::{builtin___import___default, import_stat, ImportStat};
 pub use crate::modbuiltins::{init_builtins_module, PY_BUILTINS_HELP_TEXT};
-pub use crate::opmethods::{
-    op_contains_obj, op_delitem_obj, op_getitem_obj, op_setitem_obj,
-};
+pub use crate::opmethods::{op_contains_obj, op_delitem_obj, op_getitem_obj, op_setitem_obj};
 pub use crate::stream::{
-    stream_close, stream_close_obj, stream_flush_obj, stream_ioctl_obj, stream_read_obj,
-    stream_read1_obj, stream_readinto_obj, stream_readinto1_obj, stream_seek_obj,
+    stream___exit___obj, stream_close, stream_close_obj, stream_flush_obj, stream_ioctl_obj,
+    stream_read1_obj, stream_read_obj, stream_readinto1_obj, stream_readinto_obj, stream_seek_obj,
     stream_tell_obj, stream_unbuffered_readline_obj, stream_unbuffered_readlines_obj,
-    stream_write_obj, stream_write1_obj, stream___exit___obj, StreamP, STREAM_ERROR,
-    STREAM_OP_IOCTL, STREAM_OP_READ, STREAM_OP_WRITE,
+    stream_write1_obj, stream_write_obj, StreamP, STREAM_ERROR, STREAM_OP_IOCTL, STREAM_OP_READ,
+    STREAM_OP_WRITE,
 };
 
 use crate::obj::Obj;

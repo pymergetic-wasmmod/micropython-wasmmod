@@ -13,13 +13,23 @@ path = "lib.rs"
 py_rs = { workspace = true }
 shared_rs = { workspace = true }
 sha2 = "0.10"
+md-5 = "0.10"
+sha1 = "0.10"
+ring = "0.17"
 aes = "0.8"
 cipher = "0.4"
 flate2 = "1.0"
+ureq = "2"
 libc = "0.2"
 rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
 rustls-pemfile = "2"
 webpki-roots = "0.26"
-x509-parser = { version = "0.18", default-features = false }
+x509-parser = { version = "0.18", default-features = false, features = ["verify"] }
 fatfs = { version = "0.3", default-features = false, features = ["std", "alloc"] }
 littlefs2-rust = { version = "0.1.1", default-features = false, features = ["std"] }
+wasmi = "2.0.0-beta.9"
+
+[features]
+default = []
+# Link against metal's `pm_metal_net_ip_{tcp,udp}_*` faces (guest builds).
+metal_net = []

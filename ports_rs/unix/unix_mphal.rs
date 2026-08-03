@@ -78,7 +78,9 @@ pub fn stdin_rx_chr() -> i32 {
         }
         if ret < 0 {
             if errno() == libc::EINTR {
-                runtime::handle_pending(runtime::HandlePendingBehaviour::CallbacksAndClearExceptions);
+                runtime::handle_pending(
+                    runtime::HandlePendingBehaviour::CallbacksAndClearExceptions,
+                );
                 continue;
             }
             return -1;
@@ -95,16 +97,13 @@ pub fn stdin_rx_chr() -> i32 {
 pub fn stdout_tx_strn(str: &[u8]) -> usize {
     let mut written = 0usize;
     while written < str.len() {
-        let ret = unsafe {
-            libc::write(
-                1,
-                str[written..].as_ptr() as *const _,
-                str.len() - written,
-            )
-        };
+        let ret =
+            unsafe { libc::write(1, str[written..].as_ptr() as *const _, str.len() - written) };
         if ret < 0 {
             if errno() == libc::EINTR {
-                runtime::handle_pending(runtime::HandlePendingBehaviour::CallbacksAndClearExceptions);
+                runtime::handle_pending(
+                    runtime::HandlePendingBehaviour::CallbacksAndClearExceptions,
+                );
                 continue;
             }
             break;

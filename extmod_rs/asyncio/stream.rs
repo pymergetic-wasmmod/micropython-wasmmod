@@ -46,13 +46,20 @@ impl Stream {
         StreamStep::Yield
     }
 
-    pub fn readinto(&mut self, readinto_fn: impl Fn(usize, &mut [u8]) -> Option<usize>) -> StreamStep {
+    pub fn readinto(
+        &mut self,
+        readinto_fn: impl Fn(usize, &mut [u8]) -> Option<usize>,
+    ) -> StreamStep {
         core::with_io_queue(|io| io.queue_read(self.s));
         let _ = readinto_fn;
         StreamStep::Yield
     }
 
-    pub fn readexactly(&mut self, mut n: usize, read_fn: impl Fn(usize, usize) -> Option<Vec<u8>>) -> StreamStep {
+    pub fn readexactly(
+        &mut self,
+        mut n: usize,
+        read_fn: impl Fn(usize, usize) -> Option<Vec<u8>>,
+    ) -> StreamStep {
         core::with_io_queue(|io| io.queue_read(self.s));
         if let Some(r2) = read_fn(self.s, n) {
             if r2.is_empty() {
@@ -111,9 +118,19 @@ impl Stream {
         self.wait_closed();
     }
 
-    pub fn awrite(&mut self, buf: &[u8], off: usize, sz: i32, write_fn: impl Fn(usize, &[u8]) -> Option<usize>) {
+    pub fn awrite(
+        &mut self,
+        buf: &[u8],
+        off: usize,
+        sz: i32,
+        write_fn: impl Fn(usize, &[u8]) -> Option<usize>,
+    ) {
         let data = if off != 0 || sz != -1 {
-            let end = if sz == -1 { buf.len() } else { off + sz as usize };
+            let end = if sz == -1 {
+                buf.len()
+            } else {
+                off + sz as usize
+            };
             &buf[off..end]
         } else {
             buf
@@ -132,11 +149,7 @@ pub enum StreamStep {
     Error(&'static str),
 }
 
-pub fn open_connection(
-    _host: &str,
-    _port: u16,
-    stream_id: usize,
-) -> (StreamReader, StreamWriter) {
+pub fn open_connection(_host: &str, _port: u16, stream_id: usize) -> (StreamReader, StreamWriter) {
     core::with_io_queue(|io| io.queue_write(stream_id));
     let s = Stream::new(stream_id, HashMap::new());
     (s, Stream::new(stream_id, HashMap::new()))
@@ -183,12 +196,7 @@ pub enum ServerServeStep {
     Cancelled(CancelledError),
 }
 
-pub fn start_server(
-    cb: impl Fn(Stream, Stream),
-    host: &str,
-    port: u16,
-    backlog: u32,
-) -> Server {
+pub fn start_server(cb: impl Fn(Stream, Stream), host: &str, port: u16, backlog: u32) -> Server {
     let _ = (cb, host, port, backlog);
     Server {
         state: false,

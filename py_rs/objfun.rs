@@ -16,9 +16,7 @@ use crate::map::{self, LookupKind, MapElem};
 use crate::mpconfig;
 use crate::mpprint::{self, Print, PrintKind};
 use crate::mpstate;
-use crate::obj::{
-    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
-};
+use crate::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
 use crate::objdict::ObjDict;
 use crate::objexcept;
 use crate::objtuple::{self, ObjTuple};
@@ -81,7 +79,9 @@ macro_rules! fun_builtin_type {
     ($name:ident, $slots:ident) => {
         static mut $slots: [*const (); 1] = [core::ptr::null()];
         static mut $name: ObjType = ObjType {
-            base: ObjBase { type_: core::ptr::null() },
+            base: ObjBase {
+                type_: core::ptr::null(),
+            },
             flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
             name: 0,
             slot_index_make_new: 0,
@@ -109,7 +109,9 @@ fun_builtin_type!(TYPE_FUN_BUILTIN_VAR, FUN_BUILTIN_VAR_SLOTS);
 
 static mut FUN_BC_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 static mut TYPE_FUN_BC: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -129,7 +131,9 @@ static mut TYPE_FUN_BC: ObjType = ObjType {
 
 static mut FUN_NATIVE_SLOTS: [*const (); 3] = [core::ptr::null(); 3];
 static mut TYPE_FUN_NATIVE: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -149,7 +153,9 @@ static mut TYPE_FUN_NATIVE: ObjType = ObjType {
 
 static mut FUN_VIPER_SLOTS: [*const (); 1] = [core::ptr::null()];
 static mut TYPE_FUN_VIPER: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF,
     name: 0,
     slot_index_make_new: 0,
@@ -169,7 +175,9 @@ static mut TYPE_FUN_VIPER: ObjType = ObjType {
 
 static mut FUN_ASM_SLOTS: [*const (); 1] = [core::ptr::null()];
 static mut TYPE_FUN_ASM: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -376,9 +384,7 @@ pub fn fun_bc_get_name(fun: &ObjFunBc) -> Qstr {
 }
 
 fn fun_bc_extra_args(fun: &ObjFunBc, n: usize) -> &mut [Obj] {
-    unsafe {
-        std::slice::from_raw_parts_mut((fun as *const ObjFunBc).add(1) as *mut Obj, n)
-    }
+    unsafe { std::slice::from_raw_parts_mut((fun as *const ObjFunBc).add(1) as *mut Obj, n) }
 }
 
 fn init_code_state(
@@ -415,7 +421,8 @@ fn fun_bc_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
             );
         }
         let ptr = heap_ptr.take().unwrap();
-        let result = fun_bc_call_with_state(self_, n_state, n_args, n_kw, args, ptr as *mut CodeState);
+        let result =
+            fun_bc_call_with_state(self_, n_state, n_args, n_kw, args, ptr as *mut CodeState);
         gc::free(ptr);
         result
     } else {
@@ -452,7 +459,14 @@ fn fun_bc_call_with_state(
     code_state: *mut CodeState,
 ) -> Obj {
     unsafe {
-        init_code_state(&mut *code_state, self_ as *mut ObjFunBc, n_state, n_args, n_kw, args);
+        init_code_state(
+            &mut *code_state,
+            self_ as *mut ObjFunBc,
+            n_state,
+            n_args,
+            n_kw,
+            args,
+        );
         let ctx = &*self_.context;
         mpstate::globals_set(obj::from_ptr(ctx.module.globals as *const ()));
         let vm_return_kind = vm::execute_bytecode(&mut *code_state, obj::OBJ_NULL);
@@ -531,7 +545,8 @@ pub fn new_fun_bc(
         }
     }
 
-    let o = obj::malloc_var::<ObjFunBc>(n_extra_args * size_of::<Obj>(), type_fun_bc()) as *mut ObjFunBc;
+    let o = obj::malloc_var::<ObjFunBc>(n_extra_args * size_of::<Obj>(), type_fun_bc())
+        as *mut ObjFunBc;
     unsafe {
         (*o).bytecode = code;
         (*o).context = context;
@@ -547,9 +562,10 @@ pub fn new_fun_bc(
     }
 }
 
-
 fn raise_native_dispatch_unsupported() -> ! {
-    raise::raise_obj(objexcept::new_exception(objexcept::type_not_implemented_error()));
+    raise::raise_obj(objexcept::new_exception(
+        objexcept::type_not_implemented_error(),
+    ));
 }
 
 fn dispatch_native_code(
@@ -567,12 +583,7 @@ fn dispatch_native_code(
     type NativeCallFn = extern "C-unwind" fn(Obj, usize, usize, *const Obj) -> Obj;
     let mut nlr_buf = crate::nlr::NlrBuf::default();
     match crate::nlr::protect(&mut nlr_buf, || unsafe {
-        (core::mem::transmute::<*const (), NativeCallFn>(callable))(
-            self_in,
-            n_args,
-            n_kw,
-            args_ptr,
-        )
+        (core::mem::transmute::<*const (), NativeCallFn>(callable))(self_in, n_args, n_kw, args_ptr)
     }) {
         Ok(v) => v,
         Err(v) => crate::raise::raise_obj(Obj(v)),
@@ -594,13 +605,7 @@ fn fun_native_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Ob
 fn fun_viper_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     cstack::check();
     let self_ = unsafe { &*(obj::as_ptr(self_in) as *const ObjFunBc) };
-    dispatch_native_code(
-        self_.bytecode as *const (),
-        self_in,
-        n_args,
-        n_kw,
-        args,
-    )
+    dispatch_native_code(self_.bytecode as *const (), self_in, n_args, n_kw, args)
 }
 
 fn fun_asm_call(_self_in: Obj, _n_args: usize, _n_kw: usize, _args: &[Obj]) -> Obj {
@@ -609,8 +614,7 @@ fn fun_asm_call(_self_in: Obj, _n_args: usize, _n_kw: usize, _args: &[Obj]) -> O
 
 /// `mp_obj_fun_native_get_prelude_ptr`
 pub fn fun_native_get_prelude_ptr(fun_native: &ObjFunBc) -> *const u8 {
-    let prelude_ptr_index =
-        unsafe { fun_native.bytecode.cast::<usize>().read_unaligned() };
+    let prelude_ptr_index = unsafe { fun_native.bytecode.cast::<usize>().read_unaligned() };
     if prelude_ptr_index == 0 {
         fun_native.child_table as *const u8
     } else {
@@ -631,15 +635,21 @@ pub fn fun_native_get_function_start(fun_native: &ObjFunBc) -> *const () {
 
 /// `mp_obj_fun_native_get_generator_start`
 pub fn fun_native_get_generator_start(fun_native: &ObjFunBc) -> *const () {
-    let start_offset = unsafe { fun_native.bytecode.add(size_of::<usize>()).cast::<usize>().read_unaligned() };
+    let start_offset = unsafe {
+        fun_native
+            .bytecode
+            .add(size_of::<usize>())
+            .cast::<usize>()
+            .read_unaligned()
+    };
     mpconfig::make_pointer_callable(unsafe { fun_native.bytecode.add(start_offset) as *const () })
 }
 
 /// `mp_obj_fun_native_get_generator_resume`
 pub fn fun_native_get_generator_resume(fun_native: &ObjFunBc) -> *const () {
-    mpconfig::make_pointer_callable(
-        unsafe { fun_native.bytecode.add(2 * size_of::<usize>()) as *const () },
-    )
+    mpconfig::make_pointer_callable(unsafe {
+        fun_native.bytecode.add(2 * size_of::<usize>()) as *const ()
+    })
 }
 
 /// `mp_obj_new_fun_native`
@@ -725,7 +735,9 @@ mod tests {
         let globals_ptr = obj::as_ptr(globals) as *mut ObjDict;
         let ctx = Box::leak(Box::new(ModuleContext {
             module: ObjModule {
-                base: ObjBase { type_: core::ptr::null() },
+                base: ObjBase {
+                    type_: core::ptr::null(),
+                },
                 globals: globals_ptr,
             },
             constants: ModuleConstants::default(),
@@ -749,7 +761,10 @@ mod tests {
         setup();
         let fun = test_fun("hello");
         let fun_ptr = obj::as_ptr(fun) as *const ObjFunBc;
-        assert_eq!(fun_bc_get_name(unsafe { &*fun_ptr }), qstr::from_str("hello"));
+        assert_eq!(
+            fun_bc_get_name(unsafe { &*fun_ptr }),
+            qstr::from_str("hello")
+        );
     }
 
     #[test]
@@ -783,7 +798,12 @@ mod tests {
         let bc = Box::leak(minimal_bytecode(0).into_boxed_slice());
         let default = obj::new_small_int(42);
         let def_tuple = objtuple::new_tuple(1, Some(&[default]));
-        let fun = new_fun_bc(Some(&[def_tuple, obj::OBJ_NULL]), bc.as_ptr(), ctx, core::ptr::null());
+        let fun = new_fun_bc(
+            Some(&[def_tuple, obj::OBJ_NULL]),
+            bc.as_ptr(),
+            ctx,
+            core::ptr::null(),
+        );
         let fun_ptr = unsafe { &*(obj::as_ptr(fun) as *const ObjFunBc) };
         assert_eq!(fun_bc_extra_args(fun_ptr, 1)[0], default);
     }
@@ -794,11 +814,15 @@ mod tests {
         fn f0() -> Obj {
             obj::new_small_int(0)
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_0()) as *mut ObjFunBuiltinFixed;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_0())
+            as *mut ObjFunBuiltinFixed;
         unsafe {
             (*o).fun.f0 = f0;
             let fun = obj::from_ptr(o as *const ObjFunBuiltinFixed as *const ());
-            assert_eq!(runtime::call_function_n_kw(fun, 0, 0, &[]), obj::new_small_int(0));
+            assert_eq!(
+                runtime::call_function_n_kw(fun, 0, 0, &[]),
+                obj::new_small_int(0)
+            );
         }
     }
 
@@ -808,7 +832,8 @@ mod tests {
         fn f1(x: Obj) -> Obj {
             x
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_1()) as *mut ObjFunBuiltinFixed;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_1())
+            as *mut ObjFunBuiltinFixed;
         unsafe {
             (*o).fun.f1 = f1;
             let fun = obj::from_ptr(o as *const ObjFunBuiltinFixed as *const ());
@@ -823,11 +848,17 @@ mod tests {
         fn f2(a: Obj, b: Obj) -> Obj {
             obj::new_small_int(obj::get_int(a) + obj::get_int(b))
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_2()) as *mut ObjFunBuiltinFixed;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_2())
+            as *mut ObjFunBuiltinFixed;
         unsafe {
             (*o).fun.f2 = f2;
             let fun = obj::from_ptr(o as *const ObjFunBuiltinFixed as *const ());
-            let result = runtime::call_function_n_kw(fun, 2, 0, &[obj::new_small_int(3), obj::new_small_int(4)]);
+            let result = runtime::call_function_n_kw(
+                fun,
+                2,
+                0,
+                &[obj::new_small_int(3), obj::new_small_int(4)],
+            );
             assert_eq!(obj::get_int(result), 7);
         }
     }
@@ -838,7 +869,8 @@ mod tests {
         fn f3(a: Obj, b: Obj, c: Obj) -> Obj {
             obj::new_small_int(obj::get_int(a) + obj::get_int(b) + obj::get_int(c))
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_3()) as *mut ObjFunBuiltinFixed;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinFixed>(), type_fun_builtin_3())
+            as *mut ObjFunBuiltinFixed;
         unsafe {
             (*o).fun.f3 = f3;
             let fun = obj::from_ptr(o as *const ObjFunBuiltinFixed as *const ());
@@ -846,7 +878,11 @@ mod tests {
                 fun,
                 3,
                 0,
-                &[obj::new_small_int(1), obj::new_small_int(2), obj::new_small_int(3)],
+                &[
+                    obj::new_small_int(1),
+                    obj::new_small_int(2),
+                    obj::new_small_int(3),
+                ],
             );
             assert_eq!(obj::get_int(result), 6);
         }
@@ -858,12 +894,18 @@ mod tests {
         fn fvar(n: usize, args: &[Obj]) -> Obj {
             obj::new_small_int(n as isize + obj::get_int(args[0]))
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinVar>(), type_fun_builtin_var()) as *mut ObjFunBuiltinVar;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinVar>(), type_fun_builtin_var())
+            as *mut ObjFunBuiltinVar;
         unsafe {
             (*o).sig = argcheck::make_sig(1, 2, false);
             (*o).fun.var = fvar;
             let fun = obj::from_ptr(o as *const ObjFunBuiltinVar as *const ());
-            let r = runtime::call_function_n_kw(fun, 2, 0, &[obj::new_small_int(10), obj::new_small_int(5)]);
+            let r = runtime::call_function_n_kw(
+                fun,
+                2,
+                0,
+                &[obj::new_small_int(10), obj::new_small_int(5)],
+            );
             assert_eq!(obj::get_int(r), 12);
         }
     }
@@ -874,7 +916,8 @@ mod tests {
         fn fkw(_n: usize, _args: &[Obj], kw: &map::Map) -> Obj {
             kw.table[0].value
         }
-        let o = obj::malloc_helper(size_of::<ObjFunBuiltinVar>(), type_fun_builtin_var()) as *mut ObjFunBuiltinVar;
+        let o = obj::malloc_helper(size_of::<ObjFunBuiltinVar>(), type_fun_builtin_var())
+            as *mut ObjFunBuiltinVar;
         unsafe {
             (*o).sig = argcheck::make_sig(0, 0xffff, true);
             (*o).fun.kw = fkw;
@@ -916,23 +959,23 @@ mod tests {
         );
         if asmbase::machine_code_dispatch_supported() {
             let (code, _size) = emit_trivial_native_return_none();
-            let fun = new_fun_native(
-                None,
-                code as *const (),
-                ctx,
-                child_table.as_ptr(),
-            );
+            let fun = new_fun_native(None, code as *const (), ctx, child_table.as_ptr());
             let result = runtime::call_function_n_kw(fun, 0, 0, &[]);
             assert_eq!(result, obj::CONST_NONE);
         } else {
             let mut nlr_buf = crate::nlr::NlrBuf::default();
             let err =
                 crate::nlr::protect(&mut nlr_buf, || runtime::call_function_n_kw(fun, 0, 0, &[]));
-            assert!(err.is_err(), "native call should raise when dispatch is gated");
+            assert!(
+                err.is_err(),
+                "native call should raise when dispatch is gated"
+            );
             let exc = Obj(err.unwrap_err());
             assert!(objexcept::exception_match(
                 exc,
-                obj::from_ptr(objexcept::type_not_implemented_error() as *const ObjType as *const ()),
+                obj::from_ptr(
+                    objexcept::type_not_implemented_error() as *const ObjType as *const ()
+                ),
             ));
         }
     }
@@ -944,11 +987,15 @@ mod tests {
         assert_eq!(core::mem::offset_of!(ModuleContext, constants), 16);
         assert_eq!(core::mem::offset_of!(ModuleConstants, qstr_table), 0);
         assert_eq!(core::mem::offset_of!(ModuleConstants, obj_table), 8);
-        assert_eq!(core::mem::offset_of!(ModuleContext, constants.obj_table), 24);
+        assert_eq!(
+            core::mem::offset_of!(ModuleContext, constants.obj_table),
+            24
+        );
         assert_eq!(core::mem::size_of::<ModuleConstants>(), 16);
         assert_eq!(core::mem::size_of::<ObjModule>(), 16);
         assert_eq!(
-            core::mem::offset_of!(ModuleContext, constants.obj_table) / core::mem::size_of::<usize>(),
+            core::mem::offset_of!(ModuleContext, constants.obj_table)
+                / core::mem::size_of::<usize>(),
             3,
         );
     }
@@ -974,7 +1021,9 @@ mod tests {
         let name_qstr = qstr::from_str(name);
         let ctx = Box::leak(Box::new(ModuleContext {
             module: crate::bc::ObjModule {
-                base: ObjBase { type_: core::ptr::null() },
+                base: ObjBase {
+                    type_: core::ptr::null(),
+                },
                 globals: objdict::dict_ptr(mpstate::globals_get()),
             },
             constants: ModuleConstants::default(),
@@ -1019,8 +1068,10 @@ mod tests {
         )
         .expect("qstr");
         elem.value = obj::new_small_int(0);
-        let _fun_table_off =
-            emit::emit_common_use_const_obj(&mut emit_common, Obj(nativeglue::fun_table_reloc_base()));
+        let _fun_table_off = emit::emit_common_use_const_obj(
+            &mut emit_common,
+            Obj(nativeglue::fun_table_reloc_base()),
+        );
 
         let mut compile_error = obj::OBJ_NULL;
         let mut next_label = 0usize;
@@ -1102,8 +1153,8 @@ mod tests {
     }
 
     fn emit_trivial_native_return_none() -> (*const u8, usize) {
-        use crate::asmx64::{self, AsmX64, ASM_X64_REG_RAX};
         use crate::asmbase::{self, MpAsmBase, MP_ASM_PASS_COMPUTE, MP_ASM_PASS_EMIT};
+        use crate::asmx64::{self, AsmX64, ASM_X64_REG_RAX};
 
         let mut asm = Box::new(AsmX64 {
             base: MpAsmBase {

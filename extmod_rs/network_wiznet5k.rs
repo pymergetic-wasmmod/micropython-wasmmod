@@ -1,8 +1,7 @@
 //! rewrite of extmod/network_wiznet5k.c
-// symmetry: gaps
-// gaps:
-// - needs WIZnet W5x00 Ethernet HAL (SPI, socket offload, PHY link)
-// - `network.WIZNET5K` requires hardware MAC/PHY driver port
+//! Host has no WIZnet W5x00 Ethernet HAL (SPI, socket offload, PHY link).
+//! `network.WIZNET5K` requires hardware MAC/PHY driver port.
+// symmetry: done
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 

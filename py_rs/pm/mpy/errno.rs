@@ -1,9 +1,9 @@
 //! Shared helpers for `pm_mpy_errno_*` accessors.
 // symmetry: done
 
+use super::export::module_global_export;
 use crate::moderrno;
 use crate::obj;
-use super::export::module_global_export;
 
 /// Look up `errno` module export `name` (null if absent).
 pub(crate) fn errno_export(name: &str) -> obj::Obj {

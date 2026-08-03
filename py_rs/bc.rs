@@ -5,6 +5,7 @@ use core::mem::size_of;
 use core::ptr;
 
 use crate::bc0;
+use crate::map::{self, LookupKind};
 use crate::mpconfig;
 use crate::obj::{self, Obj};
 use crate::objcell;
@@ -115,7 +116,8 @@ pub struct CodeStateNative {
 impl CodeStateNative {
     pub fn state_ptr(&self) -> *mut Obj {
         unsafe {
-            (self as *const CodeStateNative as *mut u8).add(size_of::<CodeStateNative>()) as *mut Obj
+            (self as *const CodeStateNative as *mut u8).add(size_of::<CodeStateNative>())
+                as *mut Obj
         }
     }
 }
@@ -287,7 +289,11 @@ pub fn decode_lineinfo(line_info: &mut *const u8) -> CodeLineInfo {
 }
 
 /// Map bytecode offset to source line (`mp_bytecode_get_source_line`).
-pub fn get_source_line(line_info: *const u8, line_info_top: *const u8, mut bc_offset: usize) -> usize {
+pub fn get_source_line(
+    line_info: *const u8,
+    line_info_top: *const u8,
+    mut bc_offset: usize,
+) -> usize {
     let mut source_line = 1usize;
     let mut li = line_info;
     while li < line_info_top {
@@ -316,9 +322,7 @@ fn fun_bc_extra_args(fun: &ObjFunBc, n: usize) -> &[Obj] {
     if n == 0 {
         return &[];
     }
-    unsafe {
-        std::slice::from_raw_parts((fun as *const ObjFunBc).add(1) as *const Obj, n)
-    }
+    unsafe { std::slice::from_raw_parts((fun as *const ObjFunBc).add(1) as *const Obj, n) }
 }
 
 fn fun_pos_args_mismatch(_expected: usize, _given: usize) -> ! {
@@ -340,7 +344,8 @@ fn setup_code_state_helper(code_state: &mut CodeState, n_args: usize, n_kw: usiz
 
     let kwargs = &args[n_args..];
     let mut pos_args = n_args;
-    let mut var_pos_kw_args = unsafe { state_base.add(n_state - 1 - sig.n_pos_args - sig.n_kwonly_args) };
+    let mut var_pos_kw_args =
+        unsafe { state_base.add(n_state - 1 - sig.n_pos_args - sig.n_kwonly_args) };
 
     if pos_args > sig.n_pos_args {
         if sig.scope_flags & bc0::SCOPE_FLAG_VARARGS as usize == 0 {
@@ -361,10 +366,19 @@ fn setup_code_state_helper(code_state: &mut CodeState, n_args: usize, n_kw: usiz
 
     if n_kw == 0 && sig.scope_flags & bc0::SCOPE_FLAG_DEFKWARGS as usize == 0 {
         if pos_args >= sig.n_pos_args - sig.n_def_pos_args {
-            let extra = fun_bc_extra_args(self_, sig.n_def_pos_args + if sig.scope_flags & bc0::SCOPE_FLAG_DEFKWARGS as usize != 0 { 1 } else { 0 });
+            let extra = fun_bc_extra_args(
+                self_,
+                sig.n_def_pos_args
+                    + if sig.scope_flags & bc0::SCOPE_FLAG_DEFKWARGS as usize != 0 {
+                        1
+                    } else {
+                        0
+                    },
+            );
             for i in pos_args..sig.n_pos_args {
                 unsafe {
-                    *state_base.add(n_state - 1 - i) = extra[i - (sig.n_pos_args - sig.n_def_pos_args)];
+                    *state_base.add(n_state - 1 - i) =
+                        extra[i - (sig.n_pos_args - sig.n_def_pos_args)];
                 }
             }
         } else if pos_args < sig.n_pos_args - sig.n_def_pos_args {
@@ -399,7 +413,9 @@ fn setup_code_state_helper(code_state: &mut CodeState, n_args: usize, n_kw: usiz
                 }
                 if wanted == obj::new_qstr(arg_qstr) {
                     if unsafe { *state_base.add(n_state - 1 - j) } != obj::OBJ_NULL {
-                        raise::raise(MpRaise::TypeError("function got multiple values for argument"));
+                        raise::raise(MpRaise::TypeError(
+                            "function got multiple values for argument",
+                        ));
                     }
                     unsafe {
                         *state_base.add(n_state - 1 - j) = kwargs[i * 2 + 1];
@@ -413,6 +429,75 @@ fn setup_code_state_helper(code_state: &mut CodeState, n_args: usize, n_kw: usiz
                     raise::raise(MpRaise::TypeError("unexpected keyword argument"));
                 }
                 objdict::dict_store(dict, wanted, kwargs[i * 2 + 1]);
+            }
+        }
+
+        // Fill in defaults for any positional args not covered above (either not
+        // passed positionally, since n_kw != 0 skips the earlier default-fill
+        // branch, or not passed at all when only DEFKWARGS triggered this path).
+        let extra = fun_bc_extra_args(
+            self_,
+            sig.n_def_pos_args
+                + if sig.scope_flags & bc0::SCOPE_FLAG_DEFKWARGS as usize != 0 {
+                    1
+                } else {
+                    0
+                },
+        );
+        let d_start = n_state - sig.n_pos_args;
+        for i in 0..sig.n_def_pos_args {
+            unsafe {
+                if *state_base.add(d_start + i) == obj::OBJ_NULL {
+                    *state_base.add(d_start + i) = extra[sig.n_def_pos_args - 1 - i];
+                }
+            }
+        }
+
+        // Check that all mandatory positional args are specified.
+        for idx in (d_start + sig.n_def_pos_args)..n_state {
+            unsafe {
+                if *state_base.add(idx) == obj::OBJ_NULL {
+                    raise::raise(MpRaise::TypeError(
+                        "function missing required positional argument",
+                    ));
+                }
+            }
+        }
+
+        // Check that all mandatory keyword-only args are specified; fill in
+        // default kwonly args (from the trailing dict in `extra`) if present.
+        let mut kwonly_arg_names = decode_uint_skip(ip);
+        for _ in 0..sig.n_pos_args {
+            kwonly_arg_names = decode_uint_skip(kwonly_arg_names);
+        }
+        for i in 0..sig.n_kwonly_args {
+            let mut arg_qstr = decode_uint(&mut kwonly_arg_names) as Qstr;
+            if mpconfig::EMIT_BYTECODE_USES_QSTR_TABLE {
+                let ctx = unsafe { &*self_.context };
+                arg_qstr = ctx.qstr_table()[arg_qstr as usize];
+            }
+            let idx = n_state - 1 - sig.n_pos_args - i;
+            unsafe {
+                if *state_base.add(idx) == obj::OBJ_NULL {
+                    let found_default = if sig.scope_flags & bc0::SCOPE_FLAG_DEFKWARGS as usize != 0
+                    {
+                        let kw_dict = extra[sig.n_def_pos_args];
+                        map::lookup(
+                            &mut (*objdict::dict_ptr(kw_dict)).map,
+                            obj::new_qstr(arg_qstr),
+                            LookupKind::Lookup,
+                        )
+                        .map(|elem| elem.value)
+                    } else {
+                        None
+                    };
+                    match found_default {
+                        Some(v) => *state_base.add(idx) = v,
+                        None => raise::raise(MpRaise::TypeError(
+                            "function missing required keyword-only argument",
+                        )),
+                    }
+                }
             }
         }
     } else if sig.n_kwonly_args != 0 {

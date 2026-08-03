@@ -1,12 +1,12 @@
 //! rewrite of py/unicode.c + py/unicode.h
 // symmetry: done
 
-use crate::misc::{self, Byte, Unichar, Uint};
+use crate::misc::{self, Byte, Uint, Unichar};
 use crate::mpconfig;
 
 pub use misc::{
     unichar_isalnum, unichar_isalpha, unichar_isdigit, unichar_isident, unichar_islower,
-    unichar_isprint, unichar_isupper, unichar_isspace, unichar_isxdigit, unichar_tolower,
+    unichar_isprint, unichar_isspace, unichar_isupper, unichar_isxdigit, unichar_tolower,
     unichar_toupper, unichar_xdigit_value, utf8_charlen, utf8_get_char, utf8_is_cont,
     utf8_is_nonascii, utf8_next_char,
 };

@@ -91,7 +91,9 @@ pub fn entry_label_name(opcode: u8) -> &'static str {
         {
             "entry_MP_BC_LOAD_CONST_SMALL_INT_MULTI"
         }
-        op if op >= bc0::LOAD_FAST_MULTI && op < bc0::LOAD_FAST_MULTI + bc0::LOAD_FAST_MULTI_NUM => {
+        op if op >= bc0::LOAD_FAST_MULTI
+            && op < bc0::LOAD_FAST_MULTI + bc0::LOAD_FAST_MULTI_NUM =>
+        {
             "entry_MP_BC_LOAD_FAST_MULTI"
         }
         op if op >= bc0::STORE_FAST_MULTI
@@ -102,7 +104,9 @@ pub fn entry_label_name(opcode: u8) -> &'static str {
         op if op >= bc0::UNARY_OP_MULTI && op < bc0::UNARY_OP_MULTI + bc0::UNARY_OP_MULTI_NUM => {
             "entry_MP_BC_UNARY_OP_MULTI"
         }
-        op if op >= bc0::BINARY_OP_MULTI && op < bc0::BINARY_OP_MULTI + bc0::BINARY_OP_MULTI_NUM => {
+        op if op >= bc0::BINARY_OP_MULTI
+            && op < bc0::BINARY_OP_MULTI + bc0::BINARY_OP_MULTI_NUM =>
+        {
             "entry_MP_BC_BINARY_OP_MULTI"
         }
         _ => ENTRY_DEFAULT,
@@ -132,7 +136,10 @@ mod tests {
 
     #[test]
     fn explicit_opcodes_map_to_named_entries() {
-        assert_eq!(entry_label_name(bc0::RETURN_VALUE), "entry_MP_BC_RETURN_VALUE");
+        assert_eq!(
+            entry_label_name(bc0::RETURN_VALUE),
+            "entry_MP_BC_RETURN_VALUE"
+        );
         assert!(has_explicit_entry(bc0::LOAD_NAME));
     }
 

@@ -5,8 +5,8 @@ use core::mem::size_of;
 use core::ptr;
 
 use crate::bc::{
-    self, decode_uint, exc_sp_idx_from_ptr, exc_sp_idx_to_ptr, tagptr_make, tagptr_ptr, tagptr_tag1,
-    CodeState, ExcStack, ModuleContext, ObjFunBc,
+    self, decode_uint, exc_sp_idx_from_ptr, exc_sp_idx_to_ptr, tagptr_make, tagptr_ptr,
+    tagptr_tag1, CodeState, ExcStack, ModuleContext, ObjFunBc,
 };
 use crate::bc0;
 use crate::emitglue;
@@ -122,7 +122,12 @@ fn local_name_error() -> Obj {
     )
 }
 
-fn push_exc_block(ip: &mut *const u8, exc_sp: &mut *mut ExcStack, sp: *mut Obj, with_or_finally: bool) {
+fn push_exc_block(
+    ip: &mut *const u8,
+    exc_sp: &mut *mut ExcStack,
+    sp: *mut Obj,
+    with_or_finally: bool,
+) {
     let ulab = decode_ulabel(ip);
     unsafe {
         *exc_sp = exc_sp.add(1);
@@ -144,7 +149,9 @@ fn cancel_active_finally(sp: &mut *mut Obj) {
             *sp.sub(2) = top(*sp);
             *sp = sp.sub(2);
         } else {
-            debug_assert!(top(*sp) == obj::CONST_NONE || objexcept::is_exception_instance(top(*sp)));
+            debug_assert!(
+                top(*sp) == obj::CONST_NONE || objexcept::is_exception_instance(top(*sp))
+            );
             *sp.sub(1) = top(*sp);
             *sp = sp.sub(1);
         }
@@ -159,14 +166,38 @@ fn nlr_val_to_exc(val: usize) -> Obj {
     mp_raise_to_exception(raise::decode(val))
 }
 
+/// Convert an NLR jump value to an exception object (`MpRaise` encode or instance).
+pub fn jump_val_to_exception(val: usize) -> Obj {
+    nlr_val_to_exc(val)
+}
+
 fn mp_raise_to_exception(err: MpRaise) -> Obj {
     match err {
-        MpRaise::TypeError(m) | MpRaise::AttributeError(m) => {
-            objexcept::new_exception_args(objexcept::type_type_error(), 1, &[obj::new_qstr(crate::qstr::from_str(m))])
-        }
-        MpRaise::ValueError(m) => {
-            objexcept::new_exception_args(objexcept::type_value_error(), 1, &[obj::new_qstr(crate::qstr::from_str(m))])
-        }
+        MpRaise::TypeError(m) => objexcept::new_exception_args(
+            objexcept::type_type_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
+        MpRaise::AttributeError(m) => objexcept::new_exception_args(
+            objexcept::type_attribute_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
+        MpRaise::KeyError(m) => objexcept::new_exception_args(
+            objexcept::type_key_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
+        MpRaise::IndexError(m) => objexcept::new_exception_args(
+            objexcept::type_index_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
+        MpRaise::ValueError(m) => objexcept::new_exception_args(
+            objexcept::type_value_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
         MpRaise::RuntimeError(m) => objexcept::new_exception_args(
             objexcept::type_runtime_error(),
             1,
@@ -177,15 +208,26 @@ fn mp_raise_to_exception(err: MpRaise) -> Obj {
             1,
             &[obj::new_qstr(crate::qstr::from_str(m))],
         ),
-        MpRaise::ZeroDivisionError => objexcept::new_exception(objexcept::type_zero_division_error()),
+        MpRaise::ZeroDivisionError => objexcept::new_exception_args(
+            objexcept::type_zero_division_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str("divide by zero"))],
+        ),
         MpRaise::OSError(code) => objexcept::new_exception_args(
             objexcept::type_os_error(),
             1,
             &[obj::new_small_int(code as isize)],
         ),
-        MpRaise::SyntaxError(m) => {
-            objexcept::new_exception_args(objexcept::type_syntax_error(), 1, &[obj::new_qstr(crate::qstr::from_str(m))])
-        }
+        MpRaise::SyntaxError(m) => objexcept::new_exception_args(
+            objexcept::type_syntax_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
+        MpRaise::NameError(m) => objexcept::new_exception_args(
+            objexcept::type_name_error(),
+            1,
+            &[obj::new_qstr(crate::qstr::from_str(m))],
+        ),
         MpRaise::RecursionDepth => objexcept::new_exception(objexcept::type_runtime_error()),
     }
 }
@@ -193,7 +235,8 @@ fn mp_raise_to_exception(err: MpRaise) -> Obj {
 fn load_attr_fast(top: Obj, qst: Qstr) -> Obj {
     if mpconfig::OPT_LOAD_ATTR_FAST_PATH && obj::is_instance_type(obj::get_type(top)) {
         let self_ = unsafe { &mut *(obj::as_ptr(top) as *mut ObjInstance) };
-        if let Some(elem) = map::lookup(&mut self_.members, obj::new_qstr(qst), LookupKind::Lookup) {
+        if let Some(elem) = map::lookup(&mut self_.members, obj::new_qstr(qst), LookupKind::Lookup)
+        {
             return elem.value;
         }
     }
@@ -202,9 +245,11 @@ fn load_attr_fast(top: Obj, qst: Qstr) -> Obj {
 
 #[allow(clippy::too_many_arguments)]
 fn build_slice_stack_allocated(op: u8, sp: *mut Obj, step: Obj) -> *mut Obj {
+    // `sp` points at the `base` slot; `start`/`stop` are the two slots above
+    // it (pushed after `base`), and for a store, `value` is the slot below.
     unsafe {
-        let stop = *sp.sub(2);
-        let start = *sp.sub(1);
+        let start = *sp.add(1);
+        let stop = *sp.add(2);
         let slice = ObjSlice {
             base: ObjBase {
                 type_: objslice::type_slice() as *const ObjType,
@@ -215,11 +260,11 @@ fn build_slice_stack_allocated(op: u8, sp: *mut Obj, step: Obj) -> *mut Obj {
         };
         let slice_obj = obj::from_ptr(&slice as *const ObjSlice as *const ());
         if op == bc0::LOAD_SUBSCR {
-            set_top(sp.sub(2), obj::subscr(top(sp.sub(2)), slice_obj, obj::OBJ_SENTINEL));
-            sp.sub(2)
+            set_top(sp, obj::subscr(top(sp), slice_obj, obj::OBJ_SENTINEL));
+            sp
         } else {
-            obj::subscr(top(sp.sub(2)), slice_obj, *sp.sub(3));
-            sp.sub(4)
+            obj::subscr(top(sp), slice_obj, *sp.sub(1));
+            sp.sub(2)
         }
     }
 }
@@ -287,6 +332,61 @@ fn run_unwind_return(
     false
 }
 
+fn add_traceback_for_exception(code_state: &CodeState, exc: Obj) {
+    if exc == objgenerator::const_generator_exit() {
+        return;
+    }
+    if !objexcept::is_exception_instance(exc) {
+        return;
+    }
+    unsafe {
+        if code_state.ip.is_null()
+            || code_state.fun_bc.is_null()
+            || (*code_state.fun_bc).context.is_null()
+        {
+            return;
+        }
+        if *code_state.ip == bc0::END_FINALLY || *code_state.ip == bc0::RAISE_LAST {
+            return;
+        }
+
+        let fun_bc = &*code_state.fun_bc;
+        let ctx = &*fun_bc.context;
+        let qstr_table = ctx.qstr_table();
+
+        let mut ip = fun_bc.bytecode;
+        if ip.is_null() {
+            return;
+        }
+        let sig = bc::prelude_sig_decode_into(&mut ip);
+        let (n_info, n_cell) = bc::prelude_size_decode(&mut ip);
+        let line_info_top = ip.add(n_info);
+        let bytecode_start = ip.add(n_info + n_cell);
+        let bc = code_state.ip.offset_from(bytecode_start) as usize;
+
+        let block_name_idx = bc::decode_uint_value(ip);
+        let mut line_info = ip;
+        for _ in 0..1 + sig.n_pos_args + sig.n_kwonly_args {
+            line_info = bc::decode_uint_skip(line_info);
+        }
+
+        let (source_file, block_name) = if mpconfig::EMIT_BYTECODE_USES_QSTR_TABLE {
+            (
+                qstr_table.first().copied().unwrap_or(qstr::QSTR_NULL),
+                qstr_table
+                    .get(block_name_idx)
+                    .copied()
+                    .unwrap_or(qstr::QSTR_NULL),
+            )
+        } else {
+            (qstr::QSTR_NULL, block_name_idx as Qstr)
+        };
+
+        let source_line = bc::get_source_line(line_info, line_info_top, bc);
+        objexcept::exception_add_traceback(exc, source_file, source_line, block_name);
+    }
+}
+
 fn handle_exception(
     code_state: &mut CodeState,
     exc_stack: *mut ExcStack,
@@ -294,10 +394,13 @@ fn handle_exception(
     inject_exc: &mut Obj,
 ) -> InnerResult {
     let exc = nlr_val_to_exc(exc_val);
+    add_traceback_for_exception(code_state, exc);
     let ip = code_state.ip;
 
     if objtype::is_subclass_fast(
-        obj::from_ptr(unsafe { (*(obj::as_ptr(exc) as *const ObjBase)).type_ as *const ObjType as *const () }),
+        obj::from_ptr(unsafe {
+            (*(obj::as_ptr(exc) as *const ObjBase)).type_ as *const ObjType as *const ()
+        }),
         obj::from_ptr(objexcept::type_stop_iteration() as *const ObjType as *const ()),
     ) {
         if unsafe { *ip } == bc0::FOR_ITER {
@@ -361,7 +464,17 @@ fn dispatch_loop(
     }
 
     loop {
+        // Unlike py/vm.c (where `ip`/`sp`/`exc_sp` are locals of the same C stack
+        // frame that hosts the setjmp, and thus survive a longjmp when declared
+        // `volatile`), here `dispatch_loop`'s locals live in a callee frame that is
+        // unwound by the time `nlr::protect`'s setjmp resumes in the caller. Any
+        // state a longjmp/exception-handling needs to observe must therefore be
+        // published to `code_state` *before* an opcode can raise, not just at
+        // convenient checkpoints (RETURN_VALUE/YIELD/END_FINALLY). `exc_sp_idx` is
+        // read by `handle_exception` to locate the exception stack, so it must be
+        // kept in sync every iteration, exactly like `ip` already is below.
         code_state.ip = ip;
+        code_state.exc_sp_idx = exc_sp_idx_from_ptr(exc_stack, exc_sp);
         let op = unsafe { *ip };
         ip = unsafe { ip.add(1) };
 
@@ -436,11 +549,18 @@ fn dispatch_loop(
             }
 
             bc0::LOAD_SUPER_METHOD => {
+                // Stack on entry (top-down): self, __class__, <dead slot reserved by
+                // the compiler for the "super" global lookup that's never used>.
+                // Mirrors py/vm.c's `sp -= 1; mp_load_super_method(qst, sp - 1);`,
+                // which aliases dest[0..=2] directly onto those 3 stack slots
+                // in place; we don't have that aliasing so we read the two
+                // inputs out explicitly and write the two outputs back with
+                // set_top/push.
                 let qst = decode_qstr(&mut ip, qstr_table);
+                let self_obj = pop(&mut sp);
+                let class_obj = top(sp);
                 sp = unsafe { sp.sub(1) };
-                let mut dest = [obj::OBJ_NULL; 3];
-                dest[1] = unsafe { *sp.sub(1) };
-                dest[2] = unsafe { *sp };
+                let mut dest = [obj::OBJ_NULL, class_obj, self_obj];
                 objtype::load_super_method(qst, &mut dest);
                 set_top(sp, dest[0]);
                 push(&mut sp, dest[1]);
@@ -481,9 +601,10 @@ fn dispatch_loop(
             }
 
             bc0::STORE_SUBSCR => {
+                // Stack (bottom to top): value, base, index (index is TOS).
                 let value = unsafe { *sp.sub(2) };
-                let index = unsafe { *sp.sub(1) };
-                obj::subscr(top(sp), index, value);
+                let base = unsafe { *sp.sub(1) };
+                obj::subscr(base, top(sp), value);
                 sp = unsafe { sp.sub(3) };
             }
 
@@ -518,13 +639,11 @@ fn dispatch_loop(
                 push(&mut sp, t);
             }
 
-            bc0::DUP_TOP_TWO => {
-                unsafe {
-                    sp = sp.add(2);
-                    *sp = *sp.sub(2);
-                    *sp.sub(1) = *sp.sub(3);
-                }
-            }
+            bc0::DUP_TOP_TWO => unsafe {
+                sp = sp.add(2);
+                *sp = *sp.sub(2);
+                *sp.sub(1) = *sp.sub(3);
+            },
 
             bc0::POP_TOP => sp = unsafe { sp.sub(1) },
 
@@ -591,8 +710,8 @@ fn dispatch_loop(
                 runtime::load_method(obj_, qstr::from_str("__enter__"), &mut m_enter);
                 let call_args = [m_enter[0], m_enter[1], obj::OBJ_NULL];
                 let ret = runtime::call_method_n_kw(0, 0, &call_args);
-                push(&mut sp, m_exit[1]);
                 push(&mut sp, m_exit[0]);
+                push(&mut sp, m_exit[1]);
                 push_exc_block(&mut ip, &mut exc_sp, sp, true);
                 push(&mut sp, ret);
             }
@@ -600,11 +719,18 @@ fn dispatch_loop(
             bc0::WITH_CLEANUP => {
                 if top(sp) == obj::CONST_NONE {
                     unsafe {
-                        *sp.sub(1) = obj::CONST_NONE;
-                        *sp.sub(2) = obj::CONST_NONE;
+                        *sp.add(1) = obj::CONST_NONE;
+                        *sp.add(2) = obj::CONST_NONE;
                         sp = sp.sub(2);
                     }
-                    let args = [unsafe { *sp.sub(2) }, unsafe { *sp.sub(1) }, unsafe { *sp }, obj::OBJ_NULL];
+                    let args = [
+                        unsafe { *sp },
+                        unsafe { *sp.add(1) },
+                        unsafe { *sp.add(2) },
+                        unsafe { *sp.add(3) },
+                        unsafe { *sp.add(4) },
+                        obj::OBJ_NULL,
+                    ];
                     runtime::call_method_n_kw(3, 0, &args);
                     set_top(sp, obj::CONST_NONE);
                 } else if obj::is_small_int(top(sp)) {
@@ -619,6 +745,8 @@ fn dispatch_loop(
                         unsafe { *sp.sub(3) },
                         unsafe { *sp.sub(2) },
                         obj::CONST_NONE,
+                        obj::CONST_NONE,
+                        obj::CONST_NONE,
                         obj::OBJ_NULL,
                     ];
                     runtime::call_method_n_kw(3, 0, &args);
@@ -629,14 +757,18 @@ fn dispatch_loop(
                     }
                 } else {
                     debug_assert!(objexcept::is_exception_instance(top(sp)));
+                    // stack: (..., __exit__, ctx_mgr, exc_instance)
+                    // Pass (exc_type, exc_instance, None) to __exit__.
                     unsafe {
-                        *sp.sub(1) = top(sp);
-                        *sp = obj::from_ptr(obj::get_type(top(sp)) as *const ObjType as *const ());
-                        *sp.add(1) = obj::CONST_NONE;
+                        *sp.add(1) = *sp;
+                        *sp = obj::from_ptr(
+                            obj::get_type(*sp.add(1)) as *const ObjType as *const (),
+                        );
+                        *sp.add(2) = obj::CONST_NONE;
                         sp = sp.sub(2);
                     }
                     let ret_value = runtime::call_method_n_kw(3, 0, unsafe {
-                        &[*sp, *sp.add(1), *sp.add(2), obj::OBJ_NULL]
+                        &[*sp, *sp.add(1), *sp.add(2), *sp.add(3), *sp.add(4)]
                     });
                     if obj::is_true(ret_value) {
                         set_top(sp, obj::CONST_NONE);
@@ -648,7 +780,10 @@ fn dispatch_loop(
 
             bc0::UNWIND_JUMP => {
                 let slab = decode_slabel(&mut ip);
-                push(&mut sp, obj::from_ptr(unsafe { ip.offset(slab) } as *const ()));
+                push(
+                    &mut sp,
+                    obj::from_ptr(unsafe { ip.offset(slab) } as *const ()),
+                );
                 push(&mut sp, obj::new_small_int(unsafe { *ip } as isize));
                 ip = unsafe { ip.add(1) };
                 vm_unwind_jump(&mut ip, &mut sp, &mut exc_sp, exc_stack);
@@ -686,11 +821,14 @@ fn dispatch_loop(
                 let obj_ = top(sp);
                 let iter_buf_ptr = sp;
                 sp = unsafe { sp.add(obj::ITER_BUF_NSLOTS - 1) };
-                let iter = runtime::getiter(obj_, Some(unsafe { &mut *(iter_buf_ptr as *mut obj::ObjIterBuf) }));
+                let iter = runtime::getiter(
+                    obj_,
+                    Some(unsafe { &mut *(iter_buf_ptr as *mut obj::ObjIterBuf) }),
+                );
                 if iter != obj::from_ptr(iter_buf_ptr as *const ()) {
                     unsafe {
-                        *iter_buf_ptr.sub(obj::ITER_BUF_NSLOTS - 1).add(1) = obj::OBJ_NULL;
-                        *iter_buf_ptr.sub(obj::ITER_BUF_NSLOTS - 1).add(2) = iter;
+                        *sp.sub(obj::ITER_BUF_NSLOTS - 1) = obj::OBJ_NULL;
+                        *sp.sub(obj::ITER_BUF_NSLOTS - 2) = iter;
                     }
                 }
             }
@@ -699,10 +837,10 @@ fn dispatch_loop(
                 let ulab = decode_ulabel(&mut ip);
                 code_state.sp = sp;
                 let iter_obj = unsafe {
-                    if *sp.sub(obj::ITER_BUF_NSLOTS - 1).add(1) == obj::OBJ_NULL {
-                        *sp.sub(obj::ITER_BUF_NSLOTS - 1).add(2)
+                    if *sp.sub(obj::ITER_BUF_NSLOTS - 1) == obj::OBJ_NULL {
+                        *sp.sub(obj::ITER_BUF_NSLOTS - 2)
                     } else {
-                        obj::from_ptr(sp.sub(obj::ITER_BUF_NSLOTS - 1).add(1) as *const ())
+                        obj::from_ptr(sp.sub(obj::ITER_BUF_NSLOTS - 1) as *const ())
                     }
                 };
                 let value = runtime::iternext_allow_raise(iter_obj);
@@ -723,16 +861,24 @@ fn dispatch_loop(
 
             bc0::BUILD_TUPLE => {
                 let unum = decode_uint(&mut ip);
-                sp = unsafe { sp.sub(unum - 1) };
-                let items = unsafe { std::slice::from_raw_parts(sp, unum) };
-                set_top(sp, objtuple::new_tuple(unum, Some(items)));
+                if unum == 0 {
+                    push(&mut sp, objtuple::new_tuple(0, None));
+                } else {
+                    sp = unsafe { sp.sub(unum - 1) };
+                    let items = unsafe { std::slice::from_raw_parts(sp, unum) };
+                    set_top(sp, objtuple::new_tuple(unum, Some(items)));
+                }
             }
 
             bc0::BUILD_LIST => {
                 let unum = decode_uint(&mut ip);
-                sp = unsafe { sp.sub(unum - 1) };
-                let items = unsafe { std::slice::from_raw_parts(sp, unum) };
-                set_top(sp, objlist::new_list(unum, Some(items)));
+                if unum == 0 {
+                    push(&mut sp, objlist::new_list(0, None));
+                } else {
+                    sp = unsafe { sp.sub(unum - 1) };
+                    let items = unsafe { std::slice::from_raw_parts(sp, unum) };
+                    set_top(sp, objlist::new_list(unum, Some(items)));
+                }
             }
 
             bc0::BUILD_MAP => {
@@ -750,17 +896,24 @@ fn dispatch_loop(
             bc0::BUILD_SET => {
                 if mpconfig::PY_BUILTINS_SET {
                     let unum = decode_uint(&mut ip);
-                    sp = unsafe { sp.sub(unum - 1) };
-                    let items = unsafe { std::slice::from_raw_parts(sp, unum) };
-                    set_top(sp, objset::new_set(unum, Some(items)));
+                    if unum == 0 {
+                        push(&mut sp, objset::new_set(0, None));
+                    } else {
+                        sp = unsafe { sp.sub(unum - 1) };
+                        let items = unsafe { std::slice::from_raw_parts(sp, unum) };
+                        set_top(sp, objset::new_set(unum, Some(items)));
+                    }
                 }
             }
 
             bc0::BUILD_SLICE => {
                 if mpconfig::PY_BUILTINS_SLICE {
                     let mut step = obj::CONST_NONE;
-                    if unsafe { *ip == 3 } {
-                        ip = unsafe { ip.add(1) };
+                    // Mirrors C's `*ip++ == 3`: the n_args operand byte must
+                    // always be consumed, whether or not it's 3.
+                    let n_args = unsafe { *ip };
+                    ip = unsafe { ip.add(1) };
+                    if n_args == 3 {
                         step = pop(&mut sp);
                     }
                     if (unsafe { *ip == bc0::LOAD_SUBSCR || *ip == bc0::STORE_SUBSCR })
@@ -785,10 +938,11 @@ fn dispatch_loop(
                 if kind == 0 {
                     objlist::list_append(obj_, pop(&mut sp));
                 } else if !mpconfig::PY_BUILTINS_SET || kind == 1 {
-                    let value = pop(&mut sp);
+                    // Stack: … value key ← TOS (matches C `dict_store(obj, sp[0], sp[-1])`).
                     let key = top(sp);
+                    let value = unsafe { *sp.sub(1) };
                     objdict::dict_store(obj_, key, value);
-                    sp = unsafe { sp.sub(1) };
+                    sp = unsafe { sp.sub(2) };
                 } else {
                     objset::set_store(obj_, pop(&mut sp));
                 }
@@ -853,7 +1007,12 @@ fn dispatch_loop(
                 let args = unsafe { std::slice::from_raw_parts(sp, 2 + n_closed) };
                 set_top(
                     sp,
-                    emitglue::make_closure_from_proto_fun(ptr, fun_bc.context, 0x100 | n_closed, args),
+                    emitglue::make_closure_from_proto_fun(
+                        ptr,
+                        fun_bc.context,
+                        0x100 | n_closed,
+                        args,
+                    ),
                 );
             }
 
@@ -870,7 +1029,7 @@ fn dispatch_loop(
                 let unum = decode_uint(&mut ip);
                 sp = unsafe { sp.sub((unum & 0xff) + ((unum >> 7) & 0x1fe) + 1) };
                 let args = unsafe {
-                    std::slice::from_raw_parts(sp, (unum & 0xff) + 2 * ((unum >> 8) & 0xff) + 1)
+                    std::slice::from_raw_parts(sp, 1 + (unum & 0xff) + 2 * ((unum >> 8) & 0xff) + 1)
                 };
                 set_top(sp, runtime::call_method_n_kw_var(false, unum, args));
             }
@@ -916,7 +1075,9 @@ fn dispatch_loop(
                     obj_ = objexcept::new_exception_args(
                         objexcept::type_runtime_error(),
                         1,
-                        &[obj::new_qstr(crate::qstr::from_str("no active exception to reraise"))],
+                        &[obj::new_qstr(crate::qstr::from_str(
+                            "no active exception to reraise",
+                        ))],
                     );
                 }
                 raise::raise_obj(obj_);
@@ -927,7 +1088,7 @@ fn dispatch_loop(
             bc0::RAISE_FROM => {
                 let from_value = pop(&mut sp);
                 if from_value != obj::CONST_NONE {
-                    // exception chaining not supported on host
+                    crate::warning::warning(None, "exception chaining not supported", &[]);
                 }
                 raise::raise_obj(runtime::make_raise_obj(top(sp)));
             }
@@ -966,7 +1127,7 @@ fn dispatch_loop(
                             && objexcept::exception_match(
                                 t_exc,
                                 obj::from_ptr(
-                                    objexcept::type_generator_exit() as *const ObjType as *const (),
+                                    objexcept::type_generator_exit() as *const ObjType as *const ()
                                 ),
                             )
                         {
@@ -1005,16 +1166,18 @@ fn dispatch_loop(
                         ),
                     );
                 } else if op < bc0::LOAD_FAST_MULTI + bc0::LOAD_FAST_MULTI_NUM {
-                    let unum = bc0::LOAD_FAST_MULTI - op;
-                    push(&mut sp, load_check(unsafe { *fastn.sub(unum as usize) }));
+                    let unum = (op - bc0::LOAD_FAST_MULTI) as usize;
+                    push(&mut sp, load_check(unsafe { *fastn.sub(unum) }));
                 } else if op < bc0::STORE_FAST_MULTI + bc0::STORE_FAST_MULTI_NUM {
-                    let unum = bc0::STORE_FAST_MULTI - op;
-                    unsafe { *fastn.sub(unum as usize) = pop(&mut sp) };
+                    let unum = (op - bc0::STORE_FAST_MULTI) as usize;
+                    unsafe { *fastn.sub(unum) = pop(&mut sp) };
                 } else if op < bc0::UNARY_OP_MULTI + bc0::UNARY_OP_MULTI_NUM {
-                    let uop = unsafe { core::mem::transmute::<u8, UnaryOp>(op - bc0::UNARY_OP_MULTI) };
+                    let uop =
+                        unsafe { core::mem::transmute::<u8, UnaryOp>(op - bc0::UNARY_OP_MULTI) };
                     set_top(sp, runtime::unary_op_obj(uop, top(sp)));
                 } else if op < bc0::BINARY_OP_MULTI + bc0::BINARY_OP_MULTI_NUM {
-                    let bop = unsafe { core::mem::transmute::<u8, BinaryOp>(op - bc0::BINARY_OP_MULTI) };
+                    let bop =
+                        unsafe { core::mem::transmute::<u8, BinaryOp>(op - bc0::BINARY_OP_MULTI) };
                     let rhs = pop(&mut sp);
                     set_top(sp, runtime::binary_op_obj(bop, top(sp), rhs));
                 } else {
@@ -1116,7 +1279,9 @@ mod tests {
         let globals_ptr = obj::as_ptr(globals) as *mut ObjDict;
         let ctx = Box::leak(Box::new(ModuleContext {
             module: ObjModule {
-                base: ObjBase { type_: core::ptr::null() },
+                base: ObjBase {
+                    type_: core::ptr::null(),
+                },
                 globals: globals_ptr,
             },
             constants: ModuleConstants::default(),

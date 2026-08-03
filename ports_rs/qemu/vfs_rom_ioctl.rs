@@ -1,8 +1,8 @@
 //! rewrite of ports/qemu/vfs_rom_ioctl.c
 // symmetry: done
 
-use py_rs::obj::Obj;
 use py_rs::mperrno;
+use py_rs::obj::Obj;
 
 pub const ROM_IOCTL_GET_NUMBER_OF_SEGMENTS: i32 = 1;
 pub const ROM_IOCTL_GET_SEGMENT: i32 = 2;

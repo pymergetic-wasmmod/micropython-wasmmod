@@ -2,7 +2,10 @@
 // symmetry: done
 
 use crate::malloc;
-use crate::obj::{self, Obj, ObjBase, ObjType, OBJ_NULL, OBJ_SENTINEL, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN};
+use crate::obj::{
+    self, Obj, ObjBase, ObjType, OBJ_NULL, OBJ_SENTINEL, TYPE_FLAG_BINDS_SELF,
+    TYPE_FLAG_BUILTIN_FUN,
+};
 use crate::runtime0::BinaryOp;
 
 type BuiltinFn2 = fn(Obj, Obj) -> Obj;
@@ -24,7 +27,9 @@ static mut OPMETHOD_SLOTS_2: [*const (); 1] = [op_fun_call_2 as *const ()];
 static mut OPMETHOD_SLOTS_3: [*const (); 1] = [op_fun_call_3 as *const ()];
 
 static mut TYPE_FUN_BUILTIN_2: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -43,7 +48,9 @@ static mut TYPE_FUN_BUILTIN_2: ObjType = ObjType {
 };
 
 static mut TYPE_FUN_BUILTIN_3: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -108,7 +115,9 @@ pub fn op_getitem(self_in: Obj, key_in: Obj) -> Obj {
     if let Some(subscr) = obj::type_get_subscr(t) {
         subscr(self_in, key_in, OBJ_SENTINEL)
     } else {
-        crate::raise::raise(crate::raise::MpRaise::TypeError("object doesn't support item assignment"));
+        crate::raise::raise(crate::raise::MpRaise::TypeError(
+            "object doesn't support item assignment",
+        ));
     }
 }
 
@@ -118,7 +127,9 @@ pub fn op_setitem(self_in: Obj, key_in: Obj, value_in: Obj) -> Obj {
     if let Some(subscr) = obj::type_get_subscr(t) {
         subscr(self_in, key_in, value_in)
     } else {
-        crate::raise::raise(crate::raise::MpRaise::TypeError("object doesn't support item assignment"));
+        crate::raise::raise(crate::raise::MpRaise::TypeError(
+            "object doesn't support item assignment",
+        ));
     }
 }
 
@@ -128,7 +139,9 @@ pub fn op_delitem(self_in: Obj, key_in: Obj) -> Obj {
     if let Some(subscr) = obj::type_get_subscr(t) {
         subscr(self_in, key_in, OBJ_NULL)
     } else {
-        crate::raise::raise(crate::raise::MpRaise::TypeError("object doesn't support item deletion"));
+        crate::raise::raise(crate::raise::MpRaise::TypeError(
+            "object doesn't support item deletion",
+        ));
     }
 }
 
@@ -138,7 +151,9 @@ pub fn op_contains(lhs_in: Obj, rhs_in: Obj) -> Obj {
     if let Some(binary) = obj::type_get_binary_op(t) {
         binary(BinaryOp::Contains, lhs_in, rhs_in)
     } else {
-        crate::raise::raise(crate::raise::MpRaise::TypeError("unsupported operand type(s)"));
+        crate::raise::raise(crate::raise::MpRaise::TypeError(
+            "unsupported operand type(s)",
+        ));
     }
 }
 

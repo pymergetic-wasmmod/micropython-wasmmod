@@ -75,7 +75,11 @@ fn break_down_time(t: libc::time_t, local: bool) -> Obj {
             *libc::gmtime(tp)
         }
     };
-    let wday = if tm.tm_wday - 1 < 0 { 6 } else { tm.tm_wday - 1 };
+    let wday = if tm.tm_wday - 1 < 0 {
+        6
+    } else {
+        tm.tm_wday - 1
+    };
     let items = [
         py_rs::obj::new_small_int((tm.tm_year + 1900) as isize),
         py_rs::obj::new_small_int((tm.tm_mon + 1) as isize),

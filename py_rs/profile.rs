@@ -95,10 +95,8 @@ static mut TYPE_FRAME: ObjType = obj::empty_type(0);
 static TYPE_INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 fn init_frame_type() {
-    TYPE_INIT.get_or_init(|| {
-        unsafe {
-            TYPE_FRAME.name = crate::qstr::from_str("frame");
-        }
+    TYPE_INIT.get_or_init(|| unsafe {
+        TYPE_FRAME.name = crate::qstr::from_str("frame");
     });
 }
 

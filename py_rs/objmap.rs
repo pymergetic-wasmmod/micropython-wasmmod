@@ -24,7 +24,9 @@ fn iters_ptr(o: *const ObjMap) -> *const Obj {
 static mut MAP_SLOTS: [*const (); 2] = [map_make_new as *const (), map_iternext as *const ()];
 
 static mut TYPE_MAP: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_ITERNEXT,
     name: 0,
     slot_index_make_new: 1,
@@ -117,10 +119,7 @@ mod tests {
         )
         .expect("abs builtin")
         .value;
-        let lst = objlist::new_list(2, Some(&[
-            obj::new_small_int(1),
-            obj::new_small_int(2),
-        ]));
+        let lst = objlist::new_list(2, Some(&[obj::new_small_int(1), obj::new_small_int(2)]));
         let m = map_make_new(type_map(), 2, 0, &[abs_fn, lst]);
         assert_eq!(obj::small_int_value(map_iternext(m)), 1);
         assert_eq!(obj::small_int_value(map_iternext(m)), 2);

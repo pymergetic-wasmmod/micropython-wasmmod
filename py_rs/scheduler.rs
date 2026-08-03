@@ -60,7 +60,7 @@ fn sched_run_pending() {
             return None;
         }
         vm.sched_state = mpstate::SCHED_LOCKED;
-        if sched_empty() {
+        if vm.sched_len == 0 {
             return None;
         }
         let item = vm.sched_queue[vm.sched_idx as usize];
@@ -87,13 +87,12 @@ pub fn sched_lock() {
 
 /// `mp_sched_unlock`.
 pub fn sched_unlock() {
+    let pending_exc = mpstate::pending_exception();
     mpstate::with_vm(|vm| {
         debug_assert!(vm.sched_state < 0);
         vm.sched_state += 1;
         if vm.sched_state == 0 {
-            if (!mpconfig::PY_THREAD && mpstate::pending_exception() != obj::OBJ_NULL)
-                || sched_num_pending() != 0
-            {
+            if (!mpconfig::PY_THREAD && pending_exc != obj::OBJ_NULL) || vm.sched_len != 0 {
                 vm.sched_state = mpstate::SCHED_PENDING;
             } else {
                 vm.sched_state = mpstate::SCHED_IDLE;
@@ -107,26 +106,27 @@ pub fn sched_schedule(function: Obj, arg: Obj) -> bool {
     if !mpconfig::ENABLE_SCHEDULER {
         return false;
     }
-    let mut ok = false;
     mpstate::with_vm(|vm| {
-        if !sched_full() {
-            if vm.sched_state == mpstate::SCHED_IDLE {
-                vm.sched_state = mpstate::SCHED_PENDING;
-            }
-            let iput = IDX_MASK(vm.sched_idx.wrapping_add(vm.sched_len));
-            vm.sched_len = vm.sched_len.saturating_add(1);
-            vm.sched_queue[iput as usize] = SchedItem { func: function, arg };
-            ok = true;
+        if vm.sched_len == mpconfig::SCHEDULER_DEPTH {
+            return false;
         }
-    });
-    ok
+        if vm.sched_state == mpstate::SCHED_IDLE {
+            vm.sched_state = mpstate::SCHED_PENDING;
+        }
+        let iput = IDX_MASK(vm.sched_idx.wrapping_add(vm.sched_len));
+        vm.sched_len = vm.sched_len.saturating_add(1);
+        vm.sched_queue[iput as usize] = SchedItem {
+            func: function,
+            arg,
+        };
+        true
+    })
 }
 
 /// `mp_handle_pending`.
 pub fn handle_pending(behavior: HandlePendingBehaviour) {
     let handle_exceptions = behavior != HandlePendingBehaviour::CallbacksOnly;
-    let raise_exceptions =
-        behavior == HandlePendingBehaviour::CallbacksAndExceptions;
+    let raise_exceptions = behavior == HandlePendingBehaviour::CallbacksAndExceptions;
 
     if mpconfig::ENABLE_VM_ABORT && handle_exceptions && mpstate::is_main_thread() {
         let abort = mpstate::with_vm(|vm| vm.vm_abort);

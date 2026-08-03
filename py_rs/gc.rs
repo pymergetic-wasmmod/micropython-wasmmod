@@ -1,9 +1,11 @@
 //! Host mark-and-sweep translation of `py/gc.h` and `py/gc.c`.
 // symmetry: done
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use crate::mpconfig;
+use crate::mpstate;
 
 const BLOCK_BYTES: usize = mpconfig::BYTES_PER_GC_BLOCK as usize;
 const AT_FREE: u8 = 0;
@@ -34,6 +36,12 @@ struct Heap {
     auto_collect: bool,
     last_free: usize,
     mark_work: Vec<usize>,
+    /// `MP_STATE_MEM(total_bytes_allocated)` when `MEM_STATS`.
+    total_bytes_allocated: usize,
+    /// `MP_STATE_MEM(current_bytes_allocated)`.
+    current_bytes_allocated: usize,
+    /// `MP_STATE_MEM(peak_bytes_allocated)`.
+    peak_bytes_allocated: usize,
 }
 
 impl Heap {
@@ -51,6 +59,9 @@ impl Heap {
             auto_collect: true,
             last_free: 0,
             mark_work: Vec::new(),
+            total_bytes_allocated: 0,
+            current_bytes_allocated: 0,
+            peak_bytes_allocated: 0,
         }
     }
 
@@ -61,7 +72,8 @@ impl Heap {
     fn block_for_ptr(&self, ptr: *const u8) -> Option<usize> {
         let base = self.buf.as_ptr() as usize;
         let address = ptr as usize;
-        if address < base || address >= base + self.buf.len() || (address - base) % BLOCK_BYTES != 0 {
+        if address < base || address >= base + self.buf.len() || (address - base) % BLOCK_BYTES != 0
+        {
             return None;
         }
         Some((address - base) / BLOCK_BYTES)
@@ -71,14 +83,21 @@ impl Heap {
         if self.atb.get(start) != Some(&AT_HEAD) && self.atb.get(start) != Some(&AT_MARK) {
             return 0;
         }
-        1 + self.atb[start + 1..].iter().take_while(|&&kind| kind == AT_TAIL).count()
+        1 + self.atb[start + 1..]
+            .iter()
+            .take_while(|&&kind| kind == AT_TAIL)
+            .count()
     }
 
     fn find_free(&self, needed: usize) -> Option<usize> {
         let blocks = self.atb.len();
         for offset in 0..blocks {
             let start = (self.last_free + offset) % blocks;
-            if start + needed <= blocks && self.atb[start..start + needed].iter().all(|&kind| kind == AT_FREE) {
+            if start + needed <= blocks
+                && self.atb[start..start + needed]
+                    .iter()
+                    .all(|&kind| kind == AT_FREE)
+            {
                 return Some(start);
             }
         }
@@ -105,6 +124,13 @@ impl Heap {
         let allocated = needed * BLOCK_BYTES;
         let ptr = self.ptr_for(start);
         unsafe { std::ptr::write_bytes(ptr, 0, allocated) };
+        if mpconfig::MEM_STATS {
+            self.total_bytes_allocated = self.total_bytes_allocated.saturating_add(allocated);
+            self.current_bytes_allocated = self.current_bytes_allocated.saturating_add(allocated);
+            if self.current_bytes_allocated > self.peak_bytes_allocated {
+                self.peak_bytes_allocated = self.current_bytes_allocated;
+            }
+        }
         Some(ptr)
     }
 
@@ -193,7 +219,9 @@ impl Heap {
         if ptr.is_null() || (self.lock_depth != 0 && !self.collecting) {
             return;
         }
-        let Some(block) = self.block_for_ptr(ptr) else { return };
+        let Some(block) = self.block_for_ptr(ptr) else {
+            return;
+        };
         let count = self.allocation_blocks(block);
         if count == 0 {
             return;
@@ -202,11 +230,18 @@ impl Heap {
             self.atb[index] = AT_FREE;
             self.finalisers[index] = false;
         }
+        if mpconfig::MEM_STATS {
+            let bytes = count * BLOCK_BYTES;
+            self.current_bytes_allocated = self.current_bytes_allocated.saturating_sub(bytes);
+        }
         self.last_free = self.last_free.min(block);
     }
 
     fn info(&self) -> GcInfo {
-        let mut info = GcInfo { total: self.buf.len(), ..GcInfo::default() };
+        let mut info = GcInfo {
+            total: self.buf.len(),
+            ..GcInfo::default()
+        };
         let mut block = 0;
         let mut free_run = 0;
         while block < self.atb.len() {
@@ -219,11 +254,18 @@ impl Heap {
             info.max_free = info.max_free.max(free_run * BLOCK_BYTES);
             free_run = 0;
             let count = self.allocation_blocks(block);
-            if count == 0 { block += 1; continue; }
+            if count == 0 {
+                block += 1;
+                continue;
+            }
             info.used += count * BLOCK_BYTES;
             info.max_block = info.max_block.max(count);
-            if count == 1 { info.num_1block += 1; }
-            if count == 2 { info.num_2block += 1; }
+            if count == 1 {
+                info.num_1block += 1;
+            }
+            if count == 2 {
+                info.num_2block += 1;
+            }
             block += count;
         }
         info.max_free = info.max_free.max(free_run * BLOCK_BYTES);
@@ -260,13 +302,39 @@ fn run_collect_hooks() {
     IN_COLLECT_HOOKS.with(|c| c.set(false));
 }
 
+static HEAP_SIZE_OVERRIDE: AtomicUsize = AtomicUsize::new(0);
+
+/// Override the default GC heap size before the first `init()` (e.g. `-X heapsize=`).
+pub fn set_heap_size(size: usize) {
+    HEAP_SIZE_OVERRIDE.store(size, Ordering::Relaxed);
+}
+
+fn configured_heap_size() -> usize {
+    let override_size = HEAP_SIZE_OVERRIDE.load(Ordering::Relaxed);
+    if override_size >= 700 {
+        override_size
+    } else {
+        mpconfig::GC_HEAP_SIZE
+    }
+}
+
+/// Initialise the GC heap with an explicit size (sets override then inits).
+pub fn init_with_size(size: usize) {
+    set_heap_size(size);
+    init();
+}
+
 /// Initialise the GC heap once. Subsequent calls are no-ops so static types that
 /// hold GC pointers (locals dicts, etc.) are not left dangling across test/`mp_init` reentry.
 pub fn init() {
     let mut heap = HEAP.lock().expect("gc lock poisoned");
     if heap.is_none() {
-        *heap = Some(Heap::new(mpconfig::GC_HEAP_SIZE));
+        *heap = Some(Heap::new(configured_heap_size()));
     }
+    // Mirror C `gc_init`: allow auto collection.
+    drop(heap);
+    mpstate::with_mem(|mem| mem.gc_auto_collect_enabled = 1);
+    set_auto_collect(true);
 }
 
 fn with_heap<R>(f: impl FnOnce(&mut Heap) -> R) -> Option<R> {
@@ -296,7 +364,12 @@ pub fn gc_free(ptr: *mut u8) {
 }
 
 pub fn nbytes(ptr: *const u8) -> usize {
-    with_heap(|heap| heap.block_for_ptr(ptr).map(|block| heap.allocation_blocks(block) * BLOCK_BYTES).unwrap_or(0)).unwrap_or(0)
+    with_heap(|heap| {
+        heap.block_for_ptr(ptr)
+            .map(|block| heap.allocation_blocks(block) * BLOCK_BYTES)
+            .unwrap_or(0)
+    })
+    .unwrap_or(0)
 }
 
 pub fn gc_nbytes(ptr: *const u8) -> usize {
@@ -304,41 +377,73 @@ pub fn gc_nbytes(ptr: *const u8) -> usize {
 }
 
 pub fn realloc(ptr: *mut u8, bytes: usize, allow_move: bool) -> Option<*mut u8> {
-    if ptr.is_null() { return gc_alloc(bytes, 0); }
-    if bytes == 0 { free(ptr); return None; }
+    if ptr.is_null() {
+        return gc_alloc(bytes, 0);
+    }
+    if bytes == 0 {
+        free(ptr);
+        return None;
+    }
     with_heap(|heap| {
         let block = heap.block_for_ptr(ptr)?;
         let old_blocks = heap.allocation_blocks(block);
-        if old_blocks == 0 || heap.lock_depth != 0 { return None; }
+        if old_blocks == 0 || heap.lock_depth != 0 {
+            return None;
+        }
         let new_blocks = bytes.checked_add(BLOCK_BYTES - 1)? / BLOCK_BYTES;
         if new_blocks <= old_blocks {
-            for index in block + new_blocks..block + old_blocks { heap.atb[index] = AT_FREE; }
+            for index in block + new_blocks..block + old_blocks {
+                heap.atb[index] = AT_FREE;
+            }
             return Some(ptr);
         }
-        if block + new_blocks <= heap.atb.len() && heap.atb[block + old_blocks..block + new_blocks].iter().all(|&kind| kind == AT_FREE) {
-            for index in block + old_blocks..block + new_blocks { heap.atb[index] = AT_TAIL; }
+        if block + new_blocks <= heap.atb.len()
+            && heap.atb[block + old_blocks..block + new_blocks]
+                .iter()
+                .all(|&kind| kind == AT_FREE)
+        {
+            for index in block + old_blocks..block + new_blocks {
+                heap.atb[index] = AT_TAIL;
+            }
             return Some(ptr);
         }
-        if !allow_move { return None; }
+        if !allow_move {
+            return None;
+        }
         let new_ptr = heap.allocate(bytes, 0)?;
-        unsafe { std::ptr::copy_nonoverlapping(ptr, new_ptr, old_blocks * BLOCK_BYTES); }
+        unsafe {
+            std::ptr::copy_nonoverlapping(ptr, new_ptr, old_blocks * BLOCK_BYTES);
+        }
         heap.free(ptr);
         Some(new_ptr)
-    }).flatten()
+    })
+    .flatten()
 }
 
 pub fn gc_realloc(ptr: *mut u8, bytes: usize, allow_move: bool) -> Option<*mut u8> {
     realloc(ptr, bytes, allow_move)
 }
 
-pub fn lock() { let _ = with_heap(|heap| heap.lock_depth += 1); }
-pub fn unlock() { let _ = with_heap(|heap| heap.lock_depth = heap.lock_depth.saturating_sub(1)); }
-pub fn is_locked() -> bool { with_heap(|heap| heap.lock_depth != 0).unwrap_or(false) }
-pub fn set_auto_collect(enabled: bool) { let _ = with_heap(|heap| heap.auto_collect = enabled); }
+pub fn lock() {
+    let _ = with_heap(|heap| heap.lock_depth += 1);
+}
+pub fn unlock() {
+    let _ = with_heap(|heap| heap.lock_depth = heap.lock_depth.saturating_sub(1));
+}
+pub fn is_locked() -> bool {
+    with_heap(|heap| heap.lock_depth != 0).unwrap_or(false)
+}
+pub fn set_auto_collect(enabled: bool) {
+    let _ = with_heap(|heap| heap.auto_collect = enabled);
+}
 
 /// Register a precise root.  Root addresses must be GC allocation heads.
-pub fn add_root(ptr: *mut u8) { let _ = with_heap(|heap| heap.roots.push(ptr as usize)); }
-pub fn remove_root(ptr: *mut u8) { let _ = with_heap(|heap| heap.roots.retain(|&root| root != ptr as usize)); }
+pub fn add_root(ptr: *mut u8) {
+    let _ = with_heap(|heap| heap.roots.push(ptr as usize));
+}
+pub fn remove_root(ptr: *mut u8) {
+    let _ = with_heap(|heap| heap.roots.retain(|&root| root != ptr as usize));
+}
 
 /// Mark explicit root pointers, mirroring `gc_collect_root`.
 pub fn collect_root(ptrs: &[*mut u8]) {
@@ -362,7 +467,7 @@ pub fn collect_root_words(base: *const u8, len: usize) {
             for i in 0..len {
                 let ptr = unsafe {
                     std::ptr::read_unaligned(
-                        base.add(i * core::mem::size_of::<usize>()) as *const usize,
+                        base.add(i * core::mem::size_of::<usize>()) as *const usize
                     )
                 };
                 v.push(ptr as *mut u8);
@@ -375,9 +480,7 @@ pub fn collect_root_words(base: *const u8, len: usize) {
         let mut work = std::mem::take(&mut heap.mark_work);
         for i in 0..len {
             let ptr = unsafe {
-                std::ptr::read_unaligned(
-                    base.add(i * core::mem::size_of::<usize>()) as *const usize,
-                )
+                std::ptr::read_unaligned(base.add(i * core::mem::size_of::<usize>()) as *const usize)
             };
             if let Some(block) = heap.block_for_ptr(ptr as *const u8) {
                 heap.mark_block(block, &mut work);
@@ -386,13 +489,102 @@ pub fn collect_root_words(base: *const u8, len: usize) {
         heap.mark_work = work;
     });
 }
-pub fn collect_start() { let _ = with_heap(|heap| heap.collect_start()); }
-pub fn collect_end() { let _ = with_heap(|heap| heap.trace_and_sweep()); }
-pub fn collect() { let _ = with_heap(|heap| heap.collect()); }
-pub fn sweep_all() { collect(); }
-pub fn info_full() -> GcInfo { with_heap(|heap| heap.info()).unwrap_or_default() }
+pub fn collect_start() {
+    let _ = with_heap(|heap| heap.collect_start());
+}
+pub fn collect_end() {
+    let _ = with_heap(|heap| heap.trace_and_sweep());
+}
+pub fn collect() {
+    let _ = with_heap(|heap| heap.collect());
+}
+pub fn sweep_all() {
+    collect();
+}
+pub fn info_full() -> GcInfo {
+    with_heap(|heap| heap.info()).unwrap_or_default()
+}
 /// Backward-compatible compact info: `(used, total)`.
-pub fn info() -> (usize, usize) { let info = info_full(); (info.used, info.total) }
+pub fn info() -> (usize, usize) {
+    let info = info_full();
+    (info.used, info.total)
+}
+
+/// `m_get_total_bytes_allocated`
+pub fn mem_total_bytes() -> usize {
+    with_heap(|h| h.total_bytes_allocated).unwrap_or(0)
+}
+/// `m_get_current_bytes_allocated`
+pub fn mem_current_bytes() -> usize {
+    with_heap(|h| h.current_bytes_allocated).unwrap_or(0)
+}
+/// `m_get_peak_bytes_allocated`
+pub fn mem_peak_bytes() -> usize {
+    with_heap(|h| h.peak_bytes_allocated).unwrap_or(0)
+}
+
+/// `gc_dump_info`
+pub fn dump_info(print: &crate::mpprint::Print) {
+    let info = info_full();
+    crate::mpprint::printf(
+        print,
+        "GC: total: %u, used: %u, free: %u\n",
+        [
+            crate::mpprint::VaArg::USize(info.total),
+            crate::mpprint::VaArg::USize(info.used),
+            crate::mpprint::VaArg::USize(info.free),
+        ]
+        .into_iter(),
+    );
+    crate::mpprint::printf(
+        print,
+        " No. of 1-blocks: %u, 2-blocks: %u, max blk sz: %u, max free sz: %u\n",
+        [
+            crate::mpprint::VaArg::USize(info.num_1block),
+            crate::mpprint::VaArg::USize(info.num_2block),
+            crate::mpprint::VaArg::USize(info.max_block),
+            crate::mpprint::VaArg::USize(info.max_free),
+        ]
+        .into_iter(),
+    );
+}
+
+/// `gc_dump_alloc_table` — compact ATB dump when `mem_info` is given an arg.
+pub fn dump_alloc_table(print: &crate::mpprint::Print) {
+    let _ = with_heap(|heap| {
+        crate::mpprint::printf(
+            print,
+            "GC memory layout; from %p\n",
+            std::iter::once(crate::mpprint::VaArg::USize(heap.buf.as_ptr() as usize)),
+        );
+        let mut col = 0usize;
+        for (i, &kind) in heap.atb.iter().enumerate() {
+            let ch: &[u8] = match kind {
+                AT_FREE => b".",
+                AT_HEAD => b"h",
+                AT_TAIL => b"=",
+                AT_MARK => b"m",
+                _ => b"?",
+            };
+            if col == 0 {
+                crate::mpprint::printf(
+                    print,
+                    "%04u: ",
+                    std::iter::once(crate::mpprint::VaArg::USize(i)),
+                );
+            }
+            crate::mpprint::print_str(print, core::str::from_utf8(ch).unwrap_or("?"));
+            col += 1;
+            if col >= 64 {
+                crate::mpprint::print_str(print, "\n");
+                col = 0;
+            }
+        }
+        if col != 0 {
+            crate::mpprint::print_str(print, "\n");
+        }
+    });
+}
 
 #[cfg(test)]
 mod tests {

@@ -1,16 +1,24 @@
 //! rewrite of extmod/vfs_posix_file.c
 // symmetry: done
 
+use std::ffi::CString;
+
 use py_rs::malloc;
 use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
 use py_rs::mpprint::{self, Print, PrintKind, VaArg};
-use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN, TYPE_FLAG_ITER_IS_STREAM};
+use py_rs::obj::{
+    self, Obj, ObjBase, ObjType, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
+    TYPE_FLAG_ITER_IS_STREAM,
+};
 use py_rs::objdict::{self, ObjDict};
 use py_rs::objstr;
 use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
-use py_rs::stream::{self, StreamP, StreamSeek, STREAM_ERROR, STREAM_FLUSH, STREAM_GET_FILENO, STREAM_SEEK, STREAM_CLOSE};
+use py_rs::stream::{
+    self, StreamP, StreamSeek, STREAM_CLOSE, STREAM_ERROR, STREAM_FLUSH, STREAM_GET_FILENO,
+    STREAM_SEEK,
+};
 
 #[repr(C)]
 pub struct ObjVfsPosixFile {
@@ -31,11 +39,7 @@ fn file_print(print: &Print, self_in: Obj, _kind: PrintKind) {
     } else {
         "TextIOWrapper"
     };
-    mpprint::printf(
-        print,
-        "<io.{} {}>",
-        [VaArg::Str(tag), VaArg::Int(self_.fd)],
-    );
+    mpprint::printf(print, "<io.{} {}>", [VaArg::Str(tag), VaArg::Int(self_.fd)]);
 }
 
 /// `mp_vfs_posix_file_open`
@@ -76,7 +80,8 @@ pub fn open(type_in: &'static ObjType, file_in: Obj, mode_in: Obj) -> Obj {
     }
 
     let fname = objstr::str_get_str(file_in);
-    let fd = unsafe { libc::open(fname.as_ptr() as *const _, mode_x | mode_rw, 0o644) };
+    let cpath = CString::new(fname).unwrap_or_default();
+    let fd = unsafe { libc::open(cpath.as_ptr(), mode_x | mode_rw, 0o644) };
     if fd < 0 {
         raise::raise(MpRaise::OSError(errno()));
     }
@@ -193,7 +198,9 @@ struct ObjFunBuiltin1 {
 
 static mut F1: [*const (); 1] = [call1 as *const ()];
 static TF1: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_BINDS_SELF | TYPE_FLAG_BUILTIN_FUN,
     name: 0,
     slot_index_make_new: 0,
@@ -283,8 +290,8 @@ fn locals_dict() -> *const () {
                 value: stream::stream___exit___obj(),
             },
         ];
-        let ptr =
-            obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict()) as *mut ObjDict;
+        let ptr = obj::malloc_helper(core::mem::size_of::<ObjDict>(), objdict::type_dict())
+            as *mut ObjDict;
         unsafe {
             map::init_fixed_table(&mut (*ptr).map, table);
             DICT = obj::from_ptr(ptr as *const ObjDict as *const ()).0 as *const ();
@@ -295,7 +302,9 @@ fn locals_dict() -> *const () {
 
 static mut FILEIO_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 static mut TYPE_FILEIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -315,7 +324,9 @@ static mut TYPE_FILEIO: ObjType = ObjType {
 
 static mut TEXTIO_SLOTS: [*const (); 4] = [core::ptr::null(); 4];
 static mut TYPE_TEXTIO: ObjType = ObjType {
-    base: ObjBase { type_: core::ptr::null() },
+    base: ObjBase {
+        type_: core::ptr::null(),
+    },
     flags: TYPE_FLAG_ITER_IS_STREAM,
     name: 0,
     slot_index_make_new: 0,
@@ -364,4 +375,17 @@ pub fn type_textio() -> &'static ObjType {
 
 pub fn enabled() -> bool {
     mpconfig::VFS_POSIX && mpconfig::PY_VFS
+}
+
+/// Install TextIOWrapper objects for fds 0/1/2 into `sys` (C `mp_sys_std*_obj`).
+pub fn install_sys_stdfiles() {
+    if !(mpconfig::PY_SYS_STDFILES && enabled()) {
+        return;
+    }
+    let r = objstr::new_str(b"r");
+    let w = objstr::new_str(b"w");
+    let stdin = open(type_textio(), obj::new_small_int(0), r);
+    let stdout = open(type_textio(), obj::new_small_int(1), w);
+    let stderr = open(type_textio(), obj::new_small_int(2), w);
+    py_rs::modsys::set_sys_stdio(stdin, stdout, stderr);
 }

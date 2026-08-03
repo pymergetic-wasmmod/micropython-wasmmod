@@ -42,7 +42,9 @@ impl NativeBackend for BackendDebug {
     const REG_FUN_TABLE: i32 = 11;
     const REG_GENERATOR_STATE: i32 = 9;
     const REG_QSTR_TABLE: i32 = 10;
-    const REG_LOCAL_LAST: i32 = 10;
+    // See the comment on the x64 backend: with `PERSISTENT_CODE_SAVE` this must
+    // be `REG_LOCAL_2`, not `REG_LOCAL_3` (`REG_QSTR_TABLE`).
+    const REG_LOCAL_LAST: i32 = 9;
     const NLR_BUF_IDX_LOCAL_1: usize = 5;
     const N_X86: bool = false;
     const N_X64: bool = false;
@@ -73,7 +75,8 @@ impl NativeBackend for BackendDebug {
     const HAS_ASM_STORE16_REG_REG_REG: bool = false;
     const HAS_ASM_STORE32_REG_REG_REG: bool = false;
     const HAS_ASM_NOT_REG: bool = true;
-    const REG_LOCAL_TABLE: &'static [i32] = &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
+    const REG_LOCAL_TABLE: &'static [i32] =
+        &[Self::REG_LOCAL_1, Self::REG_LOCAL_2, Self::REG_LOCAL_3];
 
     fn new_asm(max_labels: usize) -> Self::Asm {
         let mut asm = AsmDebug {

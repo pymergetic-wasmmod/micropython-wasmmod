@@ -2,21 +2,20 @@
 // symmetry: done
 // Note: same upstream TODOs — libffi type objects / opaqueval unused
 
-use libffi::middle::{arg, ret, Cif, CodePtr, Ret, Type};
 use libffi::low::{self, ffi_cif, ffi_closure};
+use libffi::middle::{arg, ret, Cif, CodePtr, Ret, Type};
 use py_rs::argcheck::{self, Arg, ArgFlag, ArgVal};
 use py_rs::bc::ModuleContext;
 use py_rs::binary;
-use py_rs::map::{self, MapElem};
 use py_rs::malloc;
+use py_rs::map::{self, MapElem};
 use py_rs::mpconfig;
-use py_rs::mpprint::{self, Print, PrintKind, VaArg};
 use py_rs::mperrno;
+use py_rs::mpprint::{self, Print, PrintKind, VaArg};
 use py_rs::mpstate;
 use py_rs::nlr::{self, NlrBuf};
 use py_rs::obj::{
-    self, BufferInfo, Int, Obj, ObjBase, ObjType, Uint, TYPE_FLAG_BINDS_SELF,
-    TYPE_FLAG_BUILTIN_FUN,
+    self, BufferInfo, Int, Obj, ObjBase, ObjType, Uint, TYPE_FLAG_BINDS_SELF, TYPE_FLAG_BUILTIN_FUN,
 };
 use py_rs::objarray;
 use py_rs::objdict::{self, ObjDict};
@@ -357,7 +356,13 @@ fn call3(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
 }
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 fn call_kw(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
@@ -600,18 +605,14 @@ fn ffifunc_call(self_in: Obj, n_args: usize, n_kw: usize, args: &[Obj]) -> Obj {
     let mut retval = FfiUnion { ffi: 0 };
     unsafe {
         if inner.rettype == b'v' {
-            inner.cif.call_return_into(
-                CodePtr::from_ptr(inner.func),
-                &ffi_args,
-                Ret::void(),
-            );
+            inner
+                .cif
+                .call_return_into(CodePtr::from_ptr(inner.func), &ffi_args, Ret::void());
             return obj::CONST_NONE;
         }
-        inner.cif.call_return_into(
-            CodePtr::from_ptr(inner.func),
-            &ffi_args,
-            ret(&mut retval),
-        );
+        inner
+            .cif
+            .call_return_into(CodePtr::from_ptr(inner.func), &ffi_args, ret(&mut retval));
     }
     return_ffi_value(&retval, inner.rettype)
 }
@@ -990,12 +991,10 @@ pub fn type_ffimod() -> &'static ObjType {
 }
 
 pub fn type_ffifunc() -> &'static ObjType {
-    FFIFUNC_INIT.get_or_init(|| {
-        unsafe {
-            FFIFUNC_SLOTS[0] = ffifunc_print as *const ();
-            FFIFUNC_SLOTS[1] = ffifunc_call as *const ();
-            TYPE_FFIFUNC.name = qstr::from_str("ffifunc");
-        }
+    FFIFUNC_INIT.get_or_init(|| unsafe {
+        FFIFUNC_SLOTS[0] = ffifunc_print as *const ();
+        FFIFUNC_SLOTS[1] = ffifunc_call as *const ();
+        TYPE_FFIFUNC.name = qstr::from_str("ffifunc");
     });
     unsafe { &TYPE_FFIFUNC }
 }

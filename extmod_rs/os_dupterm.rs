@@ -9,7 +9,10 @@ use py_rs::nlr::{self, NlrBuf};
 use py_rs::obj::{self, Obj, ObjBase, ObjType, TYPE_FLAG_BUILTIN_FUN};
 use py_rs::raise::{self, MpRaise};
 use py_rs::scheduler;
-use py_rs::stream::{self, StreamP, STREAM_ERROR, STREAM_OP_IOCTL, STREAM_OP_READ, STREAM_OP_WRITE, STREAM_POLL, STREAM_RW_WRITE};
+use py_rs::stream::{
+    self, StreamP, STREAM_ERROR, STREAM_OP_IOCTL, STREAM_OP_READ, STREAM_OP_WRITE, STREAM_POLL,
+    STREAM_RW_WRITE,
+};
 use shared_rs::runtime::interrupt_char;
 
 use crate::misc;
@@ -204,7 +207,11 @@ pub fn tx_strn(s: &[u8], len: usize) -> i32 {
             }
         }
     });
-    if did_write { ret } else { -1 }
+    if did_write {
+        ret
+    } else {
+        -1
+    }
 }
 
 type BuiltinFnVar = fn(usize, &[Obj]) -> Obj;
@@ -241,7 +248,13 @@ static TV: ObjType = ObjType {
 
 fn callv(s: Obj, n: usize, k: usize, a: &[Obj]) -> Obj {
     let self_ = unsafe { &*(obj::as_ptr(s) as *const ObjFunBuiltinVar) };
-    py_rs::argcheck::check_num(n, k, self_.min_args as usize, self_.max_args as usize, false);
+    py_rs::argcheck::check_num(
+        n,
+        k,
+        self_.min_args as usize,
+        self_.max_args as usize,
+        false,
+    );
     (self_.fun)(n, a)
 }
 
@@ -269,7 +282,10 @@ fn os_dupterm(n: usize, args: &[Obj]) -> Obj {
         if args[0] == obj::CONST_NONE {
             vm.dupterm_objs[idx] = obj::OBJ_NULL;
         } else {
-            let _ = stream::get_stream_raise(args[0], STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL);
+            let _ = stream::get_stream_raise(
+                args[0],
+                STREAM_OP_READ | STREAM_OP_WRITE | STREAM_OP_IOCTL,
+            );
             vm.dupterm_objs[idx] = args[0];
         }
         prev

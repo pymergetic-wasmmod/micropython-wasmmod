@@ -116,11 +116,7 @@ pub unsafe fn pairing(lt: PairHeapLt, mut child: *mut PairHeap) -> *mut PairHeap
 }
 
 /// Amortised O(log N), stable (`mp_pairheap_delete`).
-pub unsafe fn delete(
-    lt: PairHeapLt,
-    heap: *mut PairHeap,
-    node: *mut PairHeap,
-) -> *mut PairHeap {
+pub unsafe fn delete(lt: PairHeapLt, heap: *mut PairHeap, node: *mut PairHeap) -> *mut PairHeap {
     if node == heap {
         let child = (*heap).child;
         (*node).child = std::ptr::null_mut();

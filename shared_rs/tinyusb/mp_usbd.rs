@@ -27,10 +27,7 @@ pub fn schedule_task() {
     }
     static mut USBD_TASK_NODE: *mut () = core::ptr::null_mut();
     unsafe {
-        scheduler::sched_schedule(
-            py_rs::obj::OBJ_NULL,
-            py_rs::obj::from_ptr(USBD_TASK_NODE),
-        );
+        scheduler::sched_schedule(py_rs::obj::OBJ_NULL, py_rs::obj::from_ptr(USBD_TASK_NODE));
     }
 }
 

@@ -69,10 +69,16 @@ pub fn tcsetattr(fd: Obj, when: Obj, attrs: Obj) -> Obj {
         };
     }
     raise_if_err(unsafe {
-        libc::cfsetispeed(&mut term, py_rs::obj::get_int(attr_items[4]) as libc::speed_t)
+        libc::cfsetispeed(
+            &mut term,
+            py_rs::obj::get_int(attr_items[4]) as libc::speed_t,
+        )
     });
     raise_if_err(unsafe {
-        libc::cfsetospeed(&mut term, py_rs::obj::get_int(attr_items[5]) as libc::speed_t)
+        libc::cfsetospeed(
+            &mut term,
+            py_rs::obj::get_int(attr_items[5]) as libc::speed_t,
+        )
     });
     raise_if_err(unsafe { libc::tcsetattr(fd, when, &term) });
     py_rs::obj::CONST_NONE

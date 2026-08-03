@@ -11,10 +11,7 @@ fn get_be16(buf: &[u8]) -> u32 {
 }
 
 fn get_be32(buf: &[u8]) -> u32 {
-    u32::from(buf[0]) << 24
-        | u32::from(buf[1]) << 16
-        | u32::from(buf[2]) << 8
-        | u32::from(buf[3])
+    u32::from(buf[0]) << 24 | u32::from(buf[1]) << 16 | u32::from(buf[2]) << 8 | u32::from(buf[3])
 }
 
 fn dump_hex_bytes(print: &Print, len: usize, buf: &[u8]) {
