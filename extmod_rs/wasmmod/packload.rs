@@ -127,15 +127,18 @@ fn score_pack_file_for_host(f: &PackFile<'_>) -> i32 {
     if !mpconfig::PERSISTENT_CODE_LOAD {
         return -1;
     }
-    if f.data.len() < 4 || f.data[0] != b'M' || f.data[1] != py_rs::persistentcode::MPY_VERSION {
+    let Some(data) = pack::pack_file_bytes(f) else {
+        return -1;
+    };
+    if data.len() < 4 || data[0] != b'M' || data[1] != py_rs::persistentcode::MPY_VERSION {
         return -1;
     }
     // Native arch in feature byte: only accept bytecode (arch == 0) for now.
-    let arch = (f.data[2] >> 2) & 0x2f;
+    let arch = (data[2] >> 2) & 0x2f;
     if arch != 0 {
         return -1;
     }
-    if f.data[3] as u32 > py_rs::smallint::BITS {
+    if data[3] as u32 > py_rs::smallint::BITS {
         return -1;
     }
 
@@ -176,7 +179,7 @@ fn score_pack_file_for_host(f: &PackFile<'_>) -> i32 {
             return 100 + sib as i32;
         }
     }
-    50 + f.data[3] as i32
+    50 + data[3] as i32
 }
 
 fn exec_py_into_module(module_obj: Obj, src_name: &str, data: &[u8]) {
@@ -226,12 +229,15 @@ fn exec_mpy_into_module(module_obj: Obj, src_name: &str, data: &[u8]) {
 }
 
 fn exec_pack_file_into_module(module_obj: Obj, src_name: &str, f: &PackFile<'_>) {
+    let Some(data) = pack::pack_file_bytes(f) else {
+        raise::raise(MpRaise::ValueError("wasm pack file inflate failed"));
+    };
     if f.kind == PACK_KIND_PY {
-        exec_py_into_module(module_obj, src_name, f.data);
+        exec_py_into_module(module_obj, src_name, &data);
         return;
     }
     if f.kind == pack::PACK_KIND_MPY {
-        exec_mpy_into_module(module_obj, src_name, f.data);
+        exec_mpy_into_module(module_obj, src_name, &data);
         return;
     }
     raise::raise(MpRaise::ValueError("wasm pack file kind not supported"));
@@ -606,7 +612,7 @@ mod testutil {
     pub fn build_pack_payload(name: &str, files: &[(&str, u8, &[u8])]) -> Vec<u8> {
         let mut p = Vec::new();
         p.extend_from_slice(PACK_MAGIC);
-        p.extend_from_slice(&1u16.to_le_bytes());
+        p.extend_from_slice(&3u16.to_le_bytes());
         p.extend_from_slice(&0u16.to_le_bytes());
         p.extend_from_slice(&(name.len() as u16).to_le_bytes());
         p.extend_from_slice(name.as_bytes());
@@ -615,9 +621,12 @@ mod testutil {
             p.extend_from_slice(&(path.len() as u16).to_le_bytes());
             p.extend_from_slice(path.as_bytes());
             p.push(*kind);
+            p.push(0);
+            p.extend_from_slice(&(data.len() as u32).to_le_bytes());
             p.extend_from_slice(&(data.len() as u32).to_le_bytes());
             p.extend_from_slice(data);
         }
+        p.extend_from_slice(&0u32.to_le_bytes());
         p
     }
 

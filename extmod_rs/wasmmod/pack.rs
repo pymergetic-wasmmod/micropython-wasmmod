@@ -12,11 +12,15 @@ pub const PACK_KIND_PY: u8 = 1;
 pub const PACK_KIND_MPY: u8 = 2;
 pub const PACK_KIND_RAW: u8 = 3;
 pub const PACK_SIG_AUTO: u8 = 255;
+pub const PACK_FILE_FLAG_ZLIB: u8 = 1 << 0;
+pub const ARTIFACT_ZLIB_MAGIC: &[u8; 4] = b"MPZL";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackFile<'a> {
     pub path: &'a str,
     pub kind: u8,
+    pub flags: u8,
+    pub raw_len: u32,
     pub data: &'a [u8],
 }
 
@@ -97,35 +101,74 @@ pub fn find_section_id(wasm: &[u8], want_id: u8) -> Option<&[u8]> {
     None
 }
 
-pub fn find_custom_section<'a>(wasm: &'a [u8], name: &str) -> Option<&'a [u8]> {
-    if wasm.len() < 8 || &wasm[0..4] != b"\0asm" {
+pub fn find_custom_section<'a>(buf: &'a [u8], name: &str) -> Option<&'a [u8]> {
+    if buf.len() < 8 || buf[0] != 0 {
         return None;
     }
-    let mut p = 8usize;
-    let end = wasm.len();
-    while p < end {
-        let id = wasm[p];
-        p += 1;
-        let mut ip = p;
-        let size = read_uleb(&mut ip, end, wasm)? as usize;
-        if ip + size > end {
-            return None;
-        }
-        p = ip + size;
-        if id != 0 {
-            continue;
-        }
-        let sec = &wasm[ip..ip + size];
-        let mut q = 0usize;
-        let name_len = read_uleb(&mut q, sec.len(), sec)? as usize;
-        if q + name_len > sec.len() {
-            continue;
-        }
-        if let Ok(sec_name) = std::str::from_utf8(&sec[q..q + name_len]) {
-            if sec_name == name {
-                return Some(&sec[q + name_len..]);
+    if &buf[1..4] == b"asm" {
+        let mut p = 8usize;
+        let end = buf.len();
+        while p < end {
+            let id = buf[p];
+            p += 1;
+            let mut ip = p;
+            let size = read_uleb(&mut ip, end, buf)? as usize;
+            if ip + size > end {
+                return None;
+            }
+            p = ip + size;
+            if id != 0 {
+                continue;
+            }
+            let sec = &buf[ip..ip + size];
+            let mut q = 0usize;
+            let name_len = read_uleb(&mut q, sec.len(), sec)? as usize;
+            if q + name_len > sec.len() {
+                continue;
+            }
+            if let Ok(sec_name) = std::str::from_utf8(&sec[q..q + name_len]) {
+                if sec_name == name {
+                    return Some(&sec[q + name_len..]);
+                }
             }
         }
+        return None;
+    }
+    if &buf[1..4] == b"aot" {
+        let want = name.as_bytes();
+        let mut p = 8usize;
+        while p + 8 <= buf.len() {
+            let typ = u32::from_le_bytes(buf[p..p + 4].try_into().ok()?);
+            let size = u32::from_le_bytes(buf[p + 4..p + 8].try_into().ok()?) as usize;
+            let content = p + 8;
+            let end = content + size;
+            if end > buf.len() || size > 0x1000_0000 {
+                return None;
+            }
+            if typ == 100 && size >= 6 {
+                let sub = u32::from_le_bytes(buf[content..content + 4].try_into().ok()?);
+                if sub == 0 {
+                    let slen =
+                        u16::from_le_bytes(buf[content + 4..content + 6].try_into().ok()?) as usize;
+                    let nb = content + 6;
+                    if nb + slen <= end {
+                        let name_bytes = &buf[nb..nb + slen];
+                        let bare = name_bytes.strip_suffix(&[0]).unwrap_or(name_bytes);
+                        if bare == want {
+                            return Some(&buf[nb + slen..end]);
+                        }
+                    }
+                }
+            }
+            // Next header is 4-aligned (WAMR read_uint32 align_ptr).
+            let aligned = (end + 3) & !3;
+            p = if aligned <= buf.len() {
+                aligned
+            } else {
+                buf.len()
+            };
+        }
+        return None;
     }
     None
 }
@@ -144,7 +187,7 @@ pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
     }
     let version = read_u16_le(&payload[4..6]);
     let flags = read_u16_le(&payload[6..8]);
-    if version != 1 && version != 2 {
+    if !(1..=3).contains(&version) {
         return None;
     }
     let name_len = read_u16_le(&payload[8..10]) as usize;
@@ -158,6 +201,7 @@ pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
     if n_files > 1024 {
         return None;
     }
+    let v3 = version >= 3;
     let mut files = Vec::with_capacity(n_files);
     for _ in 0..n_files {
         if p + 2 > payload.len() {
@@ -165,21 +209,36 @@ pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
         }
         let path_len = read_u16_le(&payload[p..p + 2]) as usize;
         p += 2;
-        if p + path_len + 1 + 4 > payload.len() {
+        let hdr = path_len + 1 + 4 + if v3 { 1 + 4 } else { 0 };
+        if p + hdr > payload.len() {
             return None;
         }
         let path = std::str::from_utf8(&payload[p..p + path_len]).ok()?;
         p += path_len;
         let kind = payload[p];
         p += 1;
+        let (fflags, mut raw_len) = if v3 {
+            let f = payload[p];
+            p += 1;
+            let r = read_u32_le(&payload[p..p + 4]);
+            p += 4;
+            (f, r)
+        } else {
+            (0u8, 0u32)
+        };
         let data_len = read_u32_le(&payload[p..p + 4]) as usize;
         p += 4;
         if p + data_len > payload.len() {
             return None;
         }
+        if !v3 {
+            raw_len = data_len as u32;
+        }
         files.push(PackFile {
             path,
             kind,
+            flags: fflags,
+            raw_len,
             data: &payload[p..p + data_len],
         });
         p += data_len;
@@ -236,6 +295,42 @@ pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
         files,
         exports,
     })
+}
+
+/// Inflate a pack file entry when zlib-flagged.
+pub fn pack_file_bytes(f: &PackFile<'_>) -> Option<std::borrow::Cow<'_, [u8]>> {
+    if f.flags & PACK_FILE_FLAG_ZLIB == 0 {
+        return Some(std::borrow::Cow::Borrowed(f.data));
+    }
+    use flate2::read::ZlibDecoder;
+    use std::io::Read;
+    let mut dec = ZlibDecoder::new(f.data);
+    let mut out = Vec::with_capacity(f.raw_len as usize);
+    dec.read_to_end(&mut out).ok()?;
+    if out.len() != f.raw_len as usize {
+        return None;
+    }
+    Some(std::borrow::Cow::Owned(out))
+}
+
+/// Unwrap MPZL whole-artifact envelope when present.
+pub fn artifact_unwrap_zlib(buf: &[u8]) -> Option<std::borrow::Cow<'_, [u8]>> {
+    if buf.len() < 8 || &buf[0..4] != ARTIFACT_ZLIB_MAGIC {
+        return Some(std::borrow::Cow::Borrowed(buf));
+    }
+    let raw_len = read_u32_le(&buf[4..8]) as usize;
+    if raw_len == 0 || raw_len > 64 * 1024 * 1024 {
+        return None;
+    }
+    use flate2::read::ZlibDecoder;
+    use std::io::Read;
+    let mut dec = ZlibDecoder::new(&buf[8..]);
+    let mut out = Vec::with_capacity(raw_len);
+    dec.read_to_end(&mut out).ok()?;
+    if out.len() != raw_len {
+        return None;
+    }
+    Some(std::borrow::Cow::Owned(out))
 }
 
 pub fn imports_parse(payload: &[u8]) -> Option<ImportsInfo<'_>> {
@@ -315,7 +410,7 @@ mod tests {
     fn build_pack_payload(name: &str, files: &[(&str, u8, &[u8])]) -> Vec<u8> {
         let mut p = Vec::new();
         p.extend_from_slice(PACK_MAGIC);
-        p.extend_from_slice(&1u16.to_le_bytes());
+        p.extend_from_slice(&3u16.to_le_bytes());
         p.extend_from_slice(&0u16.to_le_bytes());
         p.extend_from_slice(&(name.len() as u16).to_le_bytes());
         p.extend_from_slice(name.as_bytes());
@@ -324,9 +419,12 @@ mod tests {
             p.extend_from_slice(&(path.len() as u16).to_le_bytes());
             p.extend_from_slice(path.as_bytes());
             p.push(*kind);
+            p.push(0); // flags
+            p.extend_from_slice(&(data.len() as u32).to_le_bytes()); // raw_len
             p.extend_from_slice(&(data.len() as u32).to_le_bytes());
             p.extend_from_slice(data);
         }
+        p.extend_from_slice(&0u32.to_le_bytes()); // n_exports
         p
     }
 

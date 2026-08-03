@@ -278,51 +278,90 @@ fn verify_with_trust(bytes: &[u8], sig: &[u8], chain: &[u8]) -> bool {
     false
 }
 
-fn load_sidecar(path_hint: &str, suffix: &str) -> Option<Vec<u8>> {
-    let mut path = String::with_capacity(path_hint.len() + suffix.len());
-    path.push_str(path_hint);
-    path.push_str(suffix);
-    let mut err = [0u8; 64];
-    super::fetch::fetch(&path, &mut err)
-}
-
 fn load_section_sig(bytes: &[u8]) -> Option<&[u8]> {
     find_custom_section(bytes, SIG_SECTION)
 }
 
-fn copy_without_sig_section(wasm: &[u8]) -> Option<Vec<u8>> {
-    if wasm.len() < 8 || &wasm[0..4] != b"\0asm" {
+fn copy_without_sig_section(mod_bytes: &[u8]) -> Option<Vec<u8>> {
+    if mod_bytes.len() < 8 || mod_bytes[0] != 0 {
         return None;
     }
-    let want_len = SIG_SECTION.len();
-    let mut out = Vec::with_capacity(wasm.len());
-    out.extend_from_slice(&wasm[..8]);
-    let mut p = 8usize;
-    let end = wasm.len();
-    while p < end {
-        let sec_start = p;
-        let id = wasm[p];
-        p += 1;
-        let mut ip = p;
-        let size = read_uleb(&mut ip, end, wasm)? as usize;
-        if ip + size > end {
-            return None;
-        }
-        let payload = &wasm[ip..ip + size];
-        p = ip + size;
-        let mut skip = false;
-        if id == 0 {
-            let mut q = 0usize;
-            let name_len = read_uleb(&mut q, payload.len(), payload)? as usize;
-            if q + name_len <= payload.len()
-                && name_len == want_len
-                && &payload[q..q + name_len] == SIG_SECTION.as_bytes()
-            {
-                skip = true;
+    let is_wasm = &mod_bytes[1..4] == b"asm";
+    let is_aot = &mod_bytes[1..4] == b"aot";
+    if !is_wasm && !is_aot {
+        return None;
+    }
+    let want = SIG_SECTION.as_bytes();
+    let mut out = Vec::with_capacity(mod_bytes.len());
+    out.extend_from_slice(&mod_bytes[..8]);
+    if is_wasm {
+        let mut p = 8usize;
+        let end = mod_bytes.len();
+        while p < end {
+            let sec_start = p;
+            let id = mod_bytes[p];
+            p += 1;
+            let mut ip = p;
+            let size = read_uleb(&mut ip, end, mod_bytes)? as usize;
+            if ip + size > end {
+                return None;
+            }
+            let payload = &mod_bytes[ip..ip + size];
+            p = ip + size;
+            let mut skip = false;
+            if id == 0 {
+                let mut q = 0usize;
+                let name_len = read_uleb(&mut q, payload.len(), payload)? as usize;
+                if q + name_len <= payload.len()
+                    && name_len == want.len()
+                    && &payload[q..q + name_len] == want
+                {
+                    skip = true;
+                }
+            }
+            if !skip {
+                out.extend_from_slice(&mod_bytes[sec_start..p]);
             }
         }
-        if !skip {
-            out.extend_from_slice(&wasm[sec_start..p]);
+    } else {
+        let mut p = 8usize;
+        while p + 8 <= mod_bytes.len() {
+            let typ = u32::from_le_bytes(mod_bytes[p..p + 4].try_into().ok()?);
+            let size = u32::from_le_bytes(mod_bytes[p + 4..p + 8].try_into().ok()?) as usize;
+            let content = p + 8;
+            let end = content + size;
+            if end > mod_bytes.len() || size > 0x1000_0000 {
+                return None;
+            }
+            let aligned = (end + 3) & !3;
+            let next = if aligned <= mod_bytes.len() {
+                aligned
+            } else {
+                mod_bytes.len()
+            };
+            let mut skip = false;
+            if typ == 100 && size >= 6 {
+                let sub = u32::from_le_bytes(mod_bytes[content..content + 4].try_into().ok()?);
+                if sub == 0 {
+                    let slen =
+                        u16::from_le_bytes(mod_bytes[content + 4..content + 6].try_into().ok()?)
+                            as usize;
+                    let nb = content + 6;
+                    if nb + slen <= end {
+                        let name_bytes = &mod_bytes[nb..nb + slen];
+                        let bare = name_bytes.strip_suffix(&[0]).unwrap_or(name_bytes);
+                        if bare == want {
+                            skip = true;
+                        }
+                    }
+                }
+            }
+            if !skip {
+                out.extend_from_slice(&mod_bytes[p..next]);
+            } else {
+                break;
+            }
+            p = next;
         }
     }
     Some(out)
@@ -354,7 +393,7 @@ fn parse_sig_payload(payload: &[u8]) -> Option<(&[u8], &[u8])> {
     }
 }
 
-fn verify_bytes_enabled(bytes: &[u8], path_hint: Option<&str>, errbuf: &mut [u8]) -> bool {
+fn verify_bytes_enabled(bytes: &[u8], _path_hint: Option<&str>, errbuf: &mut [u8]) -> bool {
     errbuf[0] = 0;
     trust_ensure();
     if bytes.is_empty() {
@@ -362,68 +401,27 @@ fn verify_bytes_enabled(bytes: &[u8], path_hint: Option<&str>, errbuf: &mut [u8]
         return false;
     }
 
-    let have_detached = path_hint.is_some_and(|p| load_sidecar(p, ".sig").is_some());
-    let have_crt = path_hint.is_some_and(|p| load_sidecar(p, ".crt").is_some());
-    let sec_sig = load_section_sig(bytes);
-
-    let detached = path_hint.and_then(|p| load_sidecar(p, ".sig"));
-    let crt = path_hint.and_then(|p| load_sidecar(p, ".crt"));
-
-    let stripped_storage: Option<Vec<u8>>;
-    let (hash_bytes, sig, mut chain): (&[u8], &[u8], &[u8]);
-
-    if let Some(sec_payload) = sec_sig {
-        stripped_storage = match copy_without_sig_section(bytes) {
-            Some(v) => Some(v),
-            None => {
-                runtime::set_err(errbuf, "verify: bad wasmmod.sig layout");
-                return false;
-            }
-        };
-        hash_bytes = stripped_storage.as_ref().unwrap().as_slice();
-        let parsed = match parse_sig_payload(sec_payload) {
-            Some(v) => v,
-            None => {
-                runtime::set_err(errbuf, "verify: bad wasmmod.sig payload");
-                return false;
-            }
-        };
-        sig = parsed.0;
-        chain = parsed.1;
-        if chain.is_empty() {
-            if let Some(ref c) = crt {
-                chain = c;
-            }
-        }
-    } else if let Some(ref det) = detached {
-        stripped_storage = None;
-        hash_bytes = bytes;
-        let parsed = match parse_sig_payload(det) {
-            Some(v) => v,
-            None => {
-                runtime::set_err(errbuf, "verify: bad signature");
-                return false;
-            }
-        };
-        sig = parsed.0;
-        chain = parsed.1;
-        if chain.is_empty() {
-            if let Some(ref c) = crt {
-                chain = c;
-            }
-        }
-    } else {
-        let _ = have_detached;
-        let _ = have_crt;
+    let Some(sec_payload) = load_section_sig(bytes) else {
         if WASM_VERIFY == 1 {
             runtime::set_err(errbuf, "verify: signature required");
             return false;
         }
         return true;
-    }
+    };
 
-    let ok = verify_with_trust(hash_bytes, sig, chain);
-    drop(stripped_storage);
+    let stripped = match copy_without_sig_section(bytes) {
+        Some(v) => v,
+        None => {
+            runtime::set_err(errbuf, "verify: bad wasmmod.sig layout");
+            return false;
+        }
+    };
+    let Some((sig, chain)) = parse_sig_payload(sec_payload) else {
+        runtime::set_err(errbuf, "verify: bad wasmmod.sig payload");
+        return false;
+    };
+
+    let ok = verify_with_trust(&stripped, sig, chain);
     if !ok {
         runtime::set_err(errbuf, "verify: bad signature");
         return false;

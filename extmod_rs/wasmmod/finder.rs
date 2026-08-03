@@ -21,13 +21,25 @@ fn path_is_frozen(root: &str) -> bool {
 }
 
 /// Whether a wasm pack might live under `root` for `slash_name` (no I/O).
-pub fn candidate_rel_paths(slash_name: &str, aot: bool) -> Vec<String> {
+/// `aot_ver`: WAMR AOT_CURRENT_VERSION (e.g. 6 → `.aot6`); 0 = legacy `.aot` only.
+pub fn candidate_rel_paths(slash_name: &str, aot: bool, aot_ver: u32) -> Vec<String> {
     let mut out = Vec::new();
     if aot {
-        out.push(format!("{slash_name}/__init__.aot"));
-        out.push(format!("{slash_name}.aot"));
+        let mut exts: Vec<String> = Vec::new();
+        if aot_ver > 0 {
+            exts.push(format!(".aot{aot_ver}"));
+        }
+        exts.push(".aot".into());
+        for ext in &exts {
+            out.push(format!("{slash_name}/__init__{ext}.zlib"));
+            out.push(format!("{slash_name}/__init__{ext}"));
+            out.push(format!("{slash_name}{ext}.zlib"));
+            out.push(format!("{slash_name}{ext}"));
+        }
     }
+    out.push(format!("{slash_name}/__init__.wasm.zlib"));
     out.push(format!("{slash_name}/__init__.wasm"));
+    out.push(format!("{slash_name}.wasm.zlib"));
     out.push(format!("{slash_name}.wasm"));
     out
 }
@@ -86,11 +98,20 @@ fn try_vfs_file(root: &str, rel: &str) -> Option<String> {
 fn try_one_arch_ext(root: &str, stem: &str, allow_pkg: bool, ext: &str) -> Option<String> {
     if allow_pkg {
         let rel = format!("{stem}/__init__{ext}");
+        let zrel = format!("{rel}.zlib");
+        if let Some(p) = try_vfs_file(root, &zrel) {
+            return Some(p);
+        }
         if let Some(p) = try_vfs_file(root, &rel) {
             return Some(p);
         }
     }
-    try_vfs_file(root, &format!("{stem}{ext}"))
+    let rel = format!("{stem}{ext}");
+    let zrel = format!("{rel}.zlib");
+    if let Some(p) = try_vfs_file(root, &zrel) {
+        return Some(p);
+    }
+    try_vfs_file(root, &rel)
 }
 
 fn try_stem_variants(root: &str, stem: &str, allow_pkg: bool) -> Option<String> {
