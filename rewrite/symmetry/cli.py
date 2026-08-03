@@ -92,15 +92,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.scaffold_stubs:
         scaffolder = Scaffolder(checker)
-        pre = checker.scan(
-            include_pm=False, compare_shas=False, compare_progress=False
-        )
+        pre = checker.scan(include_pm=False, compare_shas=False, compare_progress=False)
         if args.tree:
             want = set(args.tree)
             pre.mirrors = [m for m in pre.mirrors if m.name in want]
-        result = scaffolder.run(
-            pre, force=args.scaffold_force, write_cargo=True, write_mods=True
-        )
+        result = scaffolder.run(pre, force=args.scaffold_force, write_cargo=True, write_mods=True)
         print(
             f"Scaffold: created {len(result.created)} stubs, "
             f"skipped {len(result.skipped)} existing, "
@@ -153,10 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         and not args.write_baseline
     ):
         print()
-        print(
-            "No SHA checkpoint yet. Create one with: "
-            "python -m rewrite.symmetry --checkpoint"
-        )
+        print("No SHA checkpoint yet. Create one with: python -m rewrite.symmetry --checkpoint")
 
     if args.list_missing:
         print()
@@ -165,9 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {st.shadow}  <=  {', '.join(st.ref_files)}")
 
     if args.json:
-        args.json.write_text(
-            json.dumps(report.to_jsonable(), indent=2) + "\n", encoding="utf-8"
-        )
+        args.json.write_text(json.dumps(report.to_jsonable(), indent=2) + "\n", encoding="utf-8")
         print(f"\nWrote JSON report to {args.json}")
 
     if args.markdown:

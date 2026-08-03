@@ -94,12 +94,7 @@ def print_conversion_stats(report: FullReport) -> None:
     doneish = tot_done = 0
     missingish = 0
     for row in stats["by_stem_shape"]:
-        tot_done += (
-            row["done"]
-            + row.get("gaps", 0)
-            + row["partial"]
-            + row["stub"]
-        )
+        tot_done += row["done"] + row.get("gaps", 0) + row["partial"] + row["stub"]
         missingish += row["missing"] + row["stale"]
         doneish += row["done"]
     print(
@@ -115,20 +110,12 @@ def print_progress_delta(delta: dict) -> None:
     print("-" * 72)
     fp = delta.get("file_progress_pct", {})
     pp = delta.get("pm_progress_pct", {})
-    print(
-        f"  files: {fp.get('from', 0)}% → {fp.get('to', 0)}%  "
-        f"({fp.get('delta', 0):+g}%)"
-    )
-    print(
-        f"  pm:    {pp.get('from', 0)}% → {pp.get('to', 0)}%  "
-        f"({pp.get('delta', 0):+g}%)"
-    )
+    print(f"  files: {fp.get('from', 0)}% → {fp.get('to', 0)}%  ({fp.get('delta', 0):+g}%)")
+    print(f"  pm:    {pp.get('from', 0)}% → {pp.get('to', 0)}%  ({pp.get('delta', 0):+g}%)")
     _print_change_list("stems newly done", delta.get("stems_newly_done", []))
     _print_change_list("stems no longer done", delta.get("stems_no_longer_done", []))
     _print_change_list("symbols newly present", delta.get("symbols_newly_present", []))
-    _print_change_list(
-        "symbols no longer present", delta.get("symbols_no_longer_present", [])
-    )
+    _print_change_list("symbols no longer present", delta.get("symbols_no_longer_present", []))
 
 
 def print_human(
@@ -153,9 +140,7 @@ def print_human(
 
     for m in report.mirrors:
         c = m.counts()
-        tracked = sum(
-            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
-        )
+        tracked = sum(c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing"))
         if tracked == 0 and not m.stems:
             print(f"{m.name + '/':<14}(disabled or empty)")
             continue
@@ -163,9 +148,7 @@ def print_human(
         print(format_counts_line(label, c, m.progress_pct()))
 
     tot = report.total_counts()
-    tracked = sum(
-        tot[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
-    )
+    tracked = sum(tot[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing"))
     if tracked:
         print("-" * 72)
         print(format_counts_line("TOTAL", tot, report.file_progress_pct()))

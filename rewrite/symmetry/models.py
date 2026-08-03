@@ -79,9 +79,7 @@ class MirrorReport:
 
     def progress_pct(self) -> float:
         c = self.counts()
-        tracked = sum(
-            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
-        )
+        tracked = sum(c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing"))
         if tracked == 0:
             return 100.0
         weight = sum(c[s] * STATUS_WEIGHT.get(s, 0.0) for s in c)
@@ -105,9 +103,7 @@ class FullReport:
 
     def file_progress_pct(self) -> float:
         c = self.total_counts()
-        tracked = sum(
-            c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing")
-        )
+        tracked = sum(c[s] for s in ("done", "gaps", "partial", "stub", "stale", "missing"))
         if tracked == 0:
             return 100.0
         weight = sum(c[s] * STATUS_WEIGHT.get(s, 0.0) for s in c)
@@ -128,11 +124,7 @@ class FullReport:
         c = self.pm_counts()
         if c["total"] == 0:
             return 100.0
-        weight = (
-            c.get("present", 0) * 1.0
-            + c.get("partial", 0) * 0.5
-            + c.get("stub", 0) * 0.25
-        )
+        weight = c.get("present", 0) * 1.0 + c.get("partial", 0) * 0.5 + c.get("stub", 0) * 0.25
         return 100.0 * weight / c["total"]
 
     def to_jsonable(self) -> dict:

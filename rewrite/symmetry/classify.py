@@ -73,9 +73,7 @@ def classify_rs(path: Path) -> tuple[str, str]:
         return "stub", "unimplemented placeholder"
     if "todo!" in text or "todo!(" in text:
         non_todo_lines = [
-            ln
-            for ln in stripped.splitlines()
-            if "todo!" not in ln and "unimplemented!" not in ln
+            ln for ln in stripped.splitlines() if "todo!" not in ln and "unimplemented!" not in ln
         ]
         if len(non_todo_lines) < 3:
             return "stub", "todo! placeholder"

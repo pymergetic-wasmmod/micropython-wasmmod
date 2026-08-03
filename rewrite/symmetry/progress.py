@@ -36,11 +36,14 @@ class ProgressTracker:
                 "missing": pc.get("missing", 0),
                 "total": pc.get("total", 0),
             },
-            "done_stems": sorted(
-                st.shadow for _, st in report.iter_stems("done")
-            ),
+            "done_stems": sorted(st.shadow for _, st in report.iter_stems("done")),
             "present_symbols": sorted(
-                [s.symbol for syms in report.pm_modules.values() for s in syms if s.status == "present"]
+                [
+                    s.symbol
+                    for syms in report.pm_modules.values()
+                    for s in syms
+                    if s.status == "present"
+                ]
                 + [s.symbol for s in report.pm_infra if s.status == "present"]
             ),
         }

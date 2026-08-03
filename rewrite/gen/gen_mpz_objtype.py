@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-MPZ_HEADER = r'''//! rewrite of py/mpz.c + py/mpz.h
+MPZ_HEADER = r"""//! rewrite of py/mpz.c + py/mpz.h
 // symmetry: done
 
 use crate::malloc;
@@ -43,12 +43,13 @@ pub struct Mpz {
 
 pub type MpzT = Mpz;
 
-'''
+"""
 
-MPZ_FOOTER = r'''
+MPZ_FOOTER = r"""
 // --- mpn_* (natural number primitives) --------------------------------------
 
-'''
+"""
+
 
 def strip_if0_blocks(text: str) -> str:
     out: list[str] = []
@@ -99,15 +100,24 @@ def c_to_rust_mpz_body(body: str) -> str:
         (r"\bfalse\b", "false"),
         (r"\bNULL\b", "core::ptr::null_mut()"),
         (r"\bm_del\(mpz_dig_t,\s*z->dig,\s*z->alloc\)", "z.dig.truncate(0)"),
-        (r"\bm_del\(mpz_dig_t,\s*z->dig,\s*([^)]+)\)", r"z.dig.truncate(0) /* was m_del len \1 */"),
+        (
+            r"\bm_del\(mpz_dig_t,\s*z->dig,\s*([^)]+)\)",
+            r"z.dig.truncate(0) /* was m_del len \1 */",
+        ),
         (r"\bm_del_obj\(mpz_t,\s*z\)", "{ /* mpz_free drop */ }"),
         (r"\bm_new_obj\(mpz_t\)", "Box::new(Mpz::default())"),
         (r"\bm_new\(mpz_dig_t,\s*([^)]+)\)", r"vec![0 as Dig; \1]"),
-        (r"\bm_renew\(mpz_dig_t,\s*z->dig,\s*z->alloc,\s*need\)", "z.dig.resize(need, 0); z.dig.as_mut_ptr()"),
-        (r"\bmemcpy\(([^,]+),\s*([^,]+),\s*([^)]+)\)", r"\1.copy_from_slice(core::slice::from_raw_parts(\2, \3 / std::mem::size_of::<Dig>()))"),
+        (
+            r"\bm_renew\(mpz_dig_t,\s*z->dig,\s*z->alloc,\s*need\)",
+            "z.dig.resize(need, 0); z.dig.as_mut_ptr()",
+        ),
+        (
+            r"\bmemcpy\(([^,]+),\s*([^,]+),\s*([^)]+)\)",
+            r"\1.copy_from_slice(core::slice::from_raw_parts(\2, \3 / std::mem::size_of::<Dig>()))",
+        ),
         (r"\bmemset\(([^,]+),\s*0,\s*([^)]+)\)", r"\1.fill(0) /* memset 0 \2 */"),
         (r"\bassert\(", "debug_assert!("),
-        (r"#if MICROPY_OPT_MPZ_BITWISE", "#[cfg(feature = \"never\")] if mpconfig::OPT_MPZ_BITWISE"),
+        (r"#if MICROPY_OPT_MPZ_BITWISE", '#[cfg(feature = "never")] if mpconfig::OPT_MPZ_BITWISE'),
         (r"#else", "#else"),
         (r"#endif", "#endif"),
         (r"#if MICROPY_PY_BUILTINS_FLOAT", "if mpconfig::PY_BUILTINS_FLOAT"),

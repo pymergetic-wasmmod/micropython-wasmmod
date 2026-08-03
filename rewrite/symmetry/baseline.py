@@ -15,14 +15,9 @@ class BaselineStore:
     def snapshot(self, report: FullReport) -> dict:
         done_stems = [st.shadow for _, st in report.iter_stems("done")]
         present_syms = [
-            s.symbol
-            for syms in report.pm_modules.values()
-            for s in syms
-            if s.status == "present"
+            s.symbol for syms in report.pm_modules.values() for s in syms if s.status == "present"
         ]
-        present_syms += [
-            s.symbol for s in report.pm_infra if s.status == "present"
-        ]
+        present_syms += [s.symbol for s in report.pm_infra if s.status == "present"]
         return {
             "done_stems": sorted(done_stems),
             "present_symbols": sorted(present_syms),
@@ -43,8 +38,6 @@ class BaselineStore:
         problems = []
         for s in sorted(set(old.get("done_stems", [])) - set(snap["done_stems"])):
             problems.append(f"regression: stem was done, now not: {s}")
-        for s in sorted(
-            set(old.get("present_symbols", [])) - set(snap["present_symbols"])
-        ):
+        for s in sorted(set(old.get("present_symbols", [])) - set(snap["present_symbols"])):
             problems.append(f"regression: symbol was present, now not: {s}")
         return problems

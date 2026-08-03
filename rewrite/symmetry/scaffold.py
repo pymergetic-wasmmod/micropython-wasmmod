@@ -130,7 +130,9 @@ def _mod_rs_body(dirs: list[str], files: list[str], *, crate_doc: str | None = N
     return "\n".join(lines)
 
 
-def build_module_tree(stems: list[str], *, skip_stems: set[str] | None = None) -> dict[str, tuple[list[str], list[str]]]:
+def build_module_tree(
+    stems: list[str], *, skip_stems: set[str] | None = None
+) -> dict[str, tuple[list[str], list[str]]]:
     """
     Map directory ('' = crate root) → (subdir_names, file_stems).
     """
@@ -221,9 +223,7 @@ class Scaffolder:
                 result.skipped.append(st.shadow)
                 continue
             path.parent.mkdir(parents=True, exist_ok=True)
-            text = stub_text(
-                st.ref_files, is_bin_main=is_bin_main, port=mirror.name
-            )
+            text = stub_text(st.ref_files, is_bin_main=is_bin_main, port=mirror.name)
             path.write_text(text, encoding="utf-8")
             result.created.append(st.shadow)
 
@@ -302,9 +302,9 @@ class Scaffolder:
                     'license = "MIT"',
                     "",
                     "[workspace.dependencies]",
-                    "py_rs = { path = \"py_rs\" }",
-                    "shared_rs = { path = \"shared_rs\" }",
-                    "extmod_rs = { path = \"extmod_rs\" }",
+                    'py_rs = { path = "py_rs" }',
+                    'shared_rs = { path = "shared_rs" }',
+                    'extmod_rs = { path = "extmod_rs" }',
                     "",
                 ]
             ),
@@ -322,8 +322,8 @@ class Scaffolder:
             "[package]",
             f'name = "{pkg}"',
             'version = "0.0.0"',
-            'edition.workspace = true',
-            'license.workspace = true',
+            "edition.workspace = true",
+            "license.workspace = true",
             "publish = false",
             "",
             "[lib]",

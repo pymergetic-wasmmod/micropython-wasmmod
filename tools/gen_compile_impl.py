@@ -19,13 +19,21 @@ SKIP_REGIONS = (
     "mp_compile_allow_top_level_await",
 )
 
+
 def strip_if_blocks(text: str) -> str:
     lines = []
     skip = 0
     for line in text.splitlines():
         s = line.strip()
         if s.startswith("#if"):
-            if any(k in s for k in ("MICROPY_EMIT_NATIVE", "MICROPY_EMIT_INLINE_ASM", "MICROPY_DYNAMIC_COMPILER")):
+            if any(
+                k in s
+                for k in (
+                    "MICROPY_EMIT_NATIVE",
+                    "MICROPY_EMIT_INLINE_ASM",
+                    "MICROPY_DYNAMIC_COMPILER",
+                )
+            ):
                 skip += 1
             elif skip:
                 skip += 1
@@ -80,16 +88,25 @@ def translate_line(line: str) -> str | None:
         (r"\bMP_PARSE_NODE_NULL\b", "parse::PARSE_NODE_NULL"),
         (r"\bMP_PARSE_NODE_IS_NULL\(", "parse::parse_node_is_null("),
         (r"\bMP_PARSE_NODE_IS_STRUCT\(", "parse::parse_node_is_struct("),
-        (r"\bMP_PARSE_NODE_IS_STRUCT_KIND\(([^,]+),\s*PN_(\w+)\)", lambda m: f"parse::parse_node_is_struct_kind({m.group(1)}, Rule::{pascal(m.group(2))})"),
+        (
+            r"\bMP_PARSE_NODE_IS_STRUCT_KIND\(([^,]+),\s*PN_(\w+)\)",
+            lambda m: f"parse::parse_node_is_struct_kind({m.group(1)}, Rule::{pascal(m.group(2))})",
+        ),
         (r"\bMP_PARSE_NODE_STRUCT_KIND\(", "parse::parse_node_struct_kind("),
         (r"\bMP_PARSE_NODE_STRUCT_NUM_NODES\(", "parse::parse_node_struct_num_nodes("),
         (r"\bMP_PARSE_NODE_IS_ID\(", "parse::parse_node_is_id("),
         (r"\bMP_PARSE_NODE_IS_SMALL_INT\(", "parse::parse_node_is_small_int("),
-        (r"\bMP_PARSE_NODE_IS_TOKEN_KIND\(([^,]+),\s*MP_TOKEN_(\w+)\)", r"parse::parse_node_is_token_kind(\1, TokenKind::\2)"),
+        (
+            r"\bMP_PARSE_NODE_IS_TOKEN_KIND\(([^,]+),\s*MP_TOKEN_(\w+)\)",
+            r"parse::parse_node_is_token_kind(\1, TokenKind::\2)",
+        ),
         (r"\bMP_PARSE_NODE_IS_TOKEN\(", "parse::parse_node_is_token("),
         (r"\bMP_PARSE_NODE_LEAF_ARG\(", "parse::parse_node_leaf_arg("),
         (r"\bMP_PARSE_NODE_LEAF_SMALL_INT\(", "parse::parse_node_leaf_small_int("),
-        (r"\bMP_PARSE_NODE_TESTLIST_COMP_HAS_COMP_FOR\(", "parse_node_testlist_comp_has_comp_for("),
+        (
+            r"\bMP_PARSE_NODE_TESTLIST_COMP_HAS_COMP_FOR\(",
+            "parse_node_testlist_comp_has_comp_for(",
+        ),
         (r"\bpns->nodes\[(\d+)\]", r"parse::parse_node_struct_node(pns, \1)"),
         (r"\bpns_(\w+)->nodes\[(\d+)\]", r"parse::parse_node_struct_node(pns_\1, \2)"),
         (r"\bcomp->", "comp."),
@@ -103,7 +120,22 @@ def translate_line(line: str) -> str | None:
         (r"\bMP_UNARY_OP_(\w+)\b", r"UnaryOp::\1"),
         (r"\bMP_TOKEN_(\w+)\b", r"TokenKind::\1"),
         (r"\bPN_(\w+)\b", lambda m: f"Rule::{pascal(m.group(1))}"),
-        (r"\bSCOPE_(\w+)\b", lambda m: f"ScopeKind::{m.group(1)}" if m.group(1) in ("MODULE","CLASS","LAMBDA","LIST_COMP","DICT_COMP","SET_COMP","GEN_EXPR","FUNCTION") else m.group(0)),
+        (
+            r"\bSCOPE_(\w+)\b",
+            lambda m: f"ScopeKind::{m.group(1)}"
+            if m.group(1)
+            in (
+                "MODULE",
+                "CLASS",
+                "LAMBDA",
+                "LIST_COMP",
+                "DICT_COMP",
+                "SET_COMP",
+                "GEN_EXPR",
+                "FUNCTION",
+            )
+            else m.group(0),
+        ),
         (r"\bSCOPE_IS_FUNC_LIKE\(", "scope::scope_is_func_like("),
         (r"\bSCOPE_IS_COMP_LIKE\(", "scope::scope_is_comp_like("),
         (r"\bMICROPY_(\w+)\b", r"mpconfig::\1"),
@@ -226,6 +258,7 @@ def main() -> None:
     out = re.sub(r"\*mut Scope \*(\w+)", r"*mut Scope", out)
     OUT.write_text(out)
     print(f"wrote {len(funcs)} functions to {OUT}")
+
 
 if __name__ == "__main__":
     main()

@@ -14,7 +14,11 @@ OUT = REPO / "py_rs" / "vm_dispatch.inc.rs"
 def main() -> None:
     text = VM_C.read_text()
     # Extract switch-body between "switch (*ip++) {" and matching closing before pending_exception_check
-    m = re.search(r"#else\s+TRACE\(ip\);.*?switch \(\*ip\+\+\) \{(.*?)\n\s+#endif\s+\n\s+pending_exception_check:", text, re.S)
+    m = re.search(
+        r"#else\s+TRACE\(ip\);.*?switch \(\*ip\+\+\) \{(.*?)\n\s+#endif\s+\n\s+pending_exception_check:",
+        text,
+        re.S,
+    )
     if not m:
         raise SystemExit("could not find dispatch switch body")
     body = m.group(1)

@@ -27,9 +27,7 @@ class SymmetryChecker:
         self.sha_store = ShaStore(self.config.sha_path)
         self.baseline = BaselineStore(self.config.baseline_path)
         self.progress = ProgressTracker(self.config.history_path)
-        self.mirrors = MirrorScanner(
-            self.repo, self.config.ignore_dirs, self.config.ignore_files
-        )
+        self.mirrors = MirrorScanner(self.repo, self.config.ignore_dirs, self.config.ignore_files)
         self.pm = PmInventory(self.repo)
 
     def scan(

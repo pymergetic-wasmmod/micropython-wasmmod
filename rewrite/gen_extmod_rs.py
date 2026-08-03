@@ -34,7 +34,9 @@ def extract_font() -> str:
 
 
 def mod_init(name: str, flag: str, refs: str) -> str:
-    return hdr(refs) + f"""\
+    return (
+        hdr(refs)
+        + f"""\
 use py_rs::bc::ModuleContext;
 use py_rs::map::{{self, MapElem}};
 use py_rs::malloc;
@@ -66,6 +68,7 @@ pub fn init_module() -> Obj {{
     module
 }}
 """
+    )
 
 
 def mod_init_disabled(name: str, flag: str, refs: str) -> str:
@@ -82,7 +85,10 @@ def add(path: str, body: str) -> None:
 
 # --- headers / data -----------------------------------------------------------
 
-add("misc.rs", hdr("extmod/misc.h") + """\
+add(
+    "misc.rs",
+    hdr("extmod/misc.h")
+    + """\
 use py_rs::obj::Obj;
 
 /// `mp_os_dupterm_is_builtin_stream`
@@ -122,9 +128,13 @@ pub fn os_dupterm_tx_strn(_s: &[u8], _len: usize) -> i32 {
 /// `mp_os_deactivate`
 #[cfg(feature = "os_dupterm")]
 pub fn os_dupterm_deactivate(_idx: usize, _msg: &str, _exc: Obj) {}
-""")
+""",
+)
 
-add("virtpin.rs", hdr("extmod/virtpin.c + extmod/virtpin.h") + """\
+add(
+    "virtpin.rs",
+    hdr("extmod/virtpin.c + extmod/virtpin.h")
+    + """\
 use py_rs::obj::{self, Obj, ObjBase, ObjType};
 
 pub const MP_PIN_READ: u32 = 1;
@@ -170,11 +180,15 @@ pub fn virtual_pin_write(pin: Obj, value: i32) {
         (p.ioctl)(pin, MP_PIN_WRITE, value as usize, std::ptr::null_mut());
     }
 }
-""")
+""",
+)
 
 add("font_petme128_8x8.rs", extract_font())
 
-add("cyw43_config_common.rs", hdr("extmod/cyw43_config_common.h") + """\
+add(
+    "cyw43_config_common.rs",
+    hdr("extmod/cyw43_config_common.h")
+    + """\
 //! CYW43 driver glue — active only with `feature = "cyw43"`.
 
 pub const CYW43_IOCTL_TIMEOUT_US: u32 = 1_000_000;
@@ -197,9 +211,13 @@ pub fn cyw43_delay_ms(ms: u32) {
 
 #[cfg(feature = "cyw43")]
 pub fn cyw43_post_poll_hook() {}
-""")
+""",
+)
 
-add("machine_can_port.rs", hdr("extmod/machine_can_port.h") + """\
+add(
+    "machine_can_port.rs",
+    hdr("extmod/machine_can_port.h")
+    + """\
 use py_rs::obj::Obj;
 
 #[repr(u8)]
@@ -271,11 +289,15 @@ pub trait CanPort {
     fn restart(&mut self);
     fn get_additional_timings(&self, optional: Obj) -> Obj;
 }
-""")
+""",
+)
 
 # --- modheapq (full algorithm) ------------------------------------------------
 
-add("modheapq.rs", hdr("extmod/modheapq.c") + """\
+add(
+    "modheapq.rs",
+    hdr("extmod/modheapq.c")
+    + """\
 use py_rs::bc::ModuleContext;
 use py_rs::map::{self, MapElem};
 use py_rs::malloc;
@@ -447,11 +469,15 @@ pub fn init_module() -> Obj {
     objmodule::register_builtin_module(qstr::from_str("heapq"), module);
     module
 }
-""")
+""",
+)
 
 # --- modbinascii (base64) -----------------------------------------------------
 
-add("modbinascii.rs", hdr("extmod/modbinascii.c") + """\
+add(
+    "modbinascii.rs",
+    hdr("extmod/modbinascii.c")
+    + """\
 use py_rs::bc::ModuleContext;
 use py_rs::map::{self, MapElem};
 use py_rs::malloc;
@@ -623,12 +649,18 @@ pub fn init_module() -> Obj {
     objmodule::register_builtin_module(qstr::from_str("binascii"), module);
     module
 }
-""")
+""",
+)
 
 # Standard module inits for remaining mod* files
 MOD_TABLE = [
     ("modasyncio.rs", "_asyncio", "PY_ASYNCIO", "extmod/modasyncio.c"),
-    ("modbluetooth.rs", "bluetooth", "PY_BLUETOOTH", "extmod/modbluetooth.c + extmod/modbluetooth.h"),
+    (
+        "modbluetooth.rs",
+        "bluetooth",
+        "PY_BLUETOOTH",
+        "extmod/modbluetooth.c + extmod/modbluetooth.h",
+    ),
     ("modbtree.rs", "btree", "PY_BTREE", "extmod/modbtree.c"),
     ("modcryptolib.rs", "cryptolib", "PY_CRYPTOLIB", "extmod/modcryptolib.c"),
     ("moddeflate.rs", "deflate", "PY_DEFLATE", "extmod/moddeflate.c"),
@@ -641,8 +673,18 @@ MOD_TABLE = [
     ("modnetwork.rs", "network", "PY_LWIP", "extmod/modnetwork.c + extmod/modnetwork.h"),
     ("modonewire.rs", "onewire", "PY_ONEWIRE", "extmod/modonewire.c"),
     ("modopenamp.rs", "openamp", "PY_VFS", "extmod/modopenamp.c + extmod/modopenamp.h"),
-    ("modopenamp_remoteproc.rs", "openamp_remoteproc", "PY_VFS", "extmod/modopenamp_remoteproc.c + extmod/modopenamp_remoteproc.h"),
-    ("modopenamp_remoteproc_store.rs", "openamp_remoteproc_store", "PY_VFS", "extmod/modopenamp_remoteproc_store.c"),
+    (
+        "modopenamp_remoteproc.rs",
+        "openamp_remoteproc",
+        "PY_VFS",
+        "extmod/modopenamp_remoteproc.c + extmod/modopenamp_remoteproc.h",
+    ),
+    (
+        "modopenamp_remoteproc_store.rs",
+        "openamp_remoteproc_store",
+        "PY_VFS",
+        "extmod/modopenamp_remoteproc_store.c",
+    ),
     ("modos.rs", "os", "PY_OS", "extmod/modos.c"),
     ("modplatform.rs", "platform", "PY_PLATFORM", "extmod/modplatform.c + extmod/modplatform.h"),
     ("modrandom.rs", "random", "PY_RANDOM", "extmod/modrandom.c"),
@@ -663,7 +705,10 @@ for path, name, flag, refs in MOD_TABLE:
     add(path, mod_init(name, flag, refs))
 
 # modtls_mbedtls — symmetry skips mbedtls tree; mark done with note
-add("modtls_mbedtls.rs", hdr("extmod/modtls_mbedtls.c") + """\
+add(
+    "modtls_mbedtls.rs",
+    hdr("extmod/modtls_mbedtls.c")
+    + """\
 //! mbedtls TLS backend — reference tree ignored by symmetry (`extmod/mbedtls/`).
 use py_rs::mpconfig;
 use py_rs::obj::{self, Obj};
@@ -674,7 +719,8 @@ pub fn init_module() -> Obj {
     }
     obj::OBJ_NULL
 }
-""")
+""",
+)
 
 # --- machine_* modules --------------------------------------------------------
 
@@ -700,7 +746,10 @@ MACHINE = [
 
 for path, refs in MACHINE:
     stem = Path(path).stem
-    add(path, hdr(refs) + f"""\
+    add(
+        path,
+        hdr(refs)
+        + f"""\
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 
@@ -722,7 +771,8 @@ pub fn init_types() -> Obj {{
     }}
     Obj(0)
 }}
-""")
+""",
+    )
 
 # --- network / vfs / wasm helpers ---------------------------------------------
 
@@ -736,7 +786,10 @@ NETWORK = [
 ]
 
 for path, refs, feat in NETWORK:
-    add(path, hdr(refs) + f"""\
+    add(
+        path,
+        hdr(refs)
+        + f"""\
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 
@@ -752,12 +805,23 @@ pub fn init_driver() -> Obj {{
 pub fn init_driver() -> Obj {{
     Obj(0)
 }}
-""")
+""",
+    )
 
 VFS = [
-    "vfs.rs", "vfs_blockdev.rs", "vfs_fat.rs", "vfs_fat_diskio.rs", "vfs_fat_file.rs",
-    "vfs_lfs.rs", "vfs_lfsx.rs", "vfs_lfsx_file.rs", "vfs_posix.rs", "vfs_posix_file.rs",
-    "vfs_reader.rs", "vfs_rom.rs", "vfs_rom_file.rs",
+    "vfs.rs",
+    "vfs_blockdev.rs",
+    "vfs_fat.rs",
+    "vfs_fat_diskio.rs",
+    "vfs_fat_file.rs",
+    "vfs_lfs.rs",
+    "vfs_lfsx.rs",
+    "vfs_lfsx_file.rs",
+    "vfs_posix.rs",
+    "vfs_posix_file.rs",
+    "vfs_reader.rs",
+    "vfs_rom.rs",
+    "vfs_rom_file.rs",
 ]
 
 for name in VFS:
@@ -766,7 +830,10 @@ for name in VFS:
     refs = c if (EXTMOD / name.replace(".rs", ".c")).exists() else h
     if (EXTMOD / name.replace(".rs", ".h")).exists():
         refs = f"{refs} + extmod/{name.replace('.rs', '.h')}" if refs.endswith(".c") else refs
-    add(name, hdr(refs) + """\
+    add(
+        name,
+        hdr(refs)
+        + """\
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 
@@ -780,7 +847,8 @@ pub fn mount(_readonly: bool) -> Obj {
     }
     Obj(0)
 }
-""")
+""",
+    )
 
 WASM = [
     ("wasm_pack.rs", "extmod/wasm_pack.c + extmod/wasm_pack.h"),
@@ -792,7 +860,10 @@ WASM = [
 ]
 
 for path, refs in WASM:
-    add(path, hdr(refs) + """\
+    add(
+        path,
+        hdr(refs)
+        + """\
 use py_rs::mpconfig;
 use py_rs::obj::Obj;
 
@@ -808,9 +879,13 @@ pub fn init() -> Obj {
 pub fn init() -> Obj {
     Obj(0)
 }
-""")
+""",
+    )
 
-add("os_dupterm.rs", hdr("extmod/os_dupterm.c") + """\
+add(
+    "os_dupterm.rs",
+    hdr("extmod/os_dupterm.c")
+    + """\
 use py_rs::obj::Obj;
 
 pub fn dupterm_obj() -> Obj {
@@ -820,19 +895,27 @@ pub fn dupterm_obj() -> Obj {
 pub fn activate(_idx: usize, _stream: Obj) -> Obj {
     Obj(0)
 }
-""")
+""",
+)
 
-add("mpbthci.rs", hdr("extmod/mpbthci.c + extmod/mpbthci.h") + """\
+add(
+    "mpbthci.rs",
+    hdr("extmod/mpbthci.c + extmod/mpbthci.h")
+    + """\
 #[cfg(feature = "bluetooth")]
 pub fn hci_uart_init() {}
 
 #[cfg(not(feature = "bluetooth"))]
 pub fn hci_uart_init() {}
-""")
+""",
+)
 
 # --- asyncio Python → Rust ----------------------------------------------------
 
-add("asyncio/task.rs", hdr("extmod/asyncio/task.py") + """\
+add(
+    "asyncio/task.rs",
+    hdr("extmod/asyncio/task.py")
+    + """\
 //! Pairing-heap `TaskQueue` and `Task` (Python fallback when C `_asyncio` unavailable).
 use py_rs::obj::Obj;
 
@@ -871,9 +954,13 @@ impl Task {
         !self.state
     }
 }
-""")
+""",
+)
 
-add("asyncio/core.rs", hdr("extmod/asyncio/core.py") + """\
+add(
+    "asyncio/core.rs",
+    hdr("extmod/asyncio/core.py")
+    + """\
 //! Asyncio event loop core (`core.py` rewrite).
 use super::task::{Task, TaskQueue};
 use py_rs::mphal;
@@ -949,9 +1036,13 @@ pub fn new_event_loop() -> (TaskQueue, IoQueue, Loop) {
 pub static mut CUR_TASK: Option<Obj> = None;
 pub static mut TASK_QUEUE: Option<TaskQueue> = None;
 pub static mut IO_QUEUE: Option<IoQueue> = None;
-""")
+""",
+)
 
-add("asyncio/event.rs", hdr("extmod/asyncio/event.py") + """\
+add(
+    "asyncio/event.rs",
+    hdr("extmod/asyncio/event.py")
+    + """\
 use super::core;
 use super::task::TaskQueue;
 use py_rs::obj::Obj;
@@ -1011,9 +1102,13 @@ impl ThreadSafeFlag {
         self.state = 0;
     }
 }
-""")
+""",
+)
 
-add("asyncio/lock.rs", hdr("extmod/asyncio/lock.py") + """\
+add(
+    "asyncio/lock.rs",
+    hdr("extmod/asyncio/lock.py")
+    + """\
 use super::task::TaskQueue;
 
 pub struct Lock {
@@ -1040,9 +1135,13 @@ impl Lock {
         false
     }
 }
-""")
+""",
+)
 
-add("asyncio/funcs.rs", hdr("extmod/asyncio/funcs.py") + """\
+add(
+    "asyncio/funcs.rs",
+    hdr("extmod/asyncio/funcs.py")
+    + """\
 use super::core::{self, CancelledError, TimeoutError};
 use py_rs::obj::Obj;
 
@@ -1065,9 +1164,13 @@ pub fn wait_for_ms(_aw: Obj, _timeout: i64) -> Obj {
 pub fn gather(_args: &[Obj]) -> Obj {
     Obj(0)
 }
-""")
+""",
+)
 
-add("asyncio/stream.rs", hdr("extmod/asyncio/stream.py") + """\
+add(
+    "asyncio/stream.rs",
+    hdr("extmod/asyncio/stream.py")
+    + """\
 use py_rs::obj::Obj;
 
 pub struct StreamReader {
@@ -1086,15 +1189,23 @@ pub fn open_connection(_host: &str, _port: u16) -> (StreamReader, StreamWriter) 
 }
 
 pub fn start_server(_cb: fn(Obj, Obj), _host: &str, _port: u16) {}
-""")
+""",
+)
 
-add("asyncio/uasyncio.rs", hdr("extmod/asyncio/uasyncio.py") + """\
+add(
+    "asyncio/uasyncio.rs",
+    hdr("extmod/asyncio/uasyncio.py")
+    + """\
 //! Legacy uasyncio compatibility shims.
 pub use super::core::*;
 pub use super::task::*;
-""")
+""",
+)
 
-add("asyncio/__init__.rs", hdr("extmod/asyncio/__init__.py") + """\
+add(
+    "asyncio/__init__.rs",
+    hdr("extmod/asyncio/__init__.py")
+    + """\
 pub use super::core::*;
 pub use super::event::{Event, ThreadSafeFlag};
 pub use super::lock::Lock;
@@ -1112,7 +1223,8 @@ pub fn getattr(name: &str) -> Option<&'static str> {
         _ => None,
     }
 }
-""")
+""",
+)
 
 
 def main() -> None:

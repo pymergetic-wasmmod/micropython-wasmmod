@@ -11,15 +11,11 @@ from .classify import classify_rs
 from .constants import DEFAULT_INFRA, PM_SEARCH
 from .models import PmSymbolResult
 
-QSTR_KEY_RE = re.compile(
-    r"\{\s*MP_ROM_QSTR\s*\(\s*MP_QSTR_([A-Za-z0-9_]+)\s*\)"
-)
+QSTR_KEY_RE = re.compile(r"\{\s*MP_ROM_QSTR\s*\(\s*MP_QSTR_([A-Za-z0-9_]+)\s*\)")
 TABLE_START_RE = re.compile(
     r"(?:static\s+)?const\s+mp_rom_map_elem_t\s+(\w+_globals_table)\s*\[\s*\]\s*=\s*\{"
 )
-REGISTER_RE = re.compile(
-    r"MP_REGISTER_(?:EXTENSIBLE_)?MODULE\s*\(\s*MP_QSTR_([A-Za-z0-9_]+)\s*,"
-)
+REGISTER_RE = re.compile(r"MP_REGISTER_(?:EXTENSIBLE_)?MODULE\s*\(\s*MP_QSTR_([A-Za-z0-9_]+)\s*,")
 SYM_DEF_RE = re.compile(
     r"(?:#\[no_mangle\][^\n]*\n\s*)?(?:pub\s+)?(?:unsafe\s+)?extern\s+\"C\"\s+fn\s+(pm_mpy_\w+)"
     r"|^\s*(?:pm_mpy_status_t|pm_mpy_obj_t|void|int|bool|size_t|const\s+char\s*\*)\s+(pm_mpy_\w+)\s*\(",
@@ -128,11 +124,7 @@ class PmInventory:
                 modules = REGISTER_RE.findall(text)
                 for mod_name in modules:
                     table = self.pick_globals_table(text, mod_name)
-                    names = [
-                        n
-                        for n in self.extract_table_names(text, table)
-                        if n != "__name__"
-                    ]
+                    names = [n for n in self.extract_table_names(text, table) if n != "__name__"]
                     entry = {
                         "name": mod_name,
                         "source": path.relative_to(self.repo).as_posix(),
@@ -156,9 +148,7 @@ class PmInventory:
                 [root]
                 if root.is_file()
                 else [
-                    p
-                    for p in root.rglob("*")
-                    if p.is_file() and p.suffix in {".rs", ".h", ".c"}
+                    p for p in root.rglob("*") if p.is_file() and p.suffix in {".rs", ".h", ".c"}
                 ]
             )
             for path in paths:
@@ -175,9 +165,7 @@ class PmInventory:
                             found[sym].append(rel_path)
         return found
 
-    def _symbol_status(
-        self, sym: str, defined: dict[str, list[str]]
-    ) -> tuple[str, str]:
+    def _symbol_status(self, sym: str, defined: dict[str, list[str]]) -> tuple[str, str]:
         locs = defined.get(sym, [])
         if not locs:
             return "missing", ""

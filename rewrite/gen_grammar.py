@@ -175,7 +175,12 @@ def collect_rules(text: str) -> list[RuleDef]:
             m = pat.match(line)
             if not m:
                 raise ValueError(f"cannot parse rule line: {line}")
-            name, _comp, action, rest = m.group(1), m.group(2).strip(), m.group(3).strip(), m.group(4)
+            name, _comp, action, rest = (
+                m.group(1),
+                m.group(2).strip(),
+                m.group(3).strip(),
+                m.group(4),
+            )
             rules.append(
                 RuleDef(
                     name=name,

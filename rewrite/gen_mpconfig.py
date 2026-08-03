@@ -61,9 +61,9 @@ PLATFORM_DEFINES: dict[str, str] = {
     "MICROPY_SSL_MBEDTLS": "1",
     "MICROPY_PY_SSL_ECDSA_SIGN_ALT": "0",
     "MICROPY_PREVIEW_VERSION_2": "0",
-    "MICROPY_GIT_TAG": "\"v1.29.0\"",
-    "MICROPY_BUILD_DATE": "\"2026-01-01\"",
-    "MICROPY_PLATFORM_COMPILER": "\"rustc\"",
+    "MICROPY_GIT_TAG": '"v1.29.0"',
+    "MICROPY_BUILD_DATE": '"2026-01-01"',
+    "MICROPY_PLATFORM_COMPILER": '"rustc"',
     "MICROPY_HW_BOARD_NAME": "0",
     "MICROPY_HW_MCU_NAME": "0",
 }
@@ -304,10 +304,12 @@ class Preprocessor:
         for op in ("<<", ">>"):
             parts = self._split_top(expr, op)
             if len(parts) == 2:
-                return int(self.eval_expr(parts[0], _depth + 1)) << int(
-                    self.eval_expr(parts[1], _depth + 1)
-                ) if op == "<<" else int(self.eval_expr(parts[0], _depth + 1)) >> int(
-                    self.eval_expr(parts[1], _depth + 1)
+                return (
+                    int(self.eval_expr(parts[0], _depth + 1))
+                    << int(self.eval_expr(parts[1], _depth + 1))
+                    if op == "<<"
+                    else int(self.eval_expr(parts[0], _depth + 1))
+                    >> int(self.eval_expr(parts[1], _depth + 1))
                 )
 
         # Additive
@@ -431,7 +433,9 @@ class Preprocessor:
 
             if line.startswith("#include"):
                 if "<mpconfigport.h>" in line:
-                    self.process_file(ROOT / "ports" / "unix" / "mpconfigport.h", ifndef_only=False)
+                    self.process_file(
+                        ROOT / "ports" / "unix" / "mpconfigport.h", ifndef_only=False
+                    )
                 elif '"mpconfigvariant.h"' in line:
                     self.process_file(UNIX_VARIANT_DIR / "mpconfigvariant.h", ifndef_only=False)
                 elif "mpconfigvariant_common.h" in line:
@@ -740,13 +744,17 @@ def section_for(name: str) -> str:
         return "I/O"
     if name.startswith("QSTR"):
         return "Qstr"
-    if name.startswith("BYTES_PER") or name.startswith("BITS_PER") or name.startswith("ENDIANNESS"):
+    if (
+        name.startswith("BYTES_PER")
+        or name.startswith("BITS_PER")
+        or name.startswith("ENDIANNESS")
+    ):
         return "Platform word / endianness"
     return "Miscellaneous"
 
 
 def emit_mpconfig_rs(resolved: dict[str, Any]) -> str:
-    manual_header = '''//! rewrite of py/mpconfig.h
+    manual_header = """//! rewrite of py/mpconfig.h
 //! MetalPython host defaults (unix standard variant). Port overrides live in ports_rs/*/mpconfigport.rs.
 //! C macro mapping: `MICROPY_FOO` → `mpconfig::FOO`, `MP_BAR` → `mpconfig::BAR`.
 // symmetry: done
@@ -776,7 +784,7 @@ pub const IMPLEMENTATION_NAME: &str = "metalpython";
 pub const GC_HEAP_SIZE: usize = 256 * 1024;
 
 /// Derived from `MICROPY_OBJ_REPR != MICROPY_OBJ_REPR_D` (computed after OBJ_REPR is set).
-'''
+"""
 
     items: list[tuple[str, str, str, str]] = []
     for c_name, value in sorted(resolved.items()):

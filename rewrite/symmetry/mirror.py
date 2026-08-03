@@ -103,9 +103,7 @@ class MirrorScanner:
             ref_files = sorted(ref_shas)
             ref_digest = combined_digest(ref_shas)
             only_asm = all(p.suffix.lower() == ".s" for p in files)
-            cands = self.shadow_candidates(
-                shadow_dir, stem, asm_ok=spec.asm_ok or only_asm
-            )
+            cands = self.shadow_candidates(shadow_dir, stem, asm_ok=spec.asm_ok or only_asm)
             existing = next((c for c in cands if c.is_file()), None)
             shadow_rel = cands[0].relative_to(self.repo).as_posix()
             if existing is None:

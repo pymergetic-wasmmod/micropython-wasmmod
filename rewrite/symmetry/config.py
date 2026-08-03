@@ -18,13 +18,9 @@ class Config:
         self.qemu_mcu = list(general.get("qemu_mcu", ["rv32"]))
         self.python_to_rs = set(general.get("python_to_rs", ["extmod"]))
         self.mpy_cross = bool(general.get("mpy_cross", False))
-        self.baseline_path = repo / general.get(
-            "baseline_path", "rewrite/symmetry_baseline.json"
-        )
+        self.baseline_path = repo / general.get("baseline_path", "rewrite/symmetry_baseline.json")
         self.sha_path = repo / general.get("sha_path", "rewrite/symmetry_shas.json")
-        self.history_path = repo / general.get(
-            "history_path", "rewrite/symmetry_history.jsonl"
-        )
+        self.history_path = repo / general.get("history_path", "rewrite/symmetry_history.jsonl")
         ign = self.raw.get("ignore", {})
         self.ignore_dirs = {d.rstrip("/") for d in ign.get("dirs", [])}
         self.ignore_files = set(ign.get("files", []))
@@ -43,9 +39,7 @@ class Config:
         mirrors = [
             MirrorSpec("py", "py", "py_rs", python_to_rs="py" in py_trees),
             MirrorSpec("shared", "shared", "shared_rs", asm_ok=True),
-            MirrorSpec(
-                "extmod", "extmod", "extmod_rs", python_to_rs="extmod" in py_trees
-            ),
+            MirrorSpec("extmod", "extmod", "extmod_rs", python_to_rs="extmod" in py_trees),
         ]
         for port in self.ports:
             if port == "qemu" and self.qemu_mcu:
@@ -59,9 +53,7 @@ class Config:
                     )
                 )
             else:
-                mirrors.append(
-                    MirrorSpec(port, f"ports/{port}", f"ports_rs/{port}")
-                )
+                mirrors.append(MirrorSpec(port, f"ports/{port}", f"ports_rs/{port}"))
         mirrors.append(
             MirrorSpec(
                 "mpy-cross",

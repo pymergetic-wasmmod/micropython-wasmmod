@@ -105,7 +105,12 @@ body = "\n".join(lines)
 
 # Remove includes, license, outer #if MICROPY_ENABLE_COMPILER
 body = re.sub(r"^#include.*$", "", body, flags=re.M)
-body = re.sub(r"^#if MICROPY_ENABLE_COMPILER.*?^#endif // MICROPY_ENABLE_COMPILER", "", body, flags=re.M | re.S)
+body = re.sub(
+    r"^#if MICROPY_ENABLE_COMPILER.*?^#endif // MICROPY_ENABLE_COMPILER",
+    "",
+    body,
+    flags=re.M | re.S,
+)
 
 # Replace C types / identifiers
 replacements = [
@@ -123,20 +128,26 @@ replacements = [
     (r"\bqstr\b", "Qstr"),
     (r"\bMP_OBJ_NULL\b", "obj::OBJ_NULL"),
     (r"\bMP_QSTRnull\b", "qstr::QSTR_NULL"),
-    (r"\bMP_QSTR__star_\b", "qstr::from_str(\"*\")"),
-    (r"\bMP_QSTR___class__\b", "qstr::from_str(\"__class__\")"),
-    (r"\bMP_QSTR_BaseException\b", "qstr::from_str(\"BaseException\")"),
+    (r"\bMP_QSTR__star_\b", 'qstr::from_str("*")'),
+    (r"\bMP_QSTR___class__\b", 'qstr::from_str("__class__")'),
+    (r"\bMP_QSTR_BaseException\b", 'qstr::from_str("BaseException")'),
     (r"\bMP_PARSE_NODE_NULL\b", "parse::PARSE_NODE_NULL"),
     (r"\bMP_PARSE_NODE_IS_NULL\(([^)]+)\)", r"parse::parse_node_is_null(\1)"),
     (r"\bMP_PARSE_NODE_IS_STRUCT\(([^)]+)\)", r"parse::parse_node_is_struct(\1)"),
-    (r"\bMP_PARSE_NODE_IS_STRUCT_KIND\(([^,]+),\s*PN_(\w+)\)", r"parse::parse_node_is_struct_kind(\1, Rule::\2)"),
+    (
+        r"\bMP_PARSE_NODE_IS_STRUCT_KIND\(([^,]+),\s*PN_(\w+)\)",
+        r"parse::parse_node_is_struct_kind(\1, Rule::\2)",
+    ),
     (r"\bMP_PARSE_NODE_STRUCT_KIND\(([^)]+)\)", r"parse::parse_node_struct_kind(\1)"),
     (r"\bMP_PARSE_NODE_STRUCT_NUM_NODES\(([^)]+)\)", r"parse::parse_node_struct_num_nodes(\1)"),
     (r"\bMP_PARSE_NODE_IS_LEAF\(([^)]+)\)", r"parse::parse_node_is_leaf(\1)"),
     (r"\bMP_PARSE_NODE_IS_ID\(([^)]+)\)", r"parse::parse_node_is_id(\1)"),
     (r"\bMP_PARSE_NODE_IS_SMALL_INT\(([^)]+)\)", r"parse::parse_node_is_small_int(\1)"),
     (r"\bMP_PARSE_NODE_IS_TOKEN\(([^)]+)\)", r"parse::parse_node_is_token(\1)"),
-    (r"\bMP_PARSE_NODE_IS_TOKEN_KIND\(([^,]+),\s*MP_TOKEN_(\w+)\)", r"parse::parse_node_is_token_kind(\1, TokenKind::\2)"),
+    (
+        r"\bMP_PARSE_NODE_IS_TOKEN_KIND\(([^,]+),\s*MP_TOKEN_(\w+)\)",
+        r"parse::parse_node_is_token_kind(\1, TokenKind::\2)",
+    ),
     (r"\bMP_PARSE_NODE_LEAF_ARG\(([^)]+)\)", r"parse::parse_node_leaf_arg(\1)"),
     (r"\bMP_PARSE_NODE_LEAF_SMALL_INT\(([^)]+)\)", r"parse::parse_node_leaf_small_int(\1)"),
     (r"\bMP_PARSE_NODE_LEAF_KIND\(([^)]+)\)", r"parse::parse_node_leaf_kind(\1)"),
@@ -178,7 +189,10 @@ replacements = [
     (r"\buint8_t\b", "u8"),
     (r"\bsize_t\b", "usize"),
     (r"\bassert\(([^)]+)\);", r"debug_assert!(\1);"),
-    (r"\bm_new0\((\w+),\s*(\d+)\)", r"malloc::new::<\1>(\2).map(|p| { unsafe { core::ptr::write_bytes(p, 0, 1); } p }).unwrap()"),
+    (
+        r"\bm_new0\((\w+),\s*(\d+)\)",
+        r"malloc::new::<\1>(\2).map(|p| { unsafe { core::ptr::write_bytes(p, 0, 1); } p }).unwrap()",
+    ),
     (r"\bm_new_obj\((\w+)\)", r"malloc::new_obj::<\1>().unwrap()"),
     (r"\bm_new\((\w+) \*,\s*([^)]+)\)", r"malloc::new::<\1>(\2).unwrap()"),
     (r"\bm_del\((\w+),\s*([^,]+),\s*([^)]+)\)", r"malloc::del(\2, \3 as usize)"),
@@ -186,8 +200,14 @@ replacements = [
     (r"\bmp_parse_tree_clear\(([^)]+)\)", r"parse::parse_tree_clear(\1)"),
     (r"\bmp_parse_node_is_const_false\(([^)]+)\)", r"parse::parse_node_is_const_false(\1)"),
     (r"\bmp_parse_node_is_const_true\(([^)]+)\)", r"parse::parse_node_is_const_true(\1)"),
-    (r"\bmp_parse_node_get_int_maybe\(([^,]+),\s*&(\w+)\)", r"parse::parse_node_get_int_maybe(\1, &mut \2)"),
-    (r"\bmp_parse_node_extract_list\(([^,]+),\s*Rule::(\w+),\s*&(\w+)\)", r"parse::parse_node_extract_list(&mut \1, Rule::\2, &mut \3)"),
+    (
+        r"\bmp_parse_node_get_int_maybe\(([^,]+),\s*&(\w+)\)",
+        r"parse::parse_node_get_int_maybe(\1, &mut \2)",
+    ),
+    (
+        r"\bmp_parse_node_extract_list\(([^,]+),\s*Rule::(\w+),\s*&(\w+)\)",
+        r"parse::parse_node_extract_list(&mut \1, Rule::\2, &mut \3)",
+    ),
     (r"\bscope_new\(", "scope::new("),
     (r"\bscope_free\(", "scope::free("),
     (r"\bscope_find_or_add_id\(", "scope::find_or_add_id("),
@@ -206,7 +226,10 @@ replacements = [
     (r"\bmp_emit_bc_method_table_load_id_ops", "EmitIdOps::Load"),
     (r"\bmp_emit_bc_method_table_store_id_ops", "EmitIdOps::Store"),
     (r"\bmp_emit_bc_method_table_delete_id_ops", "EmitIdOps::Delete"),
-    (r"\bmp_obj_new_exception_msg\(&mp_type_(\w+),\s*MP_ERROR_TEXT\(\"([^\"]*)\"\)\)", r"objexcept::new_exception_args(objexcept::type_\1().to_lowercase(), 1, &[objstr::new_str(b\"\2\")])"),
+    (
+        r"\bmp_obj_new_exception_msg\(&mp_type_(\w+),\s*MP_ERROR_TEXT\(\"([^\"]*)\"\)\)",
+        r"objexcept::new_exception_args(objexcept::type_\1().to_lowercase(), 1, &[objstr::new_str(b\"\2\")])",
+    ),
     (r"\bmp_obj_exception_add_traceback\(", "objexcept::exception_add_traceback("),
     (r"\bmp_globals_get\(\)", "mpstate::globals_get()"),
     (r"\bnlr_raise\(", "nlr::raise("),
@@ -231,5 +254,9 @@ body = re.sub(r"#define EMIT_LOAD_FAST\(.*?\n", "", body)
 body = re.sub(r"#define EMIT_LOAD_GLOBAL\(.*?\n", "", body)
 body = re.sub(r"#define reserve_labels_for_native.*?\n", "", body)
 
-OUT.write_text(HEADER + "\n// NOTE: auto-translated body follows; manual fixes applied via cargo check\n\n" + body)
+OUT.write_text(
+    HEADER
+    + "\n// NOTE: auto-translated body follows; manual fixes applied via cargo check\n\n"
+    + body
+)
 print(f"Wrote {OUT} ({OUT.stat().st_size} bytes)")
