@@ -298,7 +298,7 @@ pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
 }
 
 /// Inflate a pack file entry when zlib-flagged.
-pub fn pack_file_bytes(f: &PackFile<'_>) -> Option<std::borrow::Cow<'_, [u8]>> {
+pub fn pack_file_bytes<'a>(f: &PackFile<'a>) -> Option<std::borrow::Cow<'a, [u8]>> {
     if f.flags & PACK_FILE_FLAG_ZLIB == 0 {
         return Some(std::borrow::Cow::Borrowed(f.data));
     }

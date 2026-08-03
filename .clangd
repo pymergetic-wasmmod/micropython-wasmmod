@@ -1,0 +1,6 @@
+# Clangd for metalpython / wasmmod
+CompileFlags:
+  Add:
+    - -Iextmod/wasmmod/third_party/wamr/core/iwasm/include
+  Remove:
+    - -Ilib/wamr/core/iwasm/include
