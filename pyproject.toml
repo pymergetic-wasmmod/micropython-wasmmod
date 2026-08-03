@@ -31,6 +31,7 @@ extend-exclude = [
   "esp-idf",
   "pico-sdk",
   "emsdk",
+  "extmod/wasmmod",  # separate submodule; has its own Python style
   "tests/cpydiff/syntax_assign_expr.py" # intentionally incorrect CPython code
 ]
 # Include Python source files that don't end with .py
