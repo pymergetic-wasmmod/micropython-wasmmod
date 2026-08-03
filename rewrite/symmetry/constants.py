@@ -31,7 +31,7 @@ SKIP_FILE_GLOBS = (
     "make_*.py",
 )
 
-PM_SEARCH = ("py_rs/pm", "extmod_rs/pm", "include/metalpython")
+PM_SEARCH = ("py_rs/pm", "extmod_rs/pm", "include/micropython-rust")
 
 DEFAULT_INFRA = (
     "pm_mpy_runtime_init",

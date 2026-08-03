@@ -37,6 +37,7 @@ extmod_rs/          extension modules (↔ extmod/)
 ports_rs/unix/      host binary `metalpython` (↔ ports/unix)
 ports_rs/qemu/      qemu-oriented port stub
 mpy-cross_rs/       cross-compiler (↔ mpy-cross)
+include/micropython-rust/  public C ABI (`pm_mpy_*`; `#include <micropython-rust/…>`)
 rewrite/            symmetry reports, generators, scaffolding
 ```
 

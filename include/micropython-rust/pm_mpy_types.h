@@ -1,8 +1,9 @@
-/* MetalPython public runtime façade — opaque ABI types.
+/* micropython-rust public runtime façade — opaque ABI types.
  * Distinct from upstream MicroPython mp_* headers.
+ * Include as: `#include <micropython-rust/pm_mpy_types.h>`
  */
-#ifndef METALPYTHON_PM_MPY_TYPES_H
-#define METALPYTHON_PM_MPY_TYPES_H
+#ifndef MICROPYTHON_RUST_PM_MPY_TYPES_H
+#define MICROPYTHON_RUST_PM_MPY_TYPES_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -28,4 +29,4 @@ typedef enum pm_mpy_status {
 }
 #endif
 
-#endif /* METALPYTHON_PM_MPY_TYPES_H */
+#endif /* MICROPYTHON_RUST_PM_MPY_TYPES_H */

@@ -1,8 +1,9 @@
-/* MetalPython public runtime façade — C ABI entry points (`pm_mpy_*`).
+/* micropython-rust public runtime façade — C ABI entry points (`pm_mpy_*`).
  * Rust mirror: `py_rs/pm/mpy/` (`pm::mpy::*`).
+ * Include as: `#include <micropython-rust/pm_mpy.h>`
  */
-#ifndef METALPYTHON_PM_MPY_H
-#define METALPYTHON_PM_MPY_H
+#ifndef MICROPYTHON_RUST_PM_MPY_H
+#define MICROPYTHON_RUST_PM_MPY_H
 
 #include "pm_mpy_types.h"
 
@@ -68,4 +69,4 @@ pm_mpy_status_t pm_mpy_exc_raise_type_msg(pm_mpy_status_t kind, const char *msg)
 }
 #endif
 
-#endif /* METALPYTHON_PM_MPY_H */
+#endif /* MICROPYTHON_RUST_PM_MPY_H */
