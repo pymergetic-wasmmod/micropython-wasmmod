@@ -166,11 +166,6 @@ pub fn init_module() -> Obj {
             value: obj::new_small_int(MOD_NETWORK_AP_IF),
         },
     ];
-    // Metal guest wired NIC façade (status/DHCP via pm_metal_net_ip_*).
-    table.push(MapElem {
-        key: obj::new_qstr(qstr::from_str("LAN")),
-        value: crate::network_metal::lan_type_obj(),
-    });
     let ctx = malloc::new_obj::<ModuleContext>().expect("network module");
     let dict = objdict::new_dict(table.len());
     unsafe {

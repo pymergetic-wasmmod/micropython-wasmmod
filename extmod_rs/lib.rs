@@ -37,7 +37,6 @@ pub mod machine_timer;
 pub mod machine_uart;
 pub mod machine_usb_device;
 pub mod machine_wdt;
-pub mod metal_net;
 pub mod misc;
 pub mod modasyncio;
 pub mod modbinascii;
@@ -63,7 +62,6 @@ pub mod modrandom;
 pub mod modre;
 pub mod modselect;
 pub mod modsocket;
-pub mod modsocket_metal;
 pub mod modtime;
 pub mod modtls_axtls;
 pub mod modtls_mbedtls;
@@ -75,7 +73,6 @@ pub mod mpbthci;
 pub mod network_cyw43;
 pub mod network_esp_hosted;
 pub mod network_lwip;
-pub mod network_metal;
 pub mod network_ninaw10;
 pub mod network_ppp_lwip;
 pub mod network_wiznet5k;
@@ -165,14 +162,7 @@ pub fn init_host() {
         let _ = moddeflate::init_module();
     }
     if py_rs::mpconfig::PY_SOCKET {
-        #[cfg(feature = "metal_net")]
-        {
-            let _ = modsocket_metal::init_module();
-        }
-        #[cfg(not(feature = "metal_net"))]
-        {
-            let _ = modsocket::init_module();
-        }
+        let _ = modsocket::init_module();
     }
     if py_rs::mpconfig::PY_NETWORK {
         let _ = modnetwork::init_module();

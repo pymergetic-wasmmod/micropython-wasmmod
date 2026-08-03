@@ -95,10 +95,6 @@ cargo run -q -p ports_rs_unix -- -c '…'
 
 Ignore noise such as object hashes / addresses, `sys.implementation.name`, and non-deterministic float streams unless you are chasing PRNG parity.
 
-## Metal OS notes
-
-Host networking for Metal guests uses Metal/lwIP faces under the Metal OS tree — do not invent WiFi/BLE/cyw43 stacks inside MetalPython. Unix POSIX socket path is for the host port.
-
 ## License
 
 Same MIT lineage as MicroPython; see workspace `license` and upstream licensing notices.
