@@ -788,10 +788,6 @@ pub const GC_HEAP_SIZE: usize = 256 * 1024;
         items.append((section_for(rs_name), rs_name, rs_type, rs_val))
 
     # Insert OBJ_IMMEDIATE_OBJS derived const after OBJ_REPR if present.
-    obj_repr = resolved.get("MICROPY_OBJ_REPR", 0)
-    obj_repr_d = resolved.get("MICROPY_OBJ_REPR_D", 3)
-    immediate = obj_repr != obj_repr_d
-
     sections: dict[str, list[tuple[str, str, str]]] = {}
     for sec, name, typ, val in items:
         if name == "OBJ_IMMEDIATE_OBJS":
@@ -799,7 +795,7 @@ pub const GC_HEAP_SIZE: usize = 256 * 1024;
         sections.setdefault(sec, []).append((name, typ, val))
 
     out: list[str] = [manual_header]
-    out.append(f"pub const OBJ_IMMEDIATE_OBJS: bool = OBJ_REPR != OBJ_REPR_D;")
+    out.append("pub const OBJ_IMMEDIATE_OBJS: bool = OBJ_REPR != OBJ_REPR_D;")
     out.append("")
 
     order = [

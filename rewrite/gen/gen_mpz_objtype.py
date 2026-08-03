@@ -130,9 +130,11 @@ def c_to_rust_mpz_body(body: str) -> str:
 
 def generate_mpz() -> None:
     c_src = (ROOT / "py/mpz.c").read_text()
+    # Ensure the MPZ section is present (bounds used as a guard, body unused).
     start = c_src.index("#if MICROPY_LONGINT_IMPL == MICROPY_LONGINT_IMPL_MPZ")
     end = c_src.index("#endif // MICROPY_LONGINT_IMPL == MICROPY_LONGINT_IMPL_MPZ")
-    body = c_src[start:end]
+    if start >= end:
+        raise RuntimeError("mpz.c: invalid MICROPY_LONGINT_IMPL_MPZ section bounds")
 
     # Hand-written faithful port (mpn + mpz API) — generated template filled below.
     out = MPZ_HEADER + read_mpz_rust_impl()

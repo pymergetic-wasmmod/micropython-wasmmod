@@ -1,12 +1,15 @@
 [tool.codespell]
 count = ""
 ignore-regex = '\b[A-Z]{3}\b'
-ignore-words-list = "ans,asend,deques,dout,emac,extint,hsi,iput,mis,notin,numer,ser,shft,som,synopsys,technic,ure,curren"
+# abd/clen/fo/nd: short identifiers; inout: Rust asm operand; wast: wasm crate name
+ignore-words-list = "abd,ans,asend,clen,deques,dout,emac,extint,fo,hsi,inout,iput,mis,nd,notin,numer,ser,shft,som,synopsys,technic,ure,curren,wast"
 quiet-level = 3
 skip = """
 */build*,\
 ./.git,\
+./Cargo.lock,\
 ./drivers/cc3100,\
+./extmod/wasmmod/third_party,\
 ./lib,\
 ./ports/cc3200/FreeRTOS,\
 ./ports/cc3200/bootmgr/sl,\

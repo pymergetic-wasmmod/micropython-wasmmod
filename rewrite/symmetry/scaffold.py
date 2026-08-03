@@ -319,7 +319,7 @@ class Scaffolder:
         is_port = mirror.name in _PORT_CRATES
 
         lines = [
-            f"[package]",
+            "[package]",
             f'name = "{pkg}"',
             'version = "0.0.0"',
             'edition.workspace = true',

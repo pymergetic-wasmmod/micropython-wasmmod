@@ -1,5 +1,7 @@
 [![Unix CI badge](https://github.com/micropython/micropython/actions/workflows/ports_unix.yml/badge.svg)](https://github.com/micropython/micropython/actions?query=branch%3Amaster+event%3Apush) [![STM32 CI badge](https://github.com/micropython/micropython/actions/workflows/ports_stm32.yml/badge.svg)](https://github.com/micropython/micropython/actions?query=branch%3Amaster+event%3Apush) [![Docs CI badge](https://github.com/micropython/micropython/actions/workflows/docs.yml/badge.svg)](https://docs.micropython.org/) [![codecov](https://codecov.io/gh/micropython/micropython/branch/master/graph/badge.svg?token=I92PfD05sD)](https://codecov.io/gh/micropython/micropython)
 
+> **MetalPython:** this checkout also contains a Rust rewrite. See [`README_rs.md`](README_rs.md) for build/run/test and the `*_rs` shadow trees. Do not edit upstream C under `py/`, `ports/`, etc. when working on the rewrite.
+
 The MicroPython project
 =======================
 <p align="center">
