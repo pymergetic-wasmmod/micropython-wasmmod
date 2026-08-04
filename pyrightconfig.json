@@ -2,6 +2,17 @@
   "include": [
     "."
   ],
+  "exclude": [
+    "**/extmod/asyncio",
+    "**/extmod/wasmmod/third_party",
+    "**/extmod/wasmmod/docs",
+    "**/extmod/wasmmod/tools/**/__pycache__",
+    "**/ports/**/build-*/**",
+    "**/lib/**",
+    "**/third_party/**",
+    "**/.venv/**",
+    "**/node_modules/**"
+  ],
   "extraPaths": [
     "../metal-cdn"
   ],

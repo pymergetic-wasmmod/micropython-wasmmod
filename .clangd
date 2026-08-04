@@ -1,6 +1,17 @@
 # Clangd for metalpython / wasmmod
+#
+# PathMatch is matched against the *entire absolute path* — always use .*/…
+# Only suppress vendored WAMR. Our examples/docs stay fully analyzed.
 CompileFlags:
   Add:
     - -Iextmod/wasmmod/third_party/wamr/core/iwasm/include
   Remove:
     - -Ilib/wamr/core/iwasm/include
+
+---
+If:
+  PathMatch: .*/extmod/wasmmod/third_party/.*
+Index:
+  Background: Skip
+Diagnostics:
+  Suppress: '*'
