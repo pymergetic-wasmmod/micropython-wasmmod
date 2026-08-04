@@ -60,7 +60,8 @@ pub fn path_set(roots: Vec<String>) {
     *WASM_PATH.lock().unwrap() = roots;
 }
 
-fn path_roots() -> Vec<String> {
+/// Current ``wasm.path`` roots (VM list or internal fallback).
+pub fn path_roots() -> Vec<String> {
     let from_vm = py_rs::mpstate::with_vm(|vm| {
         if vm.mp_wasm_path == py_rs::obj::OBJ_NULL {
             return Vec::new();

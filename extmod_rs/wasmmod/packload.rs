@@ -23,11 +23,14 @@ use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::reader::READER_IS_ROM;
 
+use super::cdn;
 use super::fetch;
 use super::finder;
+use super::forward;
 use super::modobj;
-use super::pack::{self, PackExport, PackFile, PackInfo, PACK_KIND_PY, PACK_SECTION};
-use super::runtime::{self, MP_WASM_ERRBUF, MP_WASM_NAME_MAX};
+use super::pack::{self, PackExport, PackFile, PackInfo, PACK_KIND_PY};
+use super::resolve::{self, DepNode};
+use super::runtime::{self, WasmModule, MP_WASM_ERRBUF};
 
 const PACK_KIND_PYC: u8 = 4;
 
@@ -357,40 +360,60 @@ pub fn load_pack_from_parts(
     name_override: Option<&str>,
 ) -> Obj {
     let meta_bytes = meta.unwrap_or(code);
+    let pack_name = resolve_pack_name(meta_bytes, path_hint, name_override);
+    let deps = resolve::deps_from_artifact(meta_bytes);
+    if !deps.is_empty() || cdn::driver_name() == "metal-cdn" {
+        return load_closure_from_root(
+            DepNode::new(&pack_name, ""),
+            code.to_vec(),
+            path_hint.map(str::to_string),
+        );
+    }
+    let pending = instantiate_pack(code, meta_bytes, path_hint, &pack_name);
+    finish_pack(pending)
+}
 
-    let mut pack_name_buf = [0u8; MP_WASM_NAME_MAX + 1];
-    let mut pack_name: Option<&str> = name_override;
-
-    if pack_name.is_none() {
-        if let Some(payload) = pack::pack_find_section(meta_bytes) {
-            if let Some(peek) = pack::pack_parse(payload) {
-                if !peek.name.is_empty() {
-                    let n = peek.name.len().min(MP_WASM_NAME_MAX);
-                    pack_name_buf[..n].copy_from_slice(&peek.name.as_bytes()[..n]);
-                    pack_name_buf[n] = 0;
-                    pack_name =
-                        Some(std::str::from_utf8(&pack_name_buf[..n]).unwrap_or("wasm_pack"));
-                }
+fn resolve_pack_name(
+    meta_bytes: &[u8],
+    path_hint: Option<&str>,
+    name_override: Option<&str>,
+) -> String {
+    if let Some(n) = name_override {
+        if !n.is_empty() {
+            return n.to_string();
+        }
+    }
+    if let Some(payload) = pack::pack_find_section(meta_bytes) {
+        if let Some(peek) = pack::pack_parse(payload) {
+            if !peek.name.is_empty() {
+                return peek.name.to_string();
             }
         }
     }
-
-    if pack_name.is_none() {
-        if let Some(hint) = path_hint {
-            let stem = stem_from_path(hint);
-            if !stem.is_empty() {
-                let n = stem.len().min(MP_WASM_NAME_MAX);
-                pack_name_buf[..n].copy_from_slice(&stem.as_bytes()[..n]);
-                pack_name = Some(std::str::from_utf8(&pack_name_buf[..n]).unwrap_or("wasm_pack"));
-            }
+    if let Some(hint) = path_hint {
+        let stem = stem_from_path(hint);
+        if !stem.is_empty() {
+            return stem;
         }
     }
+    "wasm_pack".to_string()
+}
 
-    let pack_name = pack_name.unwrap_or("wasm_pack");
+struct PendingPack {
+    name: String,
+    code: Vec<u8>,
+    wmod: Box<WasmModule>,
+}
+
+fn instantiate_pack(
+    code: &[u8],
+    meta_bytes: &[u8],
+    path_hint: Option<&str>,
+    pack_name: &str,
+) -> PendingPack {
     if pack_name.is_empty() {
         raise_runtime_msg("wasm pack: empty name");
     }
-
     let mut err = [0u8; MP_WASM_ERRBUF];
     let mut wmod =
         runtime::module_load_ex(code, Some(meta_bytes), Some(pack_name), path_hint, &mut err)
@@ -405,16 +428,101 @@ pub fn load_pack_from_parts(
                 });
             });
     runtime::module_set_name(wmod.as_mut(), pack_name);
+    PendingPack {
+        name: pack_name.to_string(),
+        code: code.to_vec(),
+        wmod,
+    }
+}
 
-    let info: Option<PackInfo<'_>> = pack::pack_find_section(meta_bytes).and_then(pack::pack_parse);
+/// Phased closure load: fetch → instantiate all → registry all → connect → run.
+pub fn load_closure_from_root(
+    root: DepNode,
+    root_bytes: Vec<u8>,
+    _root_path: Option<String>,
+) -> Obj {
+    let mut source = cdn::FetchingDepSource::new();
+    source.cache.insert(root.key(), root_bytes);
 
-    let _ = runtime::module_call0(wmod.as_ref(), "mp_pack_load", &mut 0i32, &mut err);
+    let closure = resolve::resolve_closure(root.clone(), &mut source).unwrap_or_else(|e| {
+        raise_runtime_msg(format!("resolve closure: {e}"));
+    });
 
-    let qpack = qstr::from_str(pack_name);
+    if cdn::require_explicit_deps() {
+        for node in closure.nodes() {
+            let bytes = source.ensure(node).unwrap_or_else(|e| raise_runtime_msg(e));
+            if let Some(payload) = pack::imports_find_section(bytes) {
+                if let Some(info) = pack::imports_parse(payload) {
+                    for im in &info.imports {
+                        if im.module == pack::HOST_MODULE || im.module == pack::WASM_MODULE {
+                            continue;
+                        }
+                        if !closure.nodes().any(|n| n.name == im.module) {
+                            raise_runtime_msg(format!(
+                                "cdn: import {} not in closure of {}",
+                                im.module, node.name
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut pending: Vec<PendingPack> = Vec::new();
+    for node in closure.nodes() {
+        let bytes = source
+            .ensure(node)
+            .unwrap_or_else(|e| raise_runtime_msg(e))
+            .to_vec();
+        pending.push(instantiate_pack(&bytes, &bytes, None, &node.name));
+    }
+
+    let mut registered: Vec<(String, Vec<u8>, Obj, Obj)> = Vec::new();
+    for p in pending {
+        let name = p.name.clone();
+        let code = p.code.clone();
+        let qpack = qstr::from_str(&name);
+        let root_mod = objmodule::new_module(qpack);
+        let wasm_obj = modobj::wrap_loaded(p.wmod);
+        modobj::set_pack_name(wasm_obj, qpack);
+        registered.push((name, code, root_mod, wasm_obj));
+    }
+
+    for (_name, code, _, _) in &registered {
+        if let Err(e) = forward::connect_imports(code) {
+            raise_runtime_msg(e);
+        }
+    }
+
+    let mut root_obj = obj::CONST_NONE;
+    for (name, code, root_mod, wasm_obj) in registered {
+        let obj = finish_registered_pack(&name, &code, root_mod, wasm_obj);
+        if name == root.name || root_obj == obj::CONST_NONE {
+            root_obj = obj;
+        }
+    }
+    root_obj
+}
+
+fn finish_pack(pending: PendingPack) -> Obj {
+    let name = pending.name.clone();
+    let code = pending.code.clone();
+    let qpack = qstr::from_str(&name);
     let root = objmodule::new_module(qpack);
-    let wasm_obj = modobj::wrap_loaded(wmod);
+    let wasm_obj = modobj::wrap_loaded(pending.wmod);
     modobj::set_pack_name(wasm_obj, qpack);
-    let mod_id = modobj::module_id_from_obj(wasm_obj).expect("wrapped module id");
+    if let Err(e) = forward::connect_imports(&code) {
+        if cdn::require_explicit_deps() {
+            raise_runtime_msg(e);
+        }
+    }
+    finish_registered_pack(&name, &code, root, wasm_obj)
+}
+
+fn finish_registered_pack(pack_name: &str, code: &[u8], root: Obj, wasm_obj: Obj) -> Obj {
+    let mut err = [0u8; MP_WASM_ERRBUF];
+    let _ = modobj::call0_on_obj(wasm_obj, "mp_pack_load", &mut err);
 
     let rglobals = objmodule::module_get_globals(root);
     let rglobals_obj = obj::from_ptr(rglobals as *const objdict::ObjDict as *const ());
@@ -428,6 +536,9 @@ pub fn load_pack_from_parts(
         obj::new_qstr(qstr::from_str("__path__")),
         objstr::new_str(pack_name.as_bytes()),
     );
+
+    let info: Option<PackInfo<'_>> = pack::pack_find_section(code).and_then(pack::pack_parse);
+    let mod_id = modobj::module_id_from_obj(wasm_obj).expect("wrapped module id");
 
     if let Some(ref info) = info {
         if !info.exports.is_empty() {
@@ -486,6 +597,8 @@ pub fn load_pack_from_parts(
         }
     }
 
+    let loaded = mpstate::with_vm(|vm| vm.mp_loaded_modules_dict);
+    objdict::dict_store(loaded, obj::new_qstr(qstr::from_str(pack_name)), root);
     root
 }
 

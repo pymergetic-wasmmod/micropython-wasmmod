@@ -1,5 +1,6 @@
 //! MetalPython rewrite of MicroPython `extmod/wasmmod/`.
 pub mod alloc;
+pub mod cdn;
 pub mod fetch;
 pub mod finder;
 pub mod forward;
@@ -11,6 +12,7 @@ pub mod modobj;
 pub mod pack;
 pub mod packload;
 pub mod ports;
+pub mod resolve;
 pub mod runtime;
 pub mod verify;
 pub mod version;

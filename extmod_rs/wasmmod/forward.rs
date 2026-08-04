@@ -261,6 +261,27 @@ pub fn register_forwarders(wasm: &[u8], errbuf: &mut [u8]) -> bool {
     ok
 }
 
+/// After all packs in a closure are ``registry_add``'d, ensure every MPWI
+/// guest target is present (or is ``wasmmod`` / ``wasmmod.host``).
+pub fn connect_imports(wasm: &[u8]) -> Result<(), String> {
+    let Some(payload) = imports_find_section(wasm) else {
+        return Ok(());
+    };
+    let info = imports_parse(payload).ok_or_else(|| "bad wasmmod.imports".to_string())?;
+    for im in &info.imports {
+        if im.module == HOST_MODULE || im.module == WASM_MODULE {
+            continue;
+        }
+        if !registry_find(im.module) {
+            return Err(format!(
+                "connect: import {}.{} — pack {:?} not registered",
+                im.module, im.func, im.module
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

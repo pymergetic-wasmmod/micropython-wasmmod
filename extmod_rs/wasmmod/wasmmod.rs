@@ -21,6 +21,7 @@ use py_rs::qstr;
 use py_rs::raise::{self, MpRaise};
 use py_rs::runtime as mp_runtime;
 
+use super::cdn;
 use super::fetch;
 use super::host;
 use super::modobj;
@@ -477,6 +478,7 @@ fn py_install_hook(_n: usize, args: &[Obj]) -> Obj {
             if root.is_empty() || !root.ends_with('/') {
                 root.push('/');
             }
+            cdn::configure_from_url(url, None);
             wasm_path_append_unique(&root);
         }
     }
@@ -502,6 +504,31 @@ fn py_install_hook(_n: usize, args: &[Obj]) -> Obj {
     obj::CONST_NONE
 }
 
+/// ``wasm.cdn(url, token=None)`` — select Path vs metal-cdn driver + optional Bearer.
+fn py_cdn(n: usize, args: &[Obj]) -> Obj {
+    if n < 1 || !obj::is_str_or_bytes(args[0]) {
+        raise::raise(MpRaise::TypeError("cdn(url, token=None)"));
+    }
+    let (bytes, len) = objstr::get_str_data_len(args[0]);
+    let url = std::str::from_utf8(&bytes[..len]).unwrap_or("");
+    if !fetch::uri_is_http(url) {
+        raise::raise(MpRaise::ValueError("cdn: url must be http(s)"));
+    }
+    let token_owned = if n >= 2 && args[1] != obj::CONST_NONE && obj::is_str_or_bytes(args[1]) {
+        let (tb, tl) = objstr::get_str_data_len(args[1]);
+        std::str::from_utf8(&tb[..tl]).ok().map(str::to_string)
+    } else {
+        None
+    };
+    cdn::configure_from_url(url, token_owned.as_deref());
+    let mut root = String::from(url);
+    if !root.ends_with('/') {
+        root.push('/');
+    }
+    wasm_path_append_unique(&root);
+    objstr::new_str(cdn::driver_name().as_bytes())
+}
+
 fn py_uninstall_hook() -> Obj {
     if !mpconfig::CAN_OVERRIDE_BUILTINS {
         return obj::CONST_NONE;
@@ -519,6 +546,7 @@ fn py_uninstall_hook() -> Obj {
         vm.mp_wasm_prev_import = obj::OBJ_NULL;
     });
     packload::set_import_hook_depth(0);
+    cdn::reset_to_path();
     obj::CONST_NONE
 }
 
@@ -741,6 +769,10 @@ pub fn init_module() -> Obj {
         MapElem {
             key: obj::new_qstr(qstr::from_str("install_hook")),
             value: mkv(0, 1, py_install_hook),
+        },
+        MapElem {
+            key: obj::new_qstr(qstr::from_str("cdn")),
+            value: mkv(1, 2, py_cdn),
         },
         MapElem {
             key: obj::new_qstr(qstr::from_str("uninstall_hook")),

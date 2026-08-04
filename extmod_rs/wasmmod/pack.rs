@@ -3,11 +3,13 @@
 
 pub const PACK_SECTION: &str = "wasmmod.pack";
 pub const IMPORTS_SECTION: &str = "wasmmod.imports";
+pub const DEPS_SECTION: &str = "wasmmod.deps";
 pub const SIG_SECTION: &str = "wasmmod.sig";
 pub const HOST_MODULE: &str = "wasmmod.host";
 pub const WASM_MODULE: &str = "wasmmod";
 pub const PACK_MAGIC: &[u8; 4] = b"MPWP";
 pub const IMPORTS_MAGIC: &[u8; 4] = b"MPWI";
+pub const DEPS_MAGIC: &[u8; 4] = b"MPWD";
 pub const PACK_KIND_PY: u8 = 1;
 pub const PACK_KIND_MPY: u8 = 2;
 pub const PACK_KIND_RAW: u8 = 3;
@@ -51,6 +53,18 @@ pub struct ImportEntry<'a> {
 pub struct ImportsInfo<'a> {
     pub version: u16,
     pub imports: Vec<ImportEntry<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DepEntry<'a> {
+    pub name: &'a str,
+    pub version: &'a str,
+}
+
+#[derive(Debug, Default)]
+pub struct DepsInfo<'a> {
+    pub version: u16,
+    pub deps: Vec<DepEntry<'a>>,
 }
 
 pub fn read_uleb(p: &mut usize, end: usize, data: &[u8]) -> Option<u32> {
@@ -179,6 +193,10 @@ pub fn pack_find_section(wasm: &[u8]) -> Option<&[u8]> {
 
 pub fn imports_find_section(wasm: &[u8]) -> Option<&[u8]> {
     find_custom_section(wasm, IMPORTS_SECTION)
+}
+
+pub fn deps_find_section(wasm: &[u8]) -> Option<&[u8]> {
+    find_custom_section(wasm, DEPS_SECTION)
 }
 
 pub fn pack_parse(payload: &[u8]) -> Option<PackInfo<'_>> {
@@ -370,6 +388,47 @@ pub fn imports_parse(payload: &[u8]) -> Option<ImportsInfo<'_>> {
     Some(ImportsInfo { version, imports })
 }
 
+/// Parse ``wasmmod.deps`` (MPWD) payload — CDN/install exact name→version pairs.
+pub fn deps_parse(payload: &[u8]) -> Option<DepsInfo<'_>> {
+    if payload.len() < 10 || &payload[0..4] != DEPS_MAGIC {
+        return None;
+    }
+    let version = read_u16_le(&payload[4..6]);
+    if version != 1 {
+        return None;
+    }
+    let n = read_u32_le(&payload[6..10]) as usize;
+    if n > 1024 {
+        return None;
+    }
+    let mut p = 10usize;
+    let mut deps = Vec::with_capacity(n);
+    for _ in 0..n {
+        if p + 2 > payload.len() {
+            return None;
+        }
+        let name_len = read_u16_le(&payload[p..p + 2]) as usize;
+        p += 2;
+        if p + name_len + 2 > payload.len() {
+            return None;
+        }
+        let name = std::str::from_utf8(&payload[p..p + name_len]).ok()?;
+        p += name_len;
+        let ver_len = read_u16_le(&payload[p..p + 2]) as usize;
+        p += 2;
+        if p + ver_len > payload.len() {
+            return None;
+        }
+        let ver = std::str::from_utf8(&payload[p..p + ver_len]).ok()?;
+        p += ver_len;
+        deps.push(DepEntry {
+            name,
+            version: ver,
+        });
+    }
+    Some(DepsInfo { version, deps })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -447,9 +506,39 @@ mod tests {
     fn section_names_match_upstream() {
         assert_eq!(PACK_SECTION, "wasmmod.pack");
         assert_eq!(IMPORTS_SECTION, "wasmmod.imports");
+        assert_eq!(DEPS_SECTION, "wasmmod.deps");
         assert_eq!(SIG_SECTION, "wasmmod.sig");
         assert_eq!(HOST_MODULE, "wasmmod.host");
         assert_eq!(WASM_MODULE, "wasmmod");
+        assert_eq!(DEPS_MAGIC, b"MPWD");
+    }
+
+    fn build_deps_payload(deps: &[(&str, &str)]) -> Vec<u8> {
+        let mut p = Vec::new();
+        p.extend_from_slice(DEPS_MAGIC);
+        p.extend_from_slice(&1u16.to_le_bytes());
+        p.extend_from_slice(&(deps.len() as u32).to_le_bytes());
+        for (name, ver) in deps {
+            p.extend_from_slice(&(name.len() as u16).to_le_bytes());
+            p.extend_from_slice(name.as_bytes());
+            p.extend_from_slice(&(ver.len() as u16).to_le_bytes());
+            p.extend_from_slice(ver.as_bytes());
+        }
+        p
+    }
+
+    #[test]
+    fn deps_parse_roundtrip() {
+        let payload = build_deps_payload(&[("hello", "0.1.0"), ("bridge", "1.2.3")]);
+        let wasm = build_wasm_with_custom_section(DEPS_SECTION, &payload);
+        let found = deps_find_section(&wasm).expect("deps section");
+        let info = deps_parse(found).expect("parse deps");
+        assert_eq!(info.version, 1);
+        assert_eq!(info.deps.len(), 2);
+        assert_eq!(info.deps[0].name, "hello");
+        assert_eq!(info.deps[0].version, "0.1.0");
+        assert_eq!(info.deps[1].name, "bridge");
+        assert_eq!(info.deps[1].version, "1.2.3");
     }
 
     #[test]

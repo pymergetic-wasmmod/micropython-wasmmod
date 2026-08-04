@@ -641,6 +641,18 @@ pub fn module_id_from_obj(wasm_obj: Obj) -> Option<u64> {
     }
 }
 
+/// Call a nullary export on a wrapped module (e.g. ``mp_pack_load``).
+pub fn call0_on_obj(wasm_obj: Obj, func: &str, errbuf: &mut [u8]) -> bool {
+    let Some(id) = module_id_from_obj(wasm_obj) else {
+        return false;
+    };
+    with_module(id, |m| {
+        let mut out = 0i32;
+        runtime::module_call0(m, func, &mut out, errbuf)
+    })
+    .unwrap_or(false)
+}
+
 /// `wasm_module_close`
 pub fn close_module(wasm_obj: Obj) -> Obj {
     wasm_module_close(wasm_obj)
