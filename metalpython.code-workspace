@@ -1,0 +1,16 @@
+{
+  "folders": [
+    { "name": "metalpython", "path": "." },
+    { "name": "metal-cdn", "path": "../metal-cdn" }
+  ],
+  "settings": {
+    "python.useEnvironmentsExtension": false,
+    "python.locator": "js",
+    "python.defaultInterpreterPath": "${workspaceFolder:metal-cdn}/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "cursorpyright.analysis.extraPaths": [
+      "${workspaceFolder:metal-cdn}"
+    ],
+    "cmake.ignoreCMakeListsMissing": true
+  }
+}

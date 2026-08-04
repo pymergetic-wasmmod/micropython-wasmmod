@@ -1,0 +1,12 @@
+{
+  "include": [
+    "."
+  ],
+  "extraPaths": [
+    "../metal-cdn"
+  ],
+  "venvPath": "../metal-cdn",
+  "venv": ".venv",
+  "reportMissingImports": "error",
+  "typeCheckingMode": "basic"
+}
