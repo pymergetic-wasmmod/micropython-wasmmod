@@ -25,7 +25,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `floor ok` | TLSF + cooperative async sleep/yield |
 | `net ok` | virtio-net PCI + RX/TX vrings + ARP TX |
 | `ip ok` | mini IPv4 static 10.0.2.15 + ARP announce |
-| `udp ok` / `tcp ok` / `http ok` | thin UDP/TCP + GET→200 metal ok |
+| `udp`/`dns`/`tcp`/`http`/`ssh` ok | UDP, real DNS RX, TCP, HTTP GET, SSH banner |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
 | `tui ok` | F7 DOS-Edit dashboard on VT soft FB |
