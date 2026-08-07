@@ -32,7 +32,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `ntp ok` | NTP client query time.google.com → sane Unix time |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
-| `tui ok` | F7 DOS-Edit dashboard on VT soft FB |
+| `tui ok` | F7 DOS-Edit dashboard; network pane + live faces |
 | `kbd ok` | F1–F7 scancodes switch active VT |
 | `wamr ok` | freestanding WAMR init (`ENGINE=mp\|mpwm`) |
 | `framebuf ok` | `MICROPY_PY_FRAMEBUF` smoke |
