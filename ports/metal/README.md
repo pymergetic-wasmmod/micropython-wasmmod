@@ -1,6 +1,6 @@
 # ports/metal
 
-Thin forward → `extmod/metalmod/port`.
+Thin forward → `extmod/metal/port`.
 
 ```bash
 # BIOS Multiboot + COM1 µPy smoke (all engines)
@@ -17,8 +17,8 @@ make -C ports/metal BOARD=X86_64_UEFI ENGINE=mp run
 
 Smoke serial markers: `console ok` (ring+UART attach), `floor ok`, `wamr ok` when `ENGINE=mp|mpwm`, then `upy ok`, then `qemu ok` (BIOS) / `ovmf ok` (UEFI).
 
-Host-only floor (no QEMU): `make -C extmod/metalmod/async`.
+Host-only floor (no QEMU): `make -C extmod/metal/async`.
 
 Freestanding WAMR (wasmmod OWN recipe + Metal platform GLUE) links for `ENGINE=mp|mpwm`.
 
-Muscles stay under `extmod/metalmod/*` (rename → `metal` planned).
+Muscles live under `extmod/metal/*`.
