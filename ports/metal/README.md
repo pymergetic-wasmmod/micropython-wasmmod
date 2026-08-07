@@ -27,7 +27,8 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `dhcp ok` | DORA lease from QEMU user-net DHCP |
 | `ip ok` | mini IPv4 after DHCP + ARP announce |
 | `ping ok` | ICMP echo reply from QEMU gateway 10.0.2.2 |
-| `udp`/`dns`/`tcp`/`http`/`ssh` ok | UDP, real DNS RX, TCP, HTTP GET, SSH banner |
+| `udp`/`dns`/`tcp`/`http`/`ssh` ok | UDP, real DNS, TCP, HTTP server, SSH banner |
+| `http client ok` | outbound TCP connect + HTTP GET example.com |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
 | `tui ok` | F7 DOS-Edit dashboard on VT soft FB |
