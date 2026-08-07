@@ -24,10 +24,10 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `console ok` | ring + UART attach (+ history replay) |
 | `floor ok` | TLSF + cooperative async sleep/yield |
 | `net ok` | virtio-net PCI + RX/TX vrings + ARP TX |
+| `ip ok` | mini IPv4 static 10.0.2.15 + ARP announce |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
-| `tui ok` | F7 dashboard (when linked) |
-| `ip ok` | IPv4 stack (when linked) |
+| `tui ok` | F7 DOS-Edit dashboard on VT soft FB |
 | `wamr ok` | freestanding WAMR init (`ENGINE=mp\|mpwm`) |
 | `framebuf ok` | `MICROPY_PY_FRAMEBUF` smoke |
 | `upy ok` | µPy `print` |
