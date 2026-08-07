@@ -31,6 +31,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `http client ok` | outbound TCP connect + HTTP GET example.com |
 | `ntp ok` | NTP client query time.google.com → sane Unix time |
 | `tftp ok` | TFTP RRQ metal.txt from QEMU user-net TFTP |
+| `ssh client ok` | outbound TCP to QEMU guestfwd 10.0.2.100:22 + SSH-2.0 banner |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
 | `tui ok` | F7 DOS-Edit dashboard; network pane + live faces |
