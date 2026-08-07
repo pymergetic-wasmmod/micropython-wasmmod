@@ -15,4 +15,8 @@ make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp REPL=1
 make -C ports/metal BOARD=X86_64_UEFI ENGINE=mp run
 ```
 
-Smoke prints `upy ok` then exits. Muscles stay under `extmod/metalmod/*` (rename → `metal` planned).
+Smoke serial markers: `floor ok` (TLSF mem + async), then `upy ok`, then `qemu ok` (BIOS) / `ovmf ok` (UEFI).
+
+Host-only floor (no QEMU): `make -C extmod/metalmod/async`.
+
+Muscles stay under `extmod/metalmod/*` (rename → `metal` planned).
