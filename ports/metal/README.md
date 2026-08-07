@@ -15,8 +15,10 @@ make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp REPL=1
 make -C ports/metal BOARD=X86_64_UEFI ENGINE=mp run
 ```
 
-Smoke serial markers: `floor ok` (TLSF mem + async), then `upy ok`, then `qemu ok` (BIOS) / `ovmf ok` (UEFI).
+Smoke serial markers: `floor ok` (TLSF mem + async), `wamr ok` when `ENGINE=mp|mpwm`, then `upy ok`, then `qemu ok` (BIOS) / `ovmf ok` (UEFI).
 
 Host-only floor (no QEMU): `make -C extmod/metalmod/async`.
+
+Freestanding WAMR (wasmmod OWN recipe + Metal platform GLUE) links for `ENGINE=mp|mpwm` on BIOS.
 
 Muscles stay under `extmod/metalmod/*` (rename → `metal` planned).
