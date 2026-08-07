@@ -24,7 +24,8 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `console ok` | ring + UART attach (+ history replay) |
 | `floor ok` | TLSF + cooperative async sleep/yield |
 | `net ok` | virtio-net PCI + RX/TX vrings + ARP TX |
-| `ip ok` | mini IPv4 static 10.0.2.15 + ARP announce |
+| `dhcp ok` | DORA lease from QEMU user-net DHCP |
+| `ip ok` | mini IPv4 after DHCP + ARP announce |
 | `ping ok` | ICMP echo reply from QEMU gateway 10.0.2.2 |
 | `udp`/`dns`/`tcp`/`http`/`ssh` ok | UDP, real DNS RX, TCP, HTTP GET, SSH banner |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
@@ -44,9 +45,12 @@ Freestanding WAMR (wasmmod OWN recipe + Metal platform GLUE) links for `ENGINE=m
 
 Muscles live under `extmod/metal/{mem,async,console,draw,bus,dev,net,shell,…}`.
 
-## Live HTTP
+## Live HTTP / SSH
 
 ```bash
 make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp live-http
 # curls http://127.0.0.1:18080/ → metal ok
+
+make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp live-ssh
+# nc 127.0.0.1:22022 → SSH-2.0-metal
 ```
