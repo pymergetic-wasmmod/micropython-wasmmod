@@ -29,6 +29,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `ping ok` | ICMP echo reply from QEMU gateway 10.0.2.2 |
 | `udp`/`dns`/`tcp`/`http`/`ssh` ok | UDP, real DNS, TCP, HTTP server, SSH banner |
 | `http client ok` | outbound TCP connect + HTTP GET example.com |
+| `ntp ok` | NTP client query time.google.com → sane Unix time |
 | `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
 | `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
 | `tui ok` | F7 DOS-Edit dashboard on VT soft FB |
