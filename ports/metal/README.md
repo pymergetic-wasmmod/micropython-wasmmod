@@ -35,6 +35,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `wamr ok` | freestanding WAMR init (`ENGINE=mp\|mpwm`) |
 | `framebuf ok` | `MICROPY_PY_FRAMEBUF` smoke |
 | `network ok` | `network.LAN` ifconfig/isconnected after DHCP |
+| `dns py ok` | `network.LAN.resolve` (literal + real DNS A) |
 | `upy ok` | µPy `print` |
 | `qemu ok` / `ovmf ok` | board exit success |
 
