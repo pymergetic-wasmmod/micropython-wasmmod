@@ -37,6 +37,7 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `framebuf ok` | `MICROPY_PY_FRAMEBUF` smoke |
 | `network ok` | `network.LAN` ifconfig/isconnected after DHCP |
 | `dns py ok` | `network.LAN.resolve` (literal + real DNS A) |
+| `socket ok` | `socket` connect/send/recv HTTP GET via AbstractNIC |
 | `upy ok` | µPy `print` |
 | `qemu ok` / `ovmf ok` | board exit success |
 
