@@ -15,10 +15,28 @@ make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp REPL=1
 make -C ports/metal BOARD=X86_64_UEFI ENGINE=mp run
 ```
 
-Smoke serial markers: `console ok` (ring+UART attach), `floor ok`, `wamr ok` when `ENGINE=mp|mpwm`, then `upy ok`, then `qemu ok` (BIOS) / `ovmf ok` (UEFI).
+Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP never stale-collide.
+
+## Smoke serial markers (order)
+
+| Marker | Meaning |
+|--------|---------|
+| `console ok` | ring + UART attach (+ history replay) |
+| `floor ok` | TLSF + cooperative async sleep/yield |
+| `net ok` | virtio-net PCI + RX/TX vrings + ARP TX |
+| `draw ok` | soft DrawSurface RGB565 + 8×8 glyphs |
+| `vt ok` | F1–F6 cell mux + soft render; live console→VT fan-out |
+| `tui ok` | F7 dashboard (when linked) |
+| `ip ok` | IPv4 stack (when linked) |
+| `wamr ok` | freestanding WAMR init (`ENGINE=mp\|mpwm`) |
+| `framebuf ok` | `MICROPY_PY_FRAMEBUF` smoke |
+| `upy ok` | µPy `print` |
+| `qemu ok` / `ovmf ok` | board exit success |
+
+QEMU adds `-netdev user,id=n0 -device virtio-net-pci,netdev=n0` for net.
 
 Host-only floor (no QEMU): `make -C extmod/metal/async`.
 
 Freestanding WAMR (wasmmod OWN recipe + Metal platform GLUE) links for `ENGINE=mp|mpwm`.
 
-Muscles live under `extmod/metal/*`.
+Muscles live under `extmod/metal/{mem,async,console,draw,bus,dev,net,shell,…}`.
