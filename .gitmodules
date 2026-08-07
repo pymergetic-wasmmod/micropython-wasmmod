@@ -107,3 +107,7 @@
 [submodule "extmod/wasmmod"]
 	path = extmod/wasmmod
 	url = https://github.com/pymergetic/wasmmod.git
+[submodule "extmod/pm_metal"]
+	path = extmod/metalmod
+	url = https://github.com/pymergetic/metal.git
+	branch = experimental3
