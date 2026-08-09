@@ -126,6 +126,9 @@ OBJ += $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_SHARED:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 
+# Optional variant extras (e.g. metal live boot) — not in SRC_QSTR.
+-include $(VARIANT_DIR)/extra_src.mk
+
 ################################################################################
 # Main targets.
 

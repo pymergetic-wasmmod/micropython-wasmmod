@@ -62,9 +62,12 @@ bool mp_compile_only = false;
 static uint emit_opt = MP_EMIT_OPT_NONE;
 
 #if MICROPY_ENABLE_GC
-// Heap size of GC heap (if enabled)
-// Make it larger on a 64 bit machine, because pointers are larger.
-long heap_size = 1024 * 1024 * (sizeof(mp_uint_t) / 4);
+// Heap size of GC heap (if enabled).
+// Variants may set MICROPY_HEAP_SIZE (bytes). Default scales with pointer width.
+#ifndef MICROPY_HEAP_SIZE
+#define MICROPY_HEAP_SIZE (1024 * 1024 * (sizeof(mp_uint_t) / 4))
+#endif
+long heap_size = MICROPY_HEAP_SIZE;
 #endif
 
 // Number of heaps to assign by default if MICROPY_GC_SPLIT_HEAP=1

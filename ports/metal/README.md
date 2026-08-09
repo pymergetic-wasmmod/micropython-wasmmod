@@ -15,7 +15,7 @@ make -C ports/metal BOARD=X86_64_BIOS ENGINE=mp REPL=1
 make -C ports/metal BOARD=X86_64_UEFI ENGINE=mp run
 ```
 
-Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP never stale-collide.
+Build dirs live under `extmod/metal/port/build/` per-`ENGINE` (`build/$(BOARD)-$(ENGINE)…`) so `LINK_WAMR` / TOP never stale-collide.
 
 ## µPy modules (Metal port)
 
@@ -24,9 +24,9 @@ Build dirs are per-`ENGINE` (`build-$(BOARD)-$(ENGINE)`) so `LINK_WAMR` / TOP ne
 | `network.LAN` | virtio-net AbstractNIC (`ifconfig` / `resolve` / …) |
 | `socket` | TCP/UDP via AbstractNIC |
 | `framebuf` | soft RGB565 framebuffer helpers |
-| `ssh` | `net.ssh` hybrid (`pm_metal_net_ssh_*`); stub until real backend |
+| `pymergetic.metal.net.ssh` | nested builtin (`pm_metal_net_ssh_*`) |
 
-IDE stub: `extmod/metal/port/typings/ssh.pyi` (pyright `stubPath`).
+IDE stubs: `extmod/metal/typings/` (pyright `stubPath`).
 
 ## Smoke serial markers (order)
 

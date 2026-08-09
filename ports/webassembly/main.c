@@ -44,6 +44,10 @@
 #include "library.h"
 #include "proxy_c.h"
 
+#if defined(PM_METAL_CFG_ARCH_WASM) && PM_METAL_CFG_ARCH_WASM
+#include "pymergetic/metal/boot/product.h"
+#endif
+
 // This counter tracks the current depth of calls into C code that originated
 // externally, ie from JavaScript.  When the counter is 0 that corresponds to
 // the top-level call into C.
@@ -107,6 +111,17 @@ void mp_js_init(int pystack_size, int heap_size) {
         MP_STATE_VM(vfs_cur) = MP_STATE_VM(vfs_mount_table);
     }
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
+    #endif
+
+    #if defined(PM_METAL_CFG_ARCH_WASM) && PM_METAL_CFG_ARCH_WASM
+    /* Selector heapsize → Metal dual-span claim (same budget the UI shows). */
+    {
+        extern void pm_metal_hal_mem_set_budget(size_t bytes);
+        pm_metal_hal_mem_set_budget((size_t)(heap_size > 0 ? heap_size : 0));
+    }
+    /* Same live boot as ThinkPad seats; CDN autoexec is post-ready only. */
+    (void)pm_metal_boot();
+    (void)pm_metal_autoexec();
     #endif
 }
 
