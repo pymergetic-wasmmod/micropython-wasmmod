@@ -198,14 +198,20 @@ static int do_repl(void) {
     int ret = 0;
     for (;;) {
         if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
-            if ((ret = pyexec_raw_repl()) != 0) {
-                break;
-            }
+            ret = pyexec_raw_repl();
         } else {
-            if ((ret = pyexec_friendly_repl()) != 0) {
-                break;
-            }
+            ret = pyexec_friendly_repl();
         }
+        #if defined(MICROPY_METAL_REPL_IS_SEAT) && MICROPY_METAL_REPL_IS_SEAT
+        /* Metal seat: REPL is the face. Ctrl-D returns to >>>.
+         * Leave with shutdown()/reboot() only. */
+        (void)ret;
+        continue;
+        #else
+        if (ret != 0) {
+            break;
+        }
+        #endif
     }
     return ret;
 
@@ -215,7 +221,11 @@ static int do_repl(void) {
 
     mp_hal_stdout_tx_str(MICROPY_BANNER_NAME_AND_VERSION);
     mp_hal_stdout_tx_str("; " MICROPY_BANNER_MACHINE);
+    #if defined(MICROPY_METAL_REPL_IS_SEAT) && MICROPY_METAL_REPL_IS_SEAT
+    mp_hal_stdout_tx_str("\nCtrl-D returns to >>>; shutdown()/reboot() leave the seat\n");
+    #else
     mp_hal_stdout_tx_str("\nUse Ctrl-D to exit, Ctrl-E for paste mode\n");
+    #endif
 
     for (;;) {
         char *line = prompt((char *)mp_repl_get_ps1());

@@ -194,6 +194,13 @@ void mp_js_repl_init(void) {
 int mp_js_repl_process_char(int c) {
     external_call_depth_inc();
     int ret = pyexec_event_repl_process_char(c);
+    #if defined(MICROPY_METAL_REPL_IS_SEAT) && MICROPY_METAL_REPL_IS_SEAT
+    /* Metal seat: Ctrl-D must not tear down the page REPL — re-prompt. */
+    if (ret & PYEXEC_FORCED_EXIT) {
+        pyexec_event_repl_init();
+        ret = 0;
+    }
+    #endif
     external_call_depth_dec(MP_OBJ_NULL);
     return ret;
 }
