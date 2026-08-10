@@ -31,7 +31,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "py/parsenum.h"
 #include "py/compile.h"
 #include "py/objstr.h"
 #include "py/objtuple.h"
@@ -49,6 +48,10 @@
 #if MICROPY_VFS_ROM && MICROPY_VFS_ROM_IOCTL
 #include "extmod/vfs.h"
 #endif
+
+// Strong definition lives in extmod/wasmmod/mod.c when that TU is linked.
+MP_WEAK void pm_mod_init(void) {
+}
 
 #if MICROPY_DEBUG_VERBOSE // print debugging info
 #define DEBUG_PRINT (1)
@@ -194,6 +197,9 @@ void mp_init(void) {
     #ifdef MICROPY_PORT_INIT_FUNC
     MICROPY_PORT_INIT_FUNC;
     #endif
+
+    // pm_mod: publish global __pm_modules (strong def in extmod/wasmmod/mod.c when linked)
+    pm_mod_init();
 
     MP_THREAD_GIL_ENTER();
 
