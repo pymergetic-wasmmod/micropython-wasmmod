@@ -5,6 +5,6 @@ alwaysApply: true
 
 # Workspace (hint)
 
-Agents that touch wasmmod + metal-cdn + tools: open **`/home/ladmin/Devel/os-sdk`**, not this package alone.
+Agents that touch wasmmod + wasmmod-cdn + tools: open **`/home/ladmin/Devel/os-sdk`**, not this package alone.
 
 Canonical rules live under `extmod/wasmmod/.cursor/rules/` after the submodule is current.
