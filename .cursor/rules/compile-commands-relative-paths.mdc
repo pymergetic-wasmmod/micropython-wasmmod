@@ -1,0 +1,9 @@
+---
+description: compile_commands.json must use paths relative to directory — never absolute
+globs: "**/compile_commands.json"
+alwaysApply: true
+---
+
+# compile_commands.json — relative paths only
+
+**FORBIDDEN:** absolute paths in any `compile_commands.json` (`directory`, `file`, `command`, `arguments`). See `extmod/wasmmod/.cursor/rules/compile-commands-relative-paths.mdc`.
