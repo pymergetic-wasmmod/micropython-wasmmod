@@ -66,7 +66,7 @@ typedef struct _mp_parse_node_struct_t {
 #define MP_PARSE_NODE_IS_SMALL_INT(pn) (((pn) & 0x1) == MP_PARSE_NODE_SMALL_INT)
 #define MP_PARSE_NODE_IS_ID(pn) (((pn) & 0x0f) == MP_PARSE_NODE_ID)
 #define MP_PARSE_NODE_IS_TOKEN(pn) (((pn) & 0x0f) == MP_PARSE_NODE_TOKEN)
-#define MP_PARSE_NODE_IS_TOKEN_KIND(pn, k) ((pn) == (MP_PARSE_NODE_TOKEN | ((k) << 4)))
+#define MP_PARSE_NODE_IS_TOKEN_KIND(pn, k) ((pn) == ((mp_parse_node_t)(MP_PARSE_NODE_TOKEN | ((mp_uint_t)(k) << 4))))
 
 #define MP_PARSE_NODE_LEAF_KIND(pn) ((pn) & 0x0f)
 #define MP_PARSE_NODE_LEAF_ARG(pn) (((uintptr_t)(pn)) >> 4)
