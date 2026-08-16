@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-#include "py/mpstate.h"
+#include "py/mpstate.h" // IWYU pragma: keep (MP_STATE_THREAD via MP_NLR_JUMP_HEAD)
 
 #if MICROPY_NLR_X64
 

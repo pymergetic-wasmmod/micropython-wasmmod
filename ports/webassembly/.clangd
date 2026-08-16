@@ -1,0 +1,17 @@
+# This directory's mpconfigport.h must not fuzzy-match firmware
+# metalpython extmod/metal/port/mpconfigport.h (workspace
+# --compile-commands-dir=.vscode).
+CompileFlags:
+  CompilationDatabase: None
+  Add:
+    - -xc
+    - -std=gnu11
+    - -I.
+    - -Ivariants/standard
+    - -I../..
+    - -DMICROPY_PY_WASM=1
+    - -DMICROPY_MODULE_BUILTIN_INIT=1
+    - -DMICROPY_MODULE_BUILTIN_SUBPACKAGES=1
+    - -Wno-unknown-attributes
+Diagnostics:
+  UnusedIncludes: None

@@ -239,7 +239,18 @@ static void module_attr_try_delegation(mp_obj_t self_in, qstr attr, mp_obj_t *de
     // Delegate lookup to a module's custom attr method.
     size_t n = MP_ARRAY_SIZE(mp_builtin_module_delegation_table);
     for (size_t i = 0; i < n; ++i) {
-        if (*(mp_obj_t *)(&mp_builtin_module_delegation_table[i].mod) == self_in) {
+        mp_obj_t mod = *(mp_obj_t *)(&mp_builtin_module_delegation_table[i].mod);
+        if (mod == self_in) {
+            mp_builtin_module_delegation_table[i].fun(self_in, attr, dest);
+            break;
+        }
+        /* Win64/COFF: /opt:ref can leave the table's module pointer
+         * unequal to the live ROM object; same globals is the same face.
+         * Skip mp_obj_is_type — the type pointer can also be a discarded copy. */
+        if (mp_obj_is_obj(self_in) && mp_obj_is_obj(mod)
+            && ((mp_obj_module_t *)MP_OBJ_TO_PTR(self_in))->globals != NULL
+            && ((mp_obj_module_t *)MP_OBJ_TO_PTR(self_in))->globals
+                == ((mp_obj_module_t *)MP_OBJ_TO_PTR(mod))->globals) {
             mp_builtin_module_delegation_table[i].fun(self_in, attr, dest);
             break;
         }

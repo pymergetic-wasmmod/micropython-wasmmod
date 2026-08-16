@@ -29,10 +29,16 @@
 // defaults in py/mpconfig.h.
 
 #include <stdint.h>
-#include <stdlib.h> // for malloc, for MICROPY_GC_SPLIT_HEAP_AUTO
+#include <stdlib.h> // IWYU pragma: keep (malloc for MICROPY_GC_SPLIT_HEAP_AUTO)
 
-// Variant-specific definitions.
+// Variant-specific definitions. Makefile passes -I$(VARIANT_DIR). Quoted
+// fallback is for clangd (no variant -I; workspace CDB can fuzzy-match
+// metalpython firmware extmod/metal/port/mpconfigport.h).
+#if __has_include("mpconfigvariant.h")
 #include "mpconfigvariant.h"
+#else
+#include "variants/standard/mpconfigvariant.h"
+#endif
 
 #ifndef MICROPY_CONFIG_ROM_LEVEL
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
