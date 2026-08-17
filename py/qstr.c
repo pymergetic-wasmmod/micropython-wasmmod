@@ -240,6 +240,10 @@ static qstr qstr_add(mp_uint_t len, const char *q_ptr) {
         #endif
         pool->prev = MP_STATE_VM(last_pool);
         pool->total_prev_len = MP_STATE_VM(last_pool)->total_prev_len + MP_STATE_VM(last_pool)->len;
+        // Shares a word with total_prev_len, so it carries whatever the
+        // allocator handed back until set; a stale 1 makes qstr_find_strn
+        // binary-search this unsorted pool and miss every runtime qstr.
+        pool->is_sorted = false;
         pool->alloc = new_alloc;
         pool->len = 0;
         MP_STATE_VM(last_pool) = pool;
